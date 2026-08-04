@@ -1,0 +1,15 @@
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: geoarcher-db
+    environment:
+      POSTGRES_USER: geoarcher
+      POSTGRES_PASSWORD: geoarcher
+      POSTGRES_DB: geoarcher
+    ports:
+      - "5433:5432"
+    volumes:
+      - geoarcher-pgdata:/var/lib/postgresql/data
+
+volumes:
+  geoarcher-pgdata:
