@@ -3,4 +3,43 @@
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --color-surface: #f8f9fc;
+  --color-surface-elevated: #ffffff;
+  --color-border: #e2e8f0;
+  --color-border-strong: #cbd5e1;
+  --color-accent: #38bdf8;
+  --color-accent-strong: #0ea5e9;
+  --color-accent-muted: #e0f2fe;
+}
+
+@layer base {
+  body {
+    @apply bg-[#f8f9fc] text-slate-900 antialiased;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+  }
+
+  .btn-primary {
+    @apply rounded-full bg-sky-400 px-6 py-2.5 font-semibold text-white transition hover:bg-sky-500 disabled:opacity-50;
+  }
+
+  .btn-secondary {
+    @apply rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50;
+  }
+
+  .input-field {
+    @apply w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/25;
+  }
+
+  .brand-wordmark {
+    @apply text-xl font-bold tracking-tight text-slate-900;
+  }
+
+  .brand-wordmark-accent {
+    @apply text-sky-400;
+  }
 }

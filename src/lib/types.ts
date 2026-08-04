@@ -90,6 +90,86 @@ export interface Recommendation {
   category: string;
 }
 
+// ---- Answer simulation (Phase 5) ----
+
+export interface SimulatedPrompt {
+  prompt: string;
+  category: string;
+  before: { likelihood: number; reasoning: string };
+  after: { likelihood: number; reasoning: string; keyChanges: string[] };
+}
+
+export interface SimulationResults {
+  prompts: SimulatedPrompt[];
+  overallBefore: number;
+  overallAfter: number;
+}
+
+export interface SimulationState {
+  status: "RUNNING" | "COMPLETE" | "FAILED";
+  error: string | null;
+  results: SimulationResults | null;
+}
+
+export interface AssistantVisibility {
+  assistant: "ChatGPT" | "Claude" | "Gemini" | "Perplexity" | "Copilot";
+  score: number;
+  reasoning: string;
+}
+
+export interface VisibilityResults {
+  overall: number;
+  assistants: AssistantVisibility[];
+}
+
+export interface VisibilityState {
+  status: "RUNNING" | "COMPLETE" | "FAILED";
+  error: string | null;
+  results: VisibilityResults | null;
+}
+
+export interface ScanHistoryEntry {
+  id: string;
+  status: string;
+  createdAt: string;
+  finishedAt: string | null;
+  pagesCrawled: number;
+  geoOverall: number | null;
+  understanding: number | null;
+  simulationAfter: number | null;
+}
+
+export interface ScanComparison {
+  baselineScanId: string;
+  baselineFinishedAt: string | null;
+  currentScanId: string;
+  scoreDeltas: {
+    geoOverall: number | null;
+    understanding: number | null;
+    simulationAfter: number | null;
+  };
+  geoComponentDeltas: {
+    name: string;
+    before: number;
+    after: number;
+    delta: number;
+  }[];
+  resolvedGapQuestions: string[];
+  newGaps: ContentGap[];
+  newRecommendations: Recommendation[];
+  pageChanges: {
+    added: string[];
+    removed: string[];
+    wordCountChanges: {
+      url: string;
+      before: number;
+      after: number;
+      delta: number;
+    }[];
+  };
+  highlights: string[];
+}
+
 export interface ScanResult {
   id: string;
   status: "QUEUED" | "CRAWLING" | "ANALYZING" | "COMPLETE" | "FAILED";
@@ -111,4 +191,9 @@ export interface ScanResult {
     contentGaps: ContentGap[];
     recommendations: Recommendation[];
   } | null;
+  simulation: SimulationState | null;
+  visibility: VisibilityState | null;
+  benchmarkScanId: string | null;
+  history: ScanHistoryEntry[] | null;
+  comparison: ScanComparison | null;
 }

@@ -18,7 +18,9 @@ export async function runScan(scanId: string): Promise<void> {
       data: { status: "CRAWLING" },
     });
 
-    const maxPages = Number(process.env.MAX_CRAWL_PAGES ?? 15);
+    const maxPages = scan.benchmarkScanId
+      ? Number(process.env.COMPETITOR_MAX_CRAWL_PAGES ?? 8)
+      : Number(process.env.MAX_CRAWL_PAGES ?? 15);
     const pages: PageExtraction[] = await crawlSite(scan.site.url, {
       maxPages,
       onPage: async (page, count) => {

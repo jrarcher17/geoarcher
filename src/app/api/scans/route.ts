@@ -1,6 +1,7 @@
 import { NextResponse, after } from "next/server";
 import { prisma } from "@/lib/db";
 import { runScan } from "@/lib/scan-runner";
+import { getServerSession } from "@/lib/session";
 
 export const maxDuration = 300;
 
@@ -35,6 +36,17 @@ export async function POST(request: Request) {
   const scan = await prisma.scan.create({
     data: { siteId: site.id },
   });
+
+  const session = await getServerSession();
+  if (session) {
+    await prisma.userSite.upsert({
+      where: {
+        userId_siteId: { userId: session.user.id, siteId: site.id },
+      },
+      update: {},
+      create: { userId: session.user.id, siteId: site.id },
+    });
+  }
 
   after(() => runScan(scan.id));
 

@@ -2,12 +2,17 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { SimulationPanel } from "@/components/SimulationPanel";
+import { VisibilityPanel } from "@/components/VisibilityPanel";
+import { ContinuousLearningPanel } from "@/components/ContinuousLearningPanel";
+import { AutoFixPanel } from "@/components/AutoFixPanel";
+import { CompetitorPanel } from "@/components/CompetitorPanel";
 import type { ScanResult } from "@/lib/types";
 
 function scoreColor(score: number): string {
-  if (score >= 75) return "text-emerald-400";
-  if (score >= 50) return "text-amber-400";
-  return "text-red-400";
+  if (score >= 75) return "text-emerald-600";
+  if (score >= 50) return "text-amber-600";
+  return "text-red-600";
 }
 
 function barColor(score: number): string {
@@ -30,7 +35,7 @@ function ScoreRing({ score, label }: { score: number; label: string }) {
             r={r}
             fill="none"
             strokeWidth="10"
-            className="stroke-neutral-800"
+            className="stroke-slate-200"
           />
           <circle
             cx="60"
@@ -55,7 +60,7 @@ function ScoreRing({ score, label }: { score: number; label: string }) {
           </span>
         </div>
       </div>
-      <span className="text-sm text-neutral-400">{label}</span>
+      <span className="text-sm text-slate-500">{label}</span>
     </div>
   );
 }
@@ -70,23 +75,24 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-neutral-800 bg-neutral-900/50 p-6">
+    <section className="card p-6">
       <h2 className="text-lg font-semibold">{title}</h2>
-      {subtitle && <p className="mt-1 text-sm text-neutral-400">{subtitle}</p>}
+      {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
       <div className="mt-4">{children}</div>
     </section>
   );
 }
 
 const impactStyles: Record<string, string> = {
-  high: "bg-emerald-500/15 text-emerald-300",
-  medium: "bg-amber-500/15 text-amber-300",
-  low: "bg-neutral-500/15 text-neutral-300",
+  high: "bg-emerald-50 text-emerald-800",
+  medium: "bg-amber-50 text-amber-800",
+  low: "bg-slate-100 text-slate-600",
 };
 
 export function ScanDashboard({ scanId }: { scanId: string }) {
   const [scan, setScan] = useState<ScanResult | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [pollTick, setPollTick] = useState(0);
 
   const isRunning =
     !scan || scan.status === "QUEUED" || scan.status === "CRAWLING" || scan.status === "ANALYZING";
@@ -105,11 +111,13 @@ export function ScanDashboard({ scanId }: { scanId: string }) {
         const data: ScanResult = await res.json();
         if (cancelled) return;
         setScan(data);
-        if (
+        const scanBusy =
           data.status === "QUEUED" ||
           data.status === "CRAWLING" ||
-          data.status === "ANALYZING"
-        ) {
+          data.status === "ANALYZING";
+        const simulationBusy = data.simulation?.status === "RUNNING";
+        const visibilityBusy = data.visibility?.status === "RUNNING";
+        if (scanBusy || simulationBusy || visibilityBusy) {
           timer = setTimeout(poll, 2000);
         }
       } catch (err) {
@@ -123,14 +131,14 @@ export function ScanDashboard({ scanId }: { scanId: string }) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [scanId]);
+  }, [scanId, pollTick]);
 
   if (fetchError) {
     return (
       <main className="flex-1 flex items-center justify-center p-6">
         <div className="text-center">
-          <p className="text-red-400">{fetchError}</p>
-          <Link href="/" className="mt-4 inline-block text-emerald-400 underline">
+          <p className="text-red-600">{fetchError}</p>
+          <Link href="/" className="mt-4 inline-block text-sky-500 hover:underline">
             Start a new scan
           </Link>
         </div>
@@ -142,24 +150,32 @@ export function ScanDashboard({ scanId }: { scanId: string }) {
     <main className="flex-1 mx-auto w-full max-w-5xl px-6 py-10">
       <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <Link href="/" className="text-sm font-mono uppercase tracking-widest text-emerald-400">
-            GeoArcher
+          <Link href="/" className="brand-wordmark text-base">
+            Geo<span className="brand-wordmark-accent">Archer</span>
           </Link>
-          <h1 className="mt-1 text-2xl font-bold break-all">
+          <h1 className="mt-1 text-2xl font-bold break-all text-slate-900">
             {scan?.siteUrl ?? "Loading…"}
           </h1>
+          {scan?.benchmarkScanId && (
+            <Link
+              href={`/scan/${scan.benchmarkScanId}`}
+              className="mt-2 inline-block text-sm text-sky-500 hover:underline"
+            >
+              ← Back to primary comparison
+            </Link>
+          )}
         </div>
         <Link
           href="/"
-          className="rounded-lg border border-neutral-700 px-4 py-2 text-sm text-neutral-300 hover:border-neutral-500"
+          className="btn-secondary text-sm"
         >
           New scan
         </Link>
       </header>
 
       {isRunning && (
-        <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 p-8 text-center">
-          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-neutral-700 border-t-emerald-400" />
+        <div className="card p-8 text-center">
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-sky-400" />
           <p className="text-lg font-medium">
             {!scan || scan.status === "QUEUED"
               ? "Queued…"
@@ -167,23 +183,23 @@ export function ScanDashboard({ scanId }: { scanId: string }) {
                 ? `Crawling your site — ${scan.pagesCrawled} page${scan.pagesCrawled === 1 ? "" : "s"} so far`
                 : "Running AI analysis — understanding, GEO score, gaps, recommendations"}
           </p>
-          <p className="mt-2 text-sm text-neutral-400">
+          <p className="mt-2 text-sm text-slate-500">
             This usually takes one to three minutes.
           </p>
         </div>
       )}
 
       {scan?.status === "FAILED" && (
-        <div className="rounded-xl border border-red-900 bg-red-950/40 p-8 text-center">
-          <p className="text-lg font-semibold text-red-300">Scan failed</p>
-          <p className="mt-2 text-sm text-red-200/80">{scan.error}</p>
+        <div className="card border-red-200 bg-red-50 p-8 text-center">
+          <p className="text-lg font-semibold text-red-700">Scan failed</p>
+          <p className="mt-2 text-sm text-red-600">{scan.error}</p>
         </div>
       )}
 
       {scan?.status === "COMPLETE" && scan.analysis && (
         <div className="flex flex-col gap-6">
           {/* Scores */}
-          <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 p-6">
+          <div className="card p-6">
             <div className="flex flex-wrap items-center justify-around gap-8">
               <ScoreRing score={scan.analysis.geoScore.overall} label="GEO Score" />
               <ScoreRing
@@ -191,35 +207,46 @@ export function ScanDashboard({ scanId }: { scanId: string }) {
                 label="AI Understanding"
               />
               <div className="max-w-md">
-                <h2 className="text-sm font-mono uppercase tracking-wide text-neutral-400">
+                <h2 className="text-sm font-mono uppercase tracking-wide text-slate-500">
                   What AI thinks you do
                 </h2>
                 <p className="mt-2 leading-relaxed">
                   {scan.analysis.understanding.businessSummary}
                 </p>
-                <p className="mt-3 text-sm text-neutral-400">
-                  <span className="text-neutral-300">Audience:</span>{" "}
+                <p className="mt-3 text-sm text-slate-500">
+                  <span className="text-slate-700">Audience:</span>{" "}
                   {scan.analysis.understanding.audience} ·{" "}
-                  <span className="text-neutral-300">Area:</span>{" "}
+                  <span className="text-slate-700">Area:</span>{" "}
                   {scan.analysis.understanding.serviceArea}
                 </p>
               </div>
             </div>
           </div>
 
+          <VisibilityPanel
+            scanId={scan.id}
+            visibility={scan.visibility}
+            geoOverall={scan.analysis.geoScore.overall}
+            onStarted={() => setPollTick((t) => t + 1)}
+          />
+
+          {!scan.benchmarkScanId && (
+            <CompetitorPanel scanId={scan.id} primarySiteUrl={scan.siteUrl} />
+          )}
+
           {/* Semantic map */}
           <Section
             title="Semantic map"
             subtitle="AI doesn't see pages — it sees concepts. This is what your site is 'about'."
           >
-            <p className="font-semibold text-emerald-300">
+            <p className="font-semibold text-sky-600">
               {scan.analysis.semanticMap.topic}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               {scan.analysis.semanticMap.subtopics.map((s) => (
                 <span
                   key={s}
-                  className="rounded-full border border-neutral-700 bg-neutral-900 px-3 py-1 text-sm text-neutral-300"
+                  className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm text-slate-700"
                 >
                   {s}
                 </span>
@@ -237,10 +264,10 @@ export function ScanDashboard({ scanId }: { scanId: string }) {
                 {scan.analysis.understanding.problems.map((p) => (
                   <li
                     key={p.issue}
-                    className="rounded-lg border border-neutral-800 bg-neutral-900 p-4"
+                    className="rounded-lg border border-slate-200 bg-slate-50 p-4"
                   >
                     <p className="font-medium text-amber-300">{p.issue}</p>
-                    <p className="mt-1 text-sm text-neutral-400">{p.detail}</p>
+                    <p className="mt-1 text-sm text-slate-500">{p.detail}</p>
                   </li>
                 ))}
               </ul>
@@ -261,14 +288,14 @@ export function ScanDashboard({ scanId }: { scanId: string }) {
                       {c.score}
                     </span>
                   </div>
-                  <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-neutral-800">
+                  <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
                     <div
                       className={`h-full rounded-full ${barColor(c.score)}`}
                       style={{ width: `${c.score}%` }}
                     />
                   </div>
-                  <p className="mt-1.5 text-sm text-neutral-400">{c.findings}</p>
-                  <p className="mt-0.5 text-sm text-emerald-300/90">
+                  <p className="mt-1.5 text-sm text-slate-500">{c.findings}</p>
+                  <p className="mt-0.5 text-sm text-emerald-700">
                     Quick win: {c.quickWin}
                   </p>
                 </div>
@@ -285,10 +312,10 @@ export function ScanDashboard({ scanId }: { scanId: string }) {
               {scan.analysis.contentGaps.map((g) => (
                 <li
                   key={g.question}
-                  className="rounded-lg border border-neutral-800 bg-neutral-900 p-4"
+                  className="rounded-lg border border-slate-200 bg-slate-50 p-4"
                 >
                   <p className="font-medium">“{g.question}”</p>
-                  <p className="mt-1 text-sm text-neutral-400">{g.whyItMatters}</p>
+                  <p className="mt-1 text-sm text-slate-500">{g.whyItMatters}</p>
                 </li>
               ))}
             </ul>
@@ -308,7 +335,7 @@ export function ScanDashboard({ scanId }: { scanId: string }) {
                 .map((r) => (
                   <li
                     key={r.title}
-                    className="rounded-lg border border-neutral-800 bg-neutral-900 p-4"
+                    className="rounded-lg border border-slate-200 bg-slate-50 p-4"
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-medium">{r.title}</p>
@@ -317,24 +344,41 @@ export function ScanDashboard({ scanId }: { scanId: string }) {
                       >
                         {r.impact} impact
                       </span>
-                      <span className="rounded-full bg-neutral-700/40 px-2 py-0.5 text-xs text-neutral-300">
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
                         {r.effort} effort
                       </span>
-                      <span className="text-xs text-neutral-500">{r.category}</span>
+                      <span className="text-xs text-slate-400">{r.category}</span>
                     </div>
-                    <p className="mt-2 text-sm text-neutral-400">{r.why}</p>
-                    <p className="mt-1 text-sm text-neutral-300">{r.how}</p>
+                    <p className="mt-2 text-sm text-slate-500">{r.why}</p>
+                    <p className="mt-1 text-sm text-slate-700">{r.how}</p>
                   </li>
                 ))}
             </ul>
           </Section>
+
+          {/* Auto-fix (Phase 7) */}
+          <AutoFixPanel scanId={scan.id} />
+
+          {/* Answer simulation */}
+          <SimulationPanel
+            scanId={scan.id}
+            simulation={scan.simulation}
+            onStarted={() => setPollTick((t) => t + 1)}
+          />
+
+          {/* Continuous learning (Phase 8) */}
+          <ContinuousLearningPanel
+            scanId={scan.id}
+            history={scan.history}
+            comparison={scan.comparison}
+          />
 
           {/* Crawled pages */}
           <Section title={`Pages crawled (${scan.pages.length})`}>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-neutral-800 text-left text-neutral-400">
+                  <tr className="border-b border-slate-200 text-left text-slate-500">
                     <th className="py-2 pr-4 font-medium">URL</th>
                     <th className="py-2 pr-4 font-medium">Title</th>
                     <th className="py-2 font-medium text-right">Words</th>
@@ -342,14 +386,14 @@ export function ScanDashboard({ scanId }: { scanId: string }) {
                 </thead>
                 <tbody>
                   {scan.pages.map((p) => (
-                    <tr key={p.url} className="border-b border-neutral-800/60">
-                      <td className="py-2 pr-4 max-w-xs truncate text-neutral-300">
+                    <tr key={p.url} className="border-b border-slate-100">
+                      <td className="py-2 pr-4 max-w-xs truncate text-slate-700">
                         {p.url}
                       </td>
-                      <td className="py-2 pr-4 max-w-sm truncate text-neutral-400">
+                      <td className="py-2 pr-4 max-w-sm truncate text-slate-500">
                         {p.title ?? "—"}
                       </td>
-                      <td className="py-2 text-right font-mono text-neutral-400">
+                      <td className="py-2 text-right font-mono text-slate-500">
                         {p.wordCount}
                       </td>
                     </tr>

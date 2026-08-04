@@ -2,22 +2,24 @@ import { ScanForm } from "@/components/ScanForm";
 
 export default function Home() {
   return (
-    <main className="flex-1 flex flex-col items-center justify-center px-6 py-24">
-      <div className="w-full max-w-2xl text-center">
-        <p className="text-sm font-mono uppercase tracking-widest text-emerald-400 mb-4">
-          GeoArcher
+    <main className="flex-1 px-6 py-16 sm:py-24">
+      <div className="mx-auto w-full max-w-3xl text-center">
+        <p className="brand-wordmark mb-6">
+          Geo<span className="brand-wordmark-accent">Archer</span>
         </p>
-        <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-4">
+        <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
           Become the answer in{" "}
-          <span className="text-emerald-400">AI assistants</span>
+          <span className="text-sky-500">AI assistants</span>
         </h1>
-        <p className="text-neutral-400 text-lg mb-10 leading-relaxed">
+        <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-slate-500">
           Stop asking how to rank #1 on Google. See your website the way
           ChatGPT, Claude, Gemini, and Perplexity see it — then fix what they
           can&apos;t understand.
         </p>
-        <ScanForm />
-        <div className="mt-14 grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
+        <div className="mt-10">
+          <ScanForm />
+        </div>
+        <div className="mt-16 grid grid-cols-1 gap-4 text-left sm:grid-cols-3">
           {[
             {
               title: "AI Website Crawl",
@@ -28,16 +30,15 @@ export default function Home() {
               body: "How confidently can an AI say what you do, for whom, and where?",
             },
             {
-              title: "GEO Score + Fixes",
-              body: "13-component GEO audit with specific, non-generic recommendations.",
+              title: "Competitor compare",
+              body: "Stack your GEO and understanding scores against up to five rival sites.",
             },
           ].map((f) => (
-            <div
-              key={f.title}
-              className="rounded-xl border border-neutral-800 bg-neutral-900/50 p-4"
-            >
-              <h3 className="font-semibold text-sm mb-1">{f.title}</h3>
-              <p className="text-neutral-400 text-sm leading-relaxed">{f.body}</p>
+            <div key={f.title} className="card p-5">
+              <h3 className="mb-1 text-sm font-semibold text-slate-900">
+                {f.title}
+              </h3>
+              <p className="text-sm leading-relaxed text-slate-500">{f.body}</p>
             </div>
           ))}
         </div>

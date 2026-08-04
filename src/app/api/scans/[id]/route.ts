@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import {
+  compareToPreviousScan,
+  getSiteHistoryForScan,
+} from "@/lib/site-history";
 import type { ScanResult } from "@/lib/types";
 
 export async function GET(
@@ -12,6 +16,8 @@ export async function GET(
     include: {
       site: true,
       analysis: true,
+      simulation: true,
+      visibility: true,
       pages: {
         select: { url: true, title: true, wordCount: true, statusCode: true },
         orderBy: { id: "asc" },
@@ -22,11 +28,17 @@ export async function GET(
     return NextResponse.json({ error: "Scan not found." }, { status: 404 });
   }
 
+  const [historyData, comparison] = await Promise.all([
+    getSiteHistoryForScan(id),
+    scan.status === "COMPLETE" ? compareToPreviousScan(id) : Promise.resolve(null),
+  ]);
+
   const result: ScanResult = {
     id: scan.id,
     status: scan.status,
     error: scan.error,
     siteUrl: scan.site.url,
+    benchmarkScanId: scan.benchmarkScanId,
     pagesCrawled: scan.pagesCrawled,
     createdAt: scan.createdAt.toISOString(),
     finishedAt: scan.finishedAt?.toISOString() ?? null,
@@ -40,6 +52,22 @@ export async function GET(
           recommendations: scan.analysis.recommendations as never,
         }
       : null,
+    simulation: scan.simulation
+      ? {
+          status: scan.simulation.status,
+          error: scan.simulation.error,
+          results: (scan.simulation.results as never) ?? null,
+        }
+      : null,
+    visibility: scan.visibility
+      ? {
+          status: scan.visibility.status,
+          error: scan.visibility.error,
+          results: (scan.visibility.results as never) ?? null,
+        }
+      : null,
+    history: historyData?.entries ?? null,
+    comparison,
   };
   return NextResponse.json(result);
 }
