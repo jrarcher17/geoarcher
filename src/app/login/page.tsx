@@ -49,6 +49,12 @@ function LoginPageInner() {
       setError(resumed.error);
       return;
     }
+    const next = searchParams.get("next");
+    if (next && next.startsWith("/") && !next.startsWith("//")) {
+      router.push(next);
+      router.refresh();
+      return;
+    }
     router.push(fromAnalyze ? "/sites" : "/dashboard");
     router.refresh();
   }

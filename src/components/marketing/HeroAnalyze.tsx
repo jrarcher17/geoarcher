@@ -23,9 +23,10 @@ export function HeroAnalyze() {
             <span className="text-sky-600">AI search</span>
           </h1>
           <p className="mt-5 max-w-lg text-lg leading-relaxed text-slate-600">
-            Crawl your site, score how ChatGPT, Claude, Gemini, Perplexity, and
-            Copilot understand you, and ship a prioritized GEO action plan — the
-            same intelligence your admin dashboard runs on every scan.
+            Crawl your site, see how clearly AI can explain what you do, and
+            follow a prioritized GEO action plan — built so your business has the
+            best chance to appear in ChatGPT, Claude, Gemini, Perplexity, and
+            Copilot.
           </p>
           <div className="mt-8 max-w-md [&_.btn-primary]:rounded-full [&_.btn-primary]:bg-sky-500 [&_.btn-primary]:shadow-lg [&_.btn-primary]:shadow-sky-500/25 [&_.btn-primary]:hover:bg-sky-600">
             <ScanForm requireAuth submitLabel="Analyze my site →" />

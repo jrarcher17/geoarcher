@@ -25,6 +25,9 @@ export function AuthNav() {
   if (
     pathname === "/" ||
     pathname === "/login" ||
+    pathname === "/terms" ||
+    pathname === "/privacy" ||
+    pathname.startsWith("/guides") ||
     appRoutes.some((r) => pathname === r.replace(/\/$/, "") || pathname.startsWith(r))
   ) {
     return null;

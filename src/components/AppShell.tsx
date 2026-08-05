@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   ChevronDown,
@@ -20,6 +20,7 @@ import {
 import { signOut, useSession } from "@/lib/auth-client";
 import { BrandWordmark } from "@/components/BrandWordmark";
 import { cn } from "@/lib/utils";
+import { isProtectedAppPath, loginUrlWithReturn } from "@/lib/auth-guard";
 
 const NAV = [
   {
@@ -77,6 +78,7 @@ export function AppShell({
   live?: boolean;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: session, isPending: sessionPending } = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -84,6 +86,19 @@ export function AppShell({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!mounted || sessionPending) return;
+    if (!session && isProtectedAppPath(pathname)) {
+      router.replace(loginUrlWithReturn(pathname));
+    }
+  }, [mounted, sessionPending, session, pathname, router]);
+
+  async function handleSignOut() {
+    await signOut();
+    router.replace("/");
+    router.refresh();
+  }
 
   const authReady = mounted && !sessionPending;
 
@@ -120,7 +135,7 @@ export function AppShell({
         </p>
         <button
           type="button"
-          onClick={() => signOut()}
+          onClick={() => void handleSignOut()}
           className="text-xs text-slate-500 hover:text-slate-300"
         >
           Sign out

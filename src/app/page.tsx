@@ -6,10 +6,10 @@ import {
   DashboardMock,
   FEATURE_CARDS,
   FinalCta,
-  GUIDES,
   MarketingFooter,
   PLATFORM_POINTS,
 } from "@/components/marketing/MarketingSections";
+import { GUIDES } from "@/lib/guides-content";
 import { resolveProPriceLabel } from "@/lib/billing-price";
 import { getPlans } from "@/lib/plans";
 import { formatSiteLimit } from "@/lib/utils";
@@ -106,10 +106,10 @@ export default async function Home() {
             <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
               One workspace to crawl, score, and ship fixes
             </h2>
-            <p className="mt-4 text-slate-600 leading-relaxed">
-              The same admin experience you use after sign-in: executive dashboard,
-              per-site tabs, competitor panels, reports, and billing — no separate
-              &quot;lite&quot; product on the marketing site.
+            <p className="mt-4 leading-relaxed text-slate-600">
+              One signed-in workspace: executive dashboard, per-site reports,
+              competitor benchmarks, exports, and billing — everything you need
+              after you analyze a URL.
             </p>
             <ul className="mt-8 space-y-3">
               {PLATFORM_POINTS.map((point) => (
@@ -152,7 +152,7 @@ export default async function Home() {
         </div>
         <div className="mt-10 grid gap-6 md:grid-cols-3">
           {GUIDES.map((g) => (
-            <a
+            <Link
               key={g.title}
               href={g.href}
               className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-sky-200 hover:shadow-md"
@@ -169,7 +169,7 @@ export default async function Home() {
               <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-sky-600">
                 Read more <ArrowRight className="h-3.5 w-3.5" />
               </span>
-            </a>
+            </Link>
           ))}
         </div>
       </section>

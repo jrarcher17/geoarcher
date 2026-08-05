@@ -7,10 +7,10 @@ import { BrandWordmark } from "@/components/BrandWordmark";
 import { cn } from "@/lib/utils";
 
 const LINKS = [
-  { href: "#features", label: "Features" },
-  { href: "#platform", label: "Platform" },
-  { href: "#pricing", label: "Pricing" },
-  { href: "#guides", label: "Guides" },
+  { href: "/#features", label: "Features" },
+  { href: "/#platform", label: "Platform" },
+  { href: "/#pricing", label: "Pricing" },
+  { href: "/#guides", label: "Guides" },
 ];
 
 export function MarketingNav() {
@@ -25,13 +25,13 @@ export function MarketingNav() {
 
         <nav className="hidden items-center gap-8 md:flex">
           {LINKS.map((l) => (
-            <a
+            <Link
               key={l.href}
               href={l.href}
               className="text-sm font-medium text-slate-600 transition hover:text-slate-900"
             >
               {l.label}
-            </a>
+            </Link>
           ))}
         </nav>
 
@@ -42,13 +42,13 @@ export function MarketingNav() {
           >
             Login
           </Link>
-          <a
-            href="#analyze"
+          <Link
+            href="/#analyze"
             className="inline-flex items-center gap-2 rounded-full bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-sky-500/25 transition hover:bg-sky-600"
           >
             Get started
             <ArrowRight className="h-4 w-4" />
-          </a>
+          </Link>
         </div>
 
         <button
@@ -69,25 +69,25 @@ export function MarketingNav() {
       >
         <div className="flex flex-col gap-3 pt-3">
           {LINKS.map((l) => (
-            <a
+            <Link
               key={l.href}
               href={l.href}
               className="text-sm font-medium text-slate-700"
               onClick={() => setOpen(false)}
             >
               {l.label}
-            </a>
+            </Link>
           ))}
           <Link href="/login" className="text-sm font-medium text-slate-600">
             Login
           </Link>
-          <a
-            href="#analyze"
+          <Link
+            href="/#analyze"
             className="inline-flex justify-center rounded-full bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white"
             onClick={() => setOpen(false)}
           >
             Get started
-          </a>
+          </Link>
         </div>
       </div>
     </header>

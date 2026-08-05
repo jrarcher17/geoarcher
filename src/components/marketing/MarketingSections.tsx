@@ -12,8 +12,8 @@ import { BrandWordmark } from "@/components/BrandWordmark";
 export function MarketingFooter() {
   return (
     <footer className="border-t border-slate-200 bg-white">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-4">
-        <div className="md:col-span-1">
+      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-3">
+        <div>
           <BrandWordmark />
           <p className="mt-3 text-sm leading-relaxed text-slate-500">
             GEO Archer helps you see your website the way AI assistants do —
@@ -24,25 +24,17 @@ export function MarketingFooter() {
           {
             title: "Product",
             links: [
-              { href: "#features", label: "Features" },
-              { href: "#pricing", label: "Pricing" },
+              { href: "/#features", label: "Features" },
+              { href: "/#pricing", label: "Pricing" },
+              { href: "/#guides", label: "Guides" },
               { href: "/login", label: "Sign in" },
             ],
           },
           {
-            title: "Workspace",
+            title: "Legal",
             links: [
-              { href: "/dashboard", label: "Dashboard" },
-              { href: "/sites", label: "Sites" },
-              { href: "/scans", label: "Scans" },
-            ],
-          },
-          {
-            title: "Intelligence",
-            links: [
-              { href: "/visibility", label: "AI Visibility" },
-              { href: "/recommendations", label: "Recommendations" },
-              { href: "/competitors", label: "Competitors" },
+              { href: "/terms", label: "Terms of Service" },
+              { href: "/privacy", label: "Privacy Policy" },
             ],
           },
         ].map((col) => (
@@ -99,7 +91,7 @@ export const FEATURE_CARDS = [
     tint: "bg-sky-50 border-sky-100",
     iconClass: "text-sky-600 bg-sky-100",
     title: "AI website crawl",
-    body: "Playwright-powered crawl builds the semantic map assistants infer: topics, entities, and gaps — not just a page list.",
+    body: "GEO-powered crawl builds the semantic map assistants infer: topics, entities, and gaps — not just a page list.",
     bullets: ["Up to 150 pages on Pro", "Schema & technical audit", "Page-level health"],
   },
   {
@@ -125,30 +117,6 @@ export const PLATFORM_POINTS = [
   "Recommendations, content opportunities, and one-click drafts",
   "PDF exports and scan history for stakeholders",
   "Plan limits: scans/month, pages per scan, and site caps",
-] as const;
-
-export const GUIDES = [
-  {
-    tag: "GEO",
-    title: "What generative engine optimization actually measures",
-    summary:
-      "How GEO Archer scores structure, clarity, and citability — not traditional keyword rankings.",
-    href: "#features",
-  },
-  {
-    tag: "Visibility",
-    title: "Multi-assistant visibility scoring explained",
-    summary:
-      "Why we model ChatGPT, Claude, Gemini, Perplexity, and Copilot separately from one crawl.",
-    href: "#platform",
-  },
-  {
-    tag: "Competitors",
-    title: "Benchmark rivals for AI answers, not blue links",
-    summary:
-      "Run competitor crawls on the same framework and close gaps before assistants do.",
-    href: "#pricing",
-  },
 ] as const;
 
 export function DashboardMock() {
