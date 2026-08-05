@@ -24,6 +24,12 @@ function LoginPageInner() {
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
 
   useEffect(() => {
+    if (searchParams.get("sign-up") === "1") {
+      setMode("sign-up");
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
     if (fromAnalyze) {
       setPendingUrl(getPendingAnalyzeUrl());
     }

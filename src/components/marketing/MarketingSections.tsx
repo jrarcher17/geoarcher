@@ -73,13 +73,13 @@ export function FinalCta() {
           Run your first crawl in minutes. Free tier includes full scoring on one
           site — upgrade when you need depth and volume.
         </p>
-        <a
-          href="#analyze"
+        <Link
+          href="/login?sign-up=1"
           className="mt-8 inline-flex items-center gap-2 rounded-full bg-sky-500 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-sky-500/30 transition hover:bg-sky-400"
         >
           Get started for free
           <ArrowRight className="h-4 w-4" />
-        </a>
+        </Link>
       </div>
     </section>
   );

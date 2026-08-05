@@ -6,6 +6,8 @@ import { useState } from "react";
 import { BrandWordmark } from "@/components/BrandWordmark";
 import { cn } from "@/lib/utils";
 
+const SIGN_UP_HREF = "/login?sign-up=1";
+
 const LINKS = [
   { href: "/#features", label: "Features" },
   { href: "/#platform", label: "Platform" },
@@ -43,7 +45,7 @@ export function MarketingNav() {
             Login
           </Link>
           <Link
-            href="/#analyze"
+            href={SIGN_UP_HREF}
             className="inline-flex items-center gap-2 rounded-full bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-sky-500/25 transition hover:bg-sky-600"
           >
             Get started
@@ -82,7 +84,7 @@ export function MarketingNav() {
             Login
           </Link>
           <Link
-            href="/#analyze"
+            href={SIGN_UP_HREF}
             className="inline-flex justify-center rounded-full bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white"
             onClick={() => setOpen(false)}
           >

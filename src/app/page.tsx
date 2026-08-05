@@ -211,12 +211,12 @@ export default async function Home() {
                   <tr>
                     <td className="px-6 py-6" />
                     <td className="px-6 py-6">
-                      <a
-                        href="#analyze"
+                      <Link
+                        href="/login?sign-up=1"
                         className="inline-flex w-full justify-center rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 sm:w-auto"
                       >
                         Start free
-                      </a>
+                      </Link>
                     </td>
                     <td className="bg-sky-50/40 px-6 py-6">
                       <Link
