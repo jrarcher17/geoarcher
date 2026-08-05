@@ -143,14 +143,20 @@ export default function SitesPage() {
                             : "never"}
                         </p>
                       </Link>
-                      <button
-                        type="button"
-                        onClick={() => removeSite(s.siteId, s.url)}
-                        className="absolute bottom-4 right-4 rounded-md p-2 text-slate-300 opacity-0 transition hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
-                        aria-label={`Remove ${s.url}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {data.plan === "pro" && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            void removeSite(s.siteId, s.url);
+                          }}
+                          className="absolute bottom-4 right-4 rounded-md p-2 text-slate-300 opacity-0 transition hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
+                          aria-label={`Remove ${s.url}`}
+                          title="Remove site (Pro)"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
                     </Card>
                   );
                 })}
@@ -172,11 +178,8 @@ export default function SitesPage() {
             onSuccess={() => setAddOpen(false)}
           />
           <p className="mt-4 text-xs text-slate-400">
-            Signed-in scans are saved here. You can also{" "}
-            <Link href="/" className="text-sky-600 hover:underline">
-              analyze without signing in
-            </Link>
-            .
+            Scans are saved to your workspace. Removing a site and its history
+            is available on Pro (hover a site card and use the trash icon).
           </p>
         </DialogContent>
       </Dialog>

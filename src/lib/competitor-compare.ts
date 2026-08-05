@@ -12,11 +12,22 @@ export interface CompetitorSummary {
   subtopics: string[];
 }
 
-export interface CompetitorComparisonResult {
+export interface CompetitorComparisonCore {
   primary: CompetitorSummary;
   competitors: CompetitorSummary[];
   conceptsCompetitorsCoverMore: string[];
 }
+
+export interface CompetitorPlanLimits {
+  id: "free" | "pro";
+  label: string;
+  competitorMaxPages: number;
+  maxCompetitors: number;
+}
+
+export type CompetitorComparisonResult = CompetitorComparisonCore & {
+  plan: CompetitorPlanLimits;
+};
 
 function normTopic(s: string): string {
   return s.trim().toLowerCase();
@@ -61,7 +72,7 @@ function rowFromScan(input: {
 export function buildCompetitorComparison(
   primary: CompetitorSummary,
   competitors: CompetitorSummary[]
-): CompetitorComparisonResult {
+): CompetitorComparisonCore {
   const yours = new Set(primary.subtopics.map(normTopic));
   const competitorTopics: string[] = [];
 

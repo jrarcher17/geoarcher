@@ -5,9 +5,12 @@ import type { SiteInsight } from "@/app/api/me/insights/route";
 
 export type { SiteInsight };
 
+import type { PlanId } from "@/lib/plans";
+
 export interface Insights {
   sites: SiteInsight[];
   scanIds: Record<string, string | null>;
+  plan: PlanId;
 }
 
 /** Shared loader for all aggregate pages (dashboard, visibility, recs, …). */

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { prisma } from "@/lib/db";
 import type { ContentGap, SemanticMap, Understanding } from "@/lib/types";
+import { polishGeneratedContent } from "@/lib/generated-content";
 
 export const maxDuration = 120;
 
@@ -13,8 +14,28 @@ const PROMPTS: Record<string, string> = {
     "Draft a service/landing page (500–800 words) for the focus topic. Structure: H1, intro that states what/who/where in the first two sentences, benefit sections with H2s, one FAQ section, and a call to action. Write clean markdown, concrete and specific to this business.",
   "comparison-page":
     "Draft a comparison page (categories, criteria table, honest pros/cons) positioning this business against typical alternatives for the focus topic. Fair and factual — AI assistants distrust one-sided pages. Output markdown with a comparison table.",
-  brief:
-    "Write a content brief for the focus topic: target questions to answer, entities to mention, recommended structure (H1/H2 outline), schema to include, internal links to add, and a 2-sentence rationale tied to AI visibility. Output markdown.",
+  brief: `Write a complete content brief for the focus topic. This is a static handoff document for a writer — not a chat. Do not ask questions, do not offer to do more work, and do not end with "If you want…" or similar.
+
+Use real markdown only:
+- Major sections: ## Section title (never write "H2:" as plain text)
+- Page outline: start with one # Page title line, then ## and ### for sections (never "H1:" / "H2:" / "H3:" labels)
+- Bullets: use "-" only
+
+Required sections in this order:
+
+## Target questions to answer
+
+## Entities & topics to mention
+
+## Recommended page outline
+
+## Schema to include
+
+## Internal links to add
+
+## Why this helps AI visibility
+
+Stop immediately after the last section. No closing paragraph offering extra help.`,
 };
 
 export async function POST(
@@ -71,9 +92,12 @@ export async function POST(
   const response = await client.responses.create({
     model,
     instructions:
-      "You are GEO Archer's content engine. You produce publish-ready drafts that improve how AI assistants (ChatGPT, Claude, Gemini, Perplexity) understand and cite websites. Be concrete and specific to the business context provided. Never invent facts like prices, credentials, or reviews — use UPPERCASE_PLACEHOLDERS for unknowns.",
+      "You are GEO Archer's content engine. You produce finished, publish-ready documents — not conversational replies. Never ask the user questions, never offer follow-up tasks, and never append 'If you want, I can also…' or similar. Be concrete and specific to the business context provided. Never invent facts like prices, credentials, or reviews — use UPPERCASE_PLACEHOLDERS for unknowns. Use valid markdown headings (# ## ###) instead of writing 'H1:' or 'H2:' as text.",
     input: `${context}\n\nTASK: ${instruction}`,
   });
 
-  return NextResponse.json({ content: response.output_text, kind });
+  const raw = response.output_text ?? "";
+  const content = polishGeneratedContent(raw, kind);
+
+  return NextResponse.json({ content, kind });
 }

@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { ArrowUpRight, Eye } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { ArrowUpRight, Eye, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -32,27 +32,48 @@ function statusTone(status: string) {
 export default function ScansPage() {
   const [scans, setScans] = useState<ScanRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const loadScans = useCallback(async () => {
+    const res = await fetch("/api/me/scans", { cache: "no-store" });
+    if (res.status === 401) {
+      window.location.href = "/login";
+      return;
+    }
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      setError(j.error ?? "Failed to load scans.");
+      return;
+    }
+    const json = await res.json();
+    setScans(json.scans);
+    setError(null);
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const res = await fetch("/api/me/scans", { cache: "no-store" });
-      if (res.status === 401) {
-        window.location.href = "/login";
-        return;
-      }
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        if (!cancelled) setError(j.error ?? "Failed to load scans.");
-        return;
-      }
-      const json = await res.json();
-      if (!cancelled) setScans(json.scans);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    void loadScans();
+  }, [loadScans]);
+
+  async function deleteScan(scan: ScanRow) {
+    if (["QUEUED", "CRAWLING", "ANALYZING"].includes(scan.status)) {
+      alert("Wait for this scan to finish before deleting it.");
+      return;
+    }
+    if (!confirm(`Delete this scan for ${hostOf(scan.siteUrl)}? This cannot be undone.`)) {
+      return;
+    }
+    setDeletingId(scan.id);
+    try {
+      const res = await fetch(`/api/scans/${scan.id}`, { method: "DELETE" });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error ?? "Could not delete scan.");
+      await loadScans();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Could not delete scan.");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   return (
     <AppShell
@@ -100,26 +121,38 @@ export default function ScansPage() {
                           </p>
                         )}
                       </div>
-                      <Link
-                        href={
-                          s.status === "COMPLETE"
-                            ? `/sites/${s.siteId}`
-                            : `/scan/${s.id}`
-                        }
-                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-slate-200 text-slate-500 transition hover:border-sky-200 hover:bg-sky-50 hover:text-sky-600"
-                        aria-label={
-                          s.status === "COMPLETE" ? "Open report" : "View scan"
-                        }
-                        title={
-                          s.status === "COMPLETE" ? "Open report" : "View scan"
-                        }
-                      >
-                        {s.status === "COMPLETE" ? (
-                          <ArrowUpRight className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                      </Link>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <Link
+                          href={
+                            s.status === "COMPLETE"
+                              ? `/sites/${s.siteId}`
+                              : `/scan/${s.id}`
+                          }
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 text-slate-500 transition hover:border-sky-200 hover:bg-sky-50 hover:text-sky-600"
+                          aria-label={
+                            s.status === "COMPLETE" ? "Open report" : "View scan"
+                          }
+                          title={
+                            s.status === "COMPLETE" ? "Open report" : "View scan"
+                          }
+                        >
+                          {s.status === "COMPLETE" ? (
+                            <ArrowUpRight className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </Link>
+                        <button
+                          type="button"
+                          disabled={deletingId === s.id}
+                          aria-label="Delete scan"
+                          title="Delete scan"
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                          onClick={() => void deleteScan(s)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
                   </li>
                 ))}

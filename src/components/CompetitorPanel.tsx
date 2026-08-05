@@ -5,6 +5,14 @@ import { useEffect, useState } from "react";
 import { CompetitorComparisonCard } from "@/components/cards/CompetitorComparisonCard";
 import type { CompetitorComparisonResult } from "@/lib/competitor-compare";
 
+function planFootnote(plan: CompetitorComparisonResult["plan"]): string {
+  const pages = plan.competitorMaxPages.toLocaleString();
+  if (plan.id === "pro") {
+    return `Your Pro plan crawls up to ${pages} pages per competitor (up to ${plan.maxCompetitors} rivals per scan).`;
+  }
+  return `Your Free plan crawls up to ${pages} pages per competitor. Upgrade to Pro in Settings → Billing for deeper coverage.`;
+}
+
 export function CompetitorPanel({ scanId }: { scanId: string }) {
   const [data, setData] = useState<CompetitorComparisonResult | null>(null);
   const [urlsText, setUrlsText] = useState("");
@@ -93,12 +101,18 @@ export function CompetitorPanel({ scanId }: { scanId: string }) {
 
   if (!data) return null;
 
+  const maxCompetitors = data.plan?.maxCompetitors ?? 5;
+  const competitorMaxPages =
+    data.plan?.competitorMaxPages?.toLocaleString() ?? "8";
+
   return (
     <section className="card p-6">
       <h2 className="text-lg font-semibold">Competitor AI visibility</h2>
       <p className="mt-1 text-sm text-slate-500">
-        Compare GEO and understanding scores with up to 5 competitors (shorter
-        crawl). Spot semantic topics they cover that you don&apos;t.
+        Compare GEO and understanding scores with up to {maxCompetitors}{" "}
+        competitors ({competitorMaxPages} pages per competitor on your{" "}
+        {data.plan?.label ?? "Free"} plan). Spot semantic topics they cover that
+        you don&apos;t.
       </p>
 
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
@@ -113,7 +127,7 @@ export function CompetitorPanel({ scanId }: { scanId: string }) {
         />
         <button
           type="submit"
-          disabled={submitting || data.competitors.length >= 5}
+          disabled={submitting || data.competitors.length >= maxCompetitors}
           className="btn-primary shrink-0 sm:self-start"
         >
           {submitting ? "Starting…" : "Add competitors"}
@@ -154,10 +168,9 @@ export function CompetitorPanel({ scanId }: { scanId: string }) {
         </div>
       )}
 
-      <p className="mt-3 text-xs text-slate-400">
-        Competitor crawls use fewer pages by default (
-        <code className="text-slate-500">COMPETITOR_MAX_CRAWL_PAGES</code>).
-      </p>
+      {data.plan && (
+        <p className="mt-4 text-xs text-slate-400">{planFootnote(data.plan)}</p>
+      )}
     </section>
   );
 }

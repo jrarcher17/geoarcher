@@ -6,7 +6,11 @@ import {
 } from "@/lib/site-history";
 import { runScan } from "@/lib/scan-runner";
 import { failStaleScanIfNeeded, kickstartScanIfNeeded } from "@/lib/stale-scan";
+import { getServerSession } from "@/lib/session";
 import type { ScanResult } from "@/lib/types";
+import { userOwnsScan } from "@/lib/user-plan";
+
+const ACTIVE = new Set(["QUEUED", "CRAWLING", "ANALYZING"]);
 
 export async function GET(
   _request: Request,
@@ -89,4 +93,35 @@ export async function GET(
     comparison,
   };
   return NextResponse.json(result);
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getServerSession();
+  if (!session) {
+    return NextResponse.json({ error: "Sign in required." }, { status: 401 });
+  }
+
+  const { id } = await params;
+  if (!(await userOwnsScan(session.user.id, id))) {
+    return NextResponse.json({ error: "Not allowed." }, { status: 403 });
+  }
+
+  const scan = await prisma.scan.findUnique({ where: { id } });
+  if (!scan) {
+    return NextResponse.json({ error: "Scan not found." }, { status: 404 });
+  }
+
+  if (ACTIVE.has(scan.status)) {
+    return NextResponse.json(
+      { error: "Wait for the scan to finish or fail before deleting it." },
+      { status: 409 }
+    );
+  }
+
+  await prisma.scan.delete({ where: { id } });
+
+  return NextResponse.json({ ok: true, siteId: scan.siteId });
 }

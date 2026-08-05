@@ -4,9 +4,10 @@ import {
   buildCompetitorComparison,
   rowFromScan,
 } from "@/lib/competitor-compare";
+import { getPlanLimits } from "@/lib/plans";
 import { runScan } from "@/lib/scan-runner";
 import { getServerSession } from "@/lib/session";
-import { assertCanStartScan, userOwnsScan } from "@/lib/user-plan";
+import { assertCanStartScan, getPlanForScanId, userOwnsScan } from "@/lib/user-plan";
 
 export const maxDuration = 300;
 
@@ -82,7 +83,19 @@ export async function GET(
     })
   );
 
-  return NextResponse.json(buildCompetitorComparison(primary, competitors));
+  const planId = await getPlanForScanId(id);
+  const limits = getPlanLimits(planId);
+  const comparison = buildCompetitorComparison(primary, competitors);
+
+  return NextResponse.json({
+    ...comparison,
+    plan: {
+      id: planId,
+      label: limits.label,
+      competitorMaxPages: limits.competitorMaxPages,
+      maxCompetitors: MAX_COMPETITORS,
+    },
+  });
 }
 
 export async function POST(

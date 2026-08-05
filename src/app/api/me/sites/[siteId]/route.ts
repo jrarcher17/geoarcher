@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getPlanForUser } from "@/lib/user-plan";
 import { getServerSession } from "@/lib/session";
 
 export async function GET(
@@ -77,7 +78,27 @@ export async function DELETE(
     return NextResponse.json({ error: "Site not found." }, { status: 404 });
   }
 
-  await prisma.site.delete({ where: { id: siteId } });
+  const plan = await getPlanForUser(session.user.id);
+  if (plan !== "pro") {
+    return NextResponse.json(
+      {
+        error:
+          "Removing sites is available on Pro. Upgrade in Settings → Billing.",
+      },
+      { status: 403 }
+    );
+  }
+
+  await prisma.userSite.delete({
+    where: {
+      userId_siteId: { userId: session.user.id, siteId },
+    },
+  });
+
+  const otherLinks = await prisma.userSite.count({ where: { siteId } });
+  if (otherLinks === 0) {
+    await prisma.site.delete({ where: { id: siteId } });
+  }
 
   return NextResponse.json({ ok: true, url: link.site.url });
 }

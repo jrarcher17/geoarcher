@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Check, Copy, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { GeneratedContentView } from "@/components/cards/GeneratedContentView";
 
 export type GenerateKind =
   | "faq"
@@ -91,6 +92,7 @@ export function GenerateActionButton({
         <DialogContent
           title={GENERATE_LABELS[kind]}
           description={topic ? `Focus: ${topic}` : "Drafted from this scan's analysis"}
+          className={kind === "brief" ? "max-w-2xl" : undefined}
         >
           {loading && (
             <div className="flex items-center gap-3 py-10 text-sm text-slate-500">
@@ -101,7 +103,12 @@ export function GenerateActionButton({
           {error && <p className="py-4 text-sm text-red-600">{error}</p>}
           {output && (
             <div>
-              <div className="mb-3 flex justify-end">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs text-slate-400">
+                  {kind === "brief"
+                    ? "Formatted for reading — Copy saves the source text for your CMS or doc."
+                    : "Copy to paste into your CMS or editor."}
+                </p>
                 <Button variant="secondary" size="sm" onClick={copy}>
                   {copied ? (
                     <Check className="h-3.5 w-3.5 text-emerald-500" />
@@ -111,9 +118,7 @@ export function GenerateActionButton({
                   {copied ? "Copied" : "Copy"}
                 </Button>
               </div>
-              <pre className="whitespace-pre-wrap rounded-md border border-slate-200 bg-slate-50 p-4 font-sans text-sm leading-relaxed text-slate-800">
-                {output}
-              </pre>
+              <GeneratedContentView content={output} kind={kind} />
             </div>
           )}
         </DialogContent>

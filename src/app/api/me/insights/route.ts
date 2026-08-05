@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { planFromDb } from "@/lib/plans";
 import { getServerSession } from "@/lib/session";
 import type {
   ContentGap,
@@ -42,6 +43,15 @@ export async function GET() {
   if (!session) {
     return NextResponse.json({ error: "Sign in required." }, { status: 401 });
   }
+
+  const plan = planFromDb(
+    (
+      await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { plan: true },
+      })
+    )?.plan
+  );
 
   const links = await prisma.userSite.findMany({
     where: { userId: session.user.id },
@@ -138,5 +148,5 @@ export async function GET() {
     scanIds[link.site.id] = complete?.id ?? null;
   }
 
-  return NextResponse.json({ sites, scanIds });
+  return NextResponse.json({ sites, scanIds, plan });
 }
