@@ -12,11 +12,26 @@ export async function runScan(scanId: string): Promise<void> {
     include: { site: true },
   });
 
+  if (scan.status === "COMPLETE" || scan.status === "FAILED" || scan.status === "ANALYZING") {
+    return;
+  }
+  if (scan.status === "CRAWLING" && scan.pagesCrawled > 0) {
+    return;
+  }
+
+  const claimed = await prisma.scan.updateMany({
+    where: {
+      id: scanId,
+      status: { in: ["QUEUED", "CRAWLING"] },
+      pagesCrawled: 0,
+    },
+    data: { status: "CRAWLING" },
+  });
+  if (claimed.count === 0) {
+    return;
+  }
+
   try {
-    await prisma.scan.update({
-      where: { id: scanId },
-      data: { status: "CRAWLING" },
-    });
 
     const maxPages = scan.benchmarkScanId
       ? Number(process.env.COMPETITOR_MAX_CRAWL_PAGES ?? 8)

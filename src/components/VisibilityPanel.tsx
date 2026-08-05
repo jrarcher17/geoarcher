@@ -58,7 +58,7 @@ export function VisibilityPanel({
         <div>
           <h2 className="text-lg font-semibold">AI visibility</h2>
           <p className="mt-1 text-sm text-slate-500">
-            GeoArcher&apos;s model of how well each assistant would understand and
+            GEO Archer&apos;s model of how well each assistant would understand and
             surface this site — not live rankings inside those products.
           </p>
         </div>

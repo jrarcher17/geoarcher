@@ -176,7 +176,7 @@ export function AutoFixPanel({ scanId }: { scanId: string }) {
         </pre>
         <p className="mt-2 text-xs text-slate-400">
           On production, host <code className="text-slate-500">geo.js</code> from
-          your GeoArcher domain. Optional{" "}
+          your GEO Archer domain. Optional{" "}
           <code className="text-slate-500">data-api=&quot;https://…&quot;</code> if
           the script is served elsewhere.
         </p>

@@ -3,20 +3,37 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "@/lib/auth-client";
+import { BrandWordmark } from "@/components/BrandWordmark";
 
 export function AuthNav() {
   const pathname = usePathname();
   const { data: session, isPending } = useSession();
 
-  if (pathname === "/login") {
+  // Admin shell owns chrome on all app routes; this nav is for marketing pages.
+  const appRoutes = [
+    "/dashboard",
+    "/sites",
+    "/scans",
+    "/scan/",
+    "/visibility",
+    "/recommendations",
+    "/opportunities",
+    "/competitors",
+    "/reports",
+    "/settings",
+  ];
+  if (
+    pathname === "/login" ||
+    appRoutes.some((r) => pathname === r.replace(/\/$/, "") || pathname.startsWith(r))
+  ) {
     return null;
   }
 
   return (
     <nav className="border-b border-slate-200 bg-white/90 backdrop-blur-sm">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
-        <Link href="/" className="brand-wordmark">
-          Geo<span className="brand-wordmark-accent">Archer</span>
+        <Link href="/">
+          <BrandWordmark />
         </Link>
         <div className="flex items-center gap-4 text-sm">
           <Link

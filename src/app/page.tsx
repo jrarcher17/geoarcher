@@ -1,11 +1,12 @@
 import { ScanForm } from "@/components/ScanForm";
+import { BrandWordmark } from "@/components/BrandWordmark";
 
 export default function Home() {
   return (
     <main className="flex-1 px-6 py-16 sm:py-24">
       <div className="mx-auto w-full max-w-3xl text-center">
-        <p className="brand-wordmark mb-6">
-          Geo<span className="brand-wordmark-accent">Archer</span>
+        <p className="mb-6">
+          <BrandWordmark className="text-xl" />
         </p>
         <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
           Become the answer in{" "}

@@ -79,7 +79,7 @@ export async function simulateAnswers(
     input: [
       {
         role: "system",
-        content: `You simulate whether an AI assistant would cite or recommend this specific business when answering each user prompt. This is GeoArcher's scoring model — an honest simulation, not a guarantee of real AI behavior.
+        content: `You simulate whether an AI assistant would cite or recommend this specific business when answering each user prompt. This is GEO Archer's scoring model — an honest simulation, not a guarantee of real AI behavior.
 
 For each prompt, produce:
 - beforeLikelihood (0-100): assuming the assistant can see this site's CURRENT content (the digest) alongside typical competitors, how likely is it to cite or recommend this business in its answer? Judge strictly on whether the site's content actually answers the prompt with specific, quotable information. Thin or missing content = low score.

@@ -1,9 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { prisma } from "@/lib/db";
 import {
   compareToPreviousScan,
   getSiteHistoryForScan,
 } from "@/lib/site-history";
+import { runScan } from "@/lib/scan-runner";
+import { failStaleScanIfNeeded, kickstartScanIfNeeded } from "@/lib/stale-scan";
 import type { ScanResult } from "@/lib/types";
 
 export async function GET(
@@ -28,15 +30,32 @@ export async function GET(
     return NextResponse.json({ error: "Scan not found." }, { status: 404 });
   }
 
+  let status: ScanResult["status"] = scan.status as ScanResult["status"];
+  let error = scan.error;
+
+  const kick = await kickstartScanIfNeeded(scan, (scanId) => {
+    after(async () => {
+      await runScan(scanId);
+    });
+  });
+  if (kick.recovered) {
+    status = kick.status as ScanResult["status"];
+  }
+
+  const stale = await failStaleScanIfNeeded({ ...scan, status, error });
+  status = stale.status as ScanResult["status"];
+  error = stale.error;
+
   const [historyData, comparison] = await Promise.all([
     getSiteHistoryForScan(id),
-    scan.status === "COMPLETE" ? compareToPreviousScan(id) : Promise.resolve(null),
+    status === "COMPLETE" ? compareToPreviousScan(id) : Promise.resolve(null),
   ]);
 
   const result: ScanResult = {
     id: scan.id,
-    status: scan.status,
-    error: scan.error,
+    status: status as ScanResult["status"],
+    error,
+    siteId: scan.siteId,
     siteUrl: scan.site.url,
     benchmarkScanId: scan.benchmarkScanId,
     pagesCrawled: scan.pagesCrawled,

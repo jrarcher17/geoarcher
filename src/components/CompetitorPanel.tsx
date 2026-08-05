@@ -2,20 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { CompetitorComparisonCard } from "@/components/cards/CompetitorComparisonCard";
 import type { CompetitorComparisonResult } from "@/lib/competitor-compare";
 
-function scoreCell(v: number | null): string {
-  if (v === null) return "—";
-  return String(v);
-}
-
-export function CompetitorPanel({
-  scanId,
-  primarySiteUrl,
-}: {
-  scanId: string;
-  primarySiteUrl: string;
-}) {
+export function CompetitorPanel({ scanId }: { scanId: string }) {
   const [data, setData] = useState<CompetitorComparisonResult | null>(null);
   const [urlsText, setUrlsText] = useState("");
   const [loading, setLoading] = useState(true);
@@ -103,8 +93,6 @@ export function CompetitorPanel({
 
   if (!data) return null;
 
-  const rows = [data.primary, ...data.competitors];
-
   return (
     <section className="card p-6">
       <h2 className="text-lg font-semibold">Competitor AI visibility</h2>
@@ -133,15 +121,15 @@ export function CompetitorPanel({
       </form>
 
       {data.conceptsCompetitorsCoverMore.length > 0 && (
-        <div className="mt-4 rounded-lg border border-amber-900/40 bg-amber-950/20 p-4">
-          <p className="text-sm font-medium text-amber-200/90">
-            Concepts competitors emphasize more
+        <div className="mt-4 rounded-md border border-amber-200/70 bg-amber-50/70 p-4">
+          <p className="text-sm font-medium text-amber-800">
+            Concepts competitors emphasize more than you
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             {data.conceptsCompetitorsCoverMore.map((t) => (
               <span
                 key={t}
-                className="rounded-full border border-amber-800/50 px-3 py-1 text-xs text-amber-100/90"
+                className="rounded-full border border-amber-200 bg-white px-3 py-1 text-xs text-amber-800"
               >
                 {t}
               </span>
@@ -150,57 +138,23 @@ export function CompetitorPanel({
         </div>
       )}
 
-      <div className="mt-6 overflow-x-auto">
-        <table className="w-full min-w-[640px] text-sm">
-          <thead>
-            <tr className="border-b border-slate-200 text-left text-slate-500">
-              <th className="py-2 pr-4 font-medium">Site</th>
-              <th className="py-2 pr-4 font-medium">Status</th>
-              <th className="py-2 pr-4 font-medium text-right">GEO</th>
-              <th className="py-2 pr-4 font-medium text-right">Understanding</th>
-              <th className="py-2 font-medium text-right">AI visibility</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => {
-              const isYou = row.siteUrl === primarySiteUrl;
-              return (
-                <tr
-                  key={row.scanId}
-                  className={`border-b border-slate-100 ${
-                    isYou ? "bg-sky-50" : ""
-                  }`}
-                >
-                  <td className="py-2 pr-4 max-w-xs truncate">
-                    {isYou ? (
-                      <span className="font-medium text-sky-700">You · {row.siteUrl}</span>
-                    ) : (
-                      <Link
-                        href={`/scan/${row.scanId}`}
-                        className="text-slate-700 hover:text-sky-600"
-                      >
-                        {row.siteUrl}
-                      </Link>
-                    )}
-                  </td>
-                  <td className="py-2 pr-4 text-slate-400">{row.status}</td>
-                  <td className="py-2 pr-4 text-right font-mono">
-                    {scoreCell(row.geoOverall)}
-                  </td>
-                  <td className="py-2 pr-4 text-right font-mono">
-                    {scoreCell(row.understanding)}
-                  </td>
-                  <td className="py-2 text-right font-mono">
-                    {scoreCell(row.visibilityOverall)}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      {data.competitors.length > 0 && (
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
+          {data.competitors.map((row) => (
+            <div key={row.scanId} className="flex flex-col gap-1.5">
+              <CompetitorComparisonCard you={data.primary} competitor={row} />
+              <Link
+                href={`/scan/${row.scanId}`}
+                className="self-end text-xs font-medium text-sky-600 hover:underline"
+              >
+                Full competitor breakdown →
+              </Link>
+            </div>
+          ))}
+        </div>
+      )}
+
       <p className="mt-3 text-xs text-slate-400">
-        AI visibility shown when you&apos;ve run visibility scoring on that scan.
         Competitor crawls use fewer pages by default (
         <code className="text-slate-500">COMPETITOR_MAX_CRAWL_PAGES</code>).
       </p>

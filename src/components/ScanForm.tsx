@@ -30,7 +30,7 @@ export function ScanForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mx-auto w-full max-w-xl">
+    <form onSubmit={handleSubmit} className="w-full">
       <div className="flex flex-col gap-3 sm:flex-row">
         <input
           type="text"

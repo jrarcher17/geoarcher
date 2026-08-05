@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { signIn, signUp } from "@/lib/auth-client";
+import { BrandWordmark } from "@/components/BrandWordmark";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -38,15 +39,15 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen flex-1">
       <div className="flex w-full flex-col justify-center bg-white px-8 py-12 sm:w-1/2 sm:px-16 lg:px-24">
-        <Link href="/" className="brand-wordmark">
-          Geo<span className="brand-wordmark-accent">Archer</span>
+        <Link href="/">
+          <BrandWordmark />
         </Link>
         <h1 className="mt-10 text-3xl font-bold tracking-tight text-slate-900">
           {mode === "sign-in" ? "Welcome back" : "Create your account"}
         </h1>
         <p className="mt-2 text-slate-500">
           {mode === "sign-in"
-            ? "Sign in to your GeoArcher workspace."
+            ? "Sign in to your GEO Archer workspace."
             : "Start tracking AI visibility for your sites."}
         </p>
 

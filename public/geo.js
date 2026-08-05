@@ -4,7 +4,7 @@
 
   var siteKey = script.getAttribute("data-site");
   if (!siteKey) {
-    console.warn("[GeoArcher] Missing data-site on geo.js script tag.");
+    console.warn("[GEO Archer] Missing data-site on geo.js script tag.");
     return;
   }
 

@@ -76,7 +76,7 @@ export function SimulationPanel({
           <h2 className="text-lg font-semibold">AI answer simulation</h2>
           <p className="mt-1 text-sm text-slate-500">
             Would an AI assistant cite you today? And after you implement the
-            recommendations? Simulated by GeoArcher&apos;s scoring model.
+            recommendations? Simulated by GEO Archer&apos;s scoring model.
           </p>
         </div>
         {(!simulation || simulation.status === "FAILED") && (

@@ -6,7 +6,7 @@ const SKIP_EXTENSIONS =
   /\.(pdf|jpe?g|png|gif|webp|svg|ico|css|js|mp4|mp3|zip|gz|xml|txt|woff2?)(\?|$)/i;
 
 const BROWSERLESS_CONNECT_MS = Number(
-  process.env.BROWSERLESS_CONNECT_TIMEOUT_MS ?? 20_000
+  process.env.BROWSERLESS_CONNECT_TIMEOUT_MS ?? 8_000
 );
 
 function normalizeUrl(raw: string): string | null {
@@ -61,7 +61,12 @@ async function launchLocalBrowser(): Promise<Browser> {
 /** Prefer Browserless when configured; fall back to local Playwright on failure. */
 async function openBrowser(): Promise<{ browser: Browser; via: "browserless" | "local" }> {
   const ws = process.env.BROWSERLESS_WS_URL?.trim();
-  if (ws) {
+  const useBrowserlessInDev = process.env.BROWSERLESS_IN_DEV === "true";
+  const tryBrowserless =
+    ws &&
+    (process.env.NODE_ENV !== "development" || useBrowserlessInDev);
+
+  if (tryBrowserless) {
     try {
       const browser = await connectBrowserless(ws);
       console.info("[crawler] connected via Browserless");
@@ -89,7 +94,7 @@ export async function crawlSite(
   const results: PageExtraction[] = [];
   try {
     const context = await browser.newContext({
-      userAgent: "GeoArcherBot/0.1 (+https://geoarcher.app)",
+      userAgent: "GEOArcherBot/0.1 (+https://geoarcher.app)",
       viewport: { width: 1366, height: 900 },
     });
     const page = await context.newPage();

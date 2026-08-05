@@ -174,6 +174,7 @@ export interface ScanResult {
   id: string;
   status: "QUEUED" | "CRAWLING" | "ANALYZING" | "COMPLETE" | "FAILED";
   error: string | null;
+  siteId: string;
   siteUrl: string;
   pagesCrawled: number;
   createdAt: string;

@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GeoArcher — AI Visibility for Your Website",
+  title: "GEO Archer — AI Visibility for Your Website",
   description:
     "See your website the way ChatGPT, Claude, Gemini, and Perplexity see it. Crawl, score, and optimize for AI answers.",
 };

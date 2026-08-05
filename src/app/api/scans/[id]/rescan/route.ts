@@ -31,7 +31,9 @@ export async function POST(
     data: { siteId: scan.siteId },
   });
 
-  after(() => runScan(newScan.id));
+  after(async () => {
+    await runScan(newScan.id);
+  });
 
   return NextResponse.json({ scanId: newScan.id }, { status: 201 });
 }

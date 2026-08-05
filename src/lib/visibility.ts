@@ -44,7 +44,7 @@ export async function scoreAssistantVisibility(
     input: [
       {
         role: "system",
-        content: `You are GeoArcher's AI Visibility scoring model. You do NOT have access to real ChatGPT, Claude, Gemini, Perplexity, or Copilot systems — you simulate how well EACH assistant would likely understand, trust, and surface this business when users ask relevant questions in this niche.
+        content: `You are GEO Archer's AI Visibility scoring model. You do NOT have access to real ChatGPT, Claude, Gemini, Perplexity, or Copilot systems — you simulate how well EACH assistant would likely understand, trust, and surface this business when users ask relevant questions in this niche.
 
 Score each assistant 0-100 exactly once: ${ASSISTANT_NAMES.join(", ")}.
 Consider (vary scores slightly by assistant "persona" — e.g. Perplexity weights citations, Copilot weights structured facts, etc.):

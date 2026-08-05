@@ -126,7 +126,7 @@ export function ContinuousLearningPanel({
         <div>
           <h2 className="text-lg font-semibold">Continuous learning</h2>
           <p className="mt-1 text-sm text-slate-500">
-            Compare this scan to previous crawls. Scores are GeoArcher&apos;s model
+            Compare this scan to previous crawls. Scores are GEO Archer&apos;s model
             over time — not live AI rankings.
           </p>
         </div>
