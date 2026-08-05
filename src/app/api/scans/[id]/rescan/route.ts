@@ -1,6 +1,8 @@
 import { NextResponse, after } from "next/server";
 import { prisma } from "@/lib/db";
 import { runScan } from "@/lib/scan-runner";
+import { getServerSession } from "@/lib/session";
+import { assertCanStartScan, userOwnsScan } from "@/lib/user-plan";
 
 export const maxDuration = 300;
 
@@ -8,10 +10,24 @@ export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await getServerSession();
+  if (!session) {
+    return NextResponse.json({ error: "Sign in required." }, { status: 401 });
+  }
+
   const { id } = await params;
   const scan = await prisma.scan.findUnique({ where: { id } });
   if (!scan) {
     return NextResponse.json({ error: "Scan not found." }, { status: 404 });
+  }
+
+  if (!(await userOwnsScan(session.user.id, id))) {
+    return NextResponse.json({ error: "Not allowed." }, { status: 403 });
+  }
+
+  const scanLimitError = await assertCanStartScan(session.user.id);
+  if (scanLimitError) {
+    return NextResponse.json({ error: scanLimitError }, { status: 403 });
   }
 
   const active = await prisma.scan.findFirst({

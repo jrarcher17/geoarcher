@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ChevronDown,
   Eye,
@@ -77,8 +77,15 @@ export function AppShell({
   live?: boolean;
 }) {
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const { data: session, isPending: sessionPending } = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const authReady = mounted && !sessionPending;
 
   const initials =
     session?.user?.name
@@ -89,6 +96,53 @@ export function AppShell({
       .toUpperCase() ||
     session?.user?.email?.slice(0, 2).toUpperCase() ||
     "GA";
+
+  const sidebarAccount = !authReady ? (
+    <div
+      className="flex items-center gap-3"
+      aria-busy="true"
+      aria-label="Loading account"
+    >
+      <div className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-white/10" />
+      <div className="min-w-0 flex-1 space-y-2">
+        <div className="h-3 w-24 animate-pulse rounded bg-white/10" />
+        <div className="h-2.5 w-16 animate-pulse rounded bg-white/5" />
+      </div>
+    </div>
+  ) : session ? (
+    <div className="flex items-center gap-3">
+      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sky-500/20 text-xs font-semibold text-sky-300">
+        {initials}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-white">
+          {session.user.name || "Account"}
+        </p>
+        <button
+          type="button"
+          onClick={() => signOut()}
+          className="text-xs text-slate-500 hover:text-slate-300"
+        >
+          Sign out
+        </button>
+      </div>
+    </div>
+  ) : (
+    <Link href="/login" className="text-sm text-sky-400 hover:text-sky-300">
+      Sign in
+    </Link>
+  );
+
+  const headerAvatar = !authReady ? (
+    <div
+      className="flex h-9 w-9 animate-pulse items-center justify-center rounded-full bg-slate-200"
+      aria-hidden
+    />
+  ) : (
+    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sky-100 text-xs font-semibold text-sky-700">
+      {initials}
+    </div>
+  );
 
   const sidebar = (
     <aside className="flex h-full w-60 shrink-0 flex-col bg-[#0b1220] text-slate-300">
@@ -136,31 +190,7 @@ export function AppShell({
         ))}
       </nav>
 
-      <div className="border-t border-white/10 p-4">
-        {session ? (
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sky-500/20 text-xs font-semibold text-sky-300">
-              {initials}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-white">
-                {session.user.name || "Account"}
-              </p>
-              <button
-                type="button"
-                onClick={() => signOut()}
-                className="text-xs text-slate-500 hover:text-slate-300"
-              >
-                Sign out
-              </button>
-            </div>
-          </div>
-        ) : (
-          <Link href="/login" className="text-sm text-sky-400 hover:text-sky-300">
-            Sign in
-          </Link>
-        )}
-      </div>
+      <div className="border-t border-white/10 p-4">{sidebarAccount}</div>
     </aside>
   );
 
@@ -216,9 +246,7 @@ export function AppShell({
                   ⌘K
                 </kbd>
               </div>
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sky-100 text-xs font-semibold text-sky-700">
-                {initials}
-              </div>
+              {headerAvatar}
             </div>
           </div>
         </header>

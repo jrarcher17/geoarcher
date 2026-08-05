@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { ArrowUpRight, Eye } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -105,9 +106,19 @@ export default function ScansPage() {
                             ? `/sites/${s.siteId}`
                             : `/scan/${s.id}`
                         }
-                        className="text-sm font-medium text-sky-600 hover:underline"
+                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-slate-200 text-slate-500 transition hover:border-sky-200 hover:bg-sky-50 hover:text-sky-600"
+                        aria-label={
+                          s.status === "COMPLETE" ? "Open report" : "View scan"
+                        }
+                        title={
+                          s.status === "COMPLETE" ? "Open report" : "View scan"
+                        }
                       >
-                        {s.status === "COMPLETE" ? "Open report" : "View"}
+                        {s.status === "COMPLETE" ? (
+                          <ArrowUpRight className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
                       </Link>
                     </div>
                   </li>

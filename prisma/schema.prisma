@@ -30,14 +30,22 @@ model UserSite {
   @@index([userId])
 }
 
+enum PlanTier {
+  FREE
+  PRO
+}
+
 model User {
   id            String     @id
   name          String
   email         String
   emailVerified Boolean    @default(false)
   image         String?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  plan                   PlanTier @default(FREE)
+  stripeCustomerId       String?  @unique
+  stripeSubscriptionId   String?  @unique
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
   sessions      Session[]
   accounts      Account[]
   userSites     UserSite[]

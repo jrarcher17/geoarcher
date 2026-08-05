@@ -73,3 +73,7 @@ export function hostOf(url: string): string {
     return url.replace(/^https?:\/\//, "");
   }
 }
+
+export function formatSiteLimit(sites: number | null): string {
+  return sites == null ? "Unlimited" : String(sites);
+}

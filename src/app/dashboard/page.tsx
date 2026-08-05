@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { Eye, Globe, Radar } from "lucide-react";
+import { Eye, Globe } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -19,7 +19,6 @@ import {
   GenerateActionButton,
   kindForRecommendation,
 } from "@/components/cards/GenerateAction";
-import { ScanForm } from "@/components/ScanForm";
 import { ScoreCard } from "@/components/cards/ScoreCard";
 import { TrendChart } from "@/components/cards/TrendChart";
 import { useInsights } from "@/lib/useInsights";
@@ -251,23 +250,6 @@ export default function DashboardPage() {
               }))}
             />
           )}
-
-          <Card>
-            <CardHeader className="flex-row items-center gap-2">
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-50 text-sky-500">
-                <Radar className="h-4 w-4" />
-              </span>
-              <div>
-                <CardTitle>Analyze a new site</CardTitle>
-                <CardDescription>
-                  Crawl it, score it, and get an action plan in ~2 minutes.
-                </CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <ScanForm />
-            </CardContent>
-          </Card>
         </FadeIn>
       )}
     </AppShell>

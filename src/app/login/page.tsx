@@ -1,19 +1,57 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { signIn, signUp } from "@/lib/auth-client";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import { BrandWordmark } from "@/components/BrandWordmark";
+import { pendingAnalyzeHint } from "@/components/ScanForm";
+import { signIn, signUp } from "@/lib/auth-client";
+import {
+  getPendingAnalyzeUrl,
+  resumePendingAnalyze,
+} from "@/lib/pending-analyze";
 
-export default function LoginPage() {
+function LoginPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const fromAnalyze = searchParams.get("from") === "analyze";
   const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [pendingUrl, setPendingUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (fromAnalyze) {
+      setPendingUrl(getPendingAnalyzeUrl());
+    }
+  }, [fromAnalyze]);
+
+  const analyzeHost = pendingAnalyzeHint(pendingUrl);
+
+  async function afterAuth() {
+    const resumed = await resumePendingAnalyze();
+    if (resumed.kind === "scan") {
+      router.push(`/scan/${resumed.scanId}`);
+      router.refresh();
+      return;
+    }
+    if (resumed.kind === "error") {
+      if (resumed.status === 403) {
+        router.push(
+          `/settings?tab=billing&scanError=${encodeURIComponent(resumed.error)}`
+        );
+        router.refresh();
+        return;
+      }
+      setError(resumed.error);
+      return;
+    }
+    router.push(fromAnalyze ? "/sites" : "/dashboard");
+    router.refresh();
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -27,8 +65,7 @@ export default function LoginPage() {
         const res = await signIn.email({ email, password });
         if (res.error) throw new Error(res.error.message ?? "Sign in failed.");
       }
-      router.push("/dashboard");
-      router.refresh();
+      await afterAuth();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -46,9 +83,18 @@ export default function LoginPage() {
           {mode === "sign-in" ? "Welcome back" : "Create your account"}
         </h1>
         <p className="mt-2 text-slate-500">
-          {mode === "sign-in"
-            ? "Sign in to your GEO Archer workspace."
-            : "Start tracking AI visibility for your sites."}
+          {fromAnalyze && analyzeHost ? (
+            <>
+              Sign in to analyze{" "}
+              <span className="font-medium text-slate-800">{analyzeHost}</span>.
+              We&apos;ll start the crawl as soon as you&apos;re in — if your plan
+              has room for another site or scan.
+            </>
+          ) : mode === "sign-in" ? (
+            "Sign in to your GEO Archer workspace."
+          ) : (
+            "Start tracking AI visibility for your sites."
+          )}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-8 flex max-w-md flex-col gap-4">
@@ -90,17 +136,23 @@ export default function LoginPage() {
               required
               minLength={8}
               autoComplete={
-                mode === "sign-up" ? "new-password" : "current-password"
+                mode === "sign-in" ? "current-password" : "new-password"
               }
               className="input-field"
             />
           </div>
           <button type="submit" disabled={loading} className="btn-primary mt-2">
             {loading
-              ? "Please wait…"
+              ? fromAnalyze
+                ? "Starting scan…"
+                : "Please wait…"
               : mode === "sign-in"
-                ? "Sign in"
-                : "Create account"}
+                ? fromAnalyze
+                  ? "Sign in & analyze"
+                  : "Sign in"
+                : fromAnalyze
+                  ? "Create account & analyze"
+                  : "Create account"}
           </button>
         </form>
 
@@ -136,7 +188,7 @@ export default function LoginPage() {
           href="/"
           className="mt-6 text-sm text-slate-400 hover:text-slate-600"
         >
-          Continue without signing in
+          Back to home
         </Link>
       </div>
 
@@ -167,5 +219,19 @@ export default function LoginPage() {
         </ul>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center text-slate-400">
+          Loading…
+        </main>
+      }
+    >
+      <LoginPageInner />
+    </Suspense>
   );
 }

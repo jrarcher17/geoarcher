@@ -5,6 +5,8 @@ import {
   rowFromScan,
 } from "@/lib/competitor-compare";
 import { runScan } from "@/lib/scan-runner";
+import { getServerSession } from "@/lib/session";
+import { assertCanStartScan, userOwnsScan } from "@/lib/user-plan";
 
 export const maxDuration = 300;
 
@@ -87,7 +89,16 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await getServerSession();
+  if (!session) {
+    return NextResponse.json({ error: "Sign in required." }, { status: 401 });
+  }
+
   const { id } = await params;
+  if (!(await userOwnsScan(session.user.id, id))) {
+    return NextResponse.json({ error: "Not allowed." }, { status: 403 });
+  }
+
   const benchmark = await prisma.scan.findUnique({
     where: { id },
     include: { site: true, competitorScans: true },
@@ -142,6 +153,21 @@ export async function POST(
 
   const started: string[] = [];
   const skipped: string[] = [];
+
+  const toStart = urls.filter(
+    (siteUrl) =>
+      siteUrl !== benchmark.site.url && !existingUrls.has(siteUrl)
+  ).slice(0, slotLeft);
+
+  if (toStart.length > 0) {
+    const scanLimitError = await assertCanStartScan(
+      session.user.id,
+      toStart.length
+    );
+    if (scanLimitError) {
+      return NextResponse.json({ error: scanLimitError }, { status: 403 });
+    }
+  }
 
   for (const siteUrl of urls) {
     if (started.length >= slotLeft) break;

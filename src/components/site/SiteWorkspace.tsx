@@ -14,7 +14,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ActionChecklist } from "@/components/cards/ActionChecklist";
 import { AIInsightCard } from "@/components/cards/AIInsightCard";
@@ -93,6 +92,8 @@ export function SiteWorkspace({ siteId }: { siteId: string }) {
   const [meta, setMeta] = useState<SiteMeta | null>(null);
   const [scan, setScan] = useState<ScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [pollTick, setPollTick] = useState(0);
   const [rescanning, setRescanning] = useState(false);
 
@@ -105,6 +106,10 @@ export function SiteWorkspace({ siteId }: { siteId: string }) {
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
+    setMeta(null);
+    setScan(null);
+    setScanError(null);
     (async () => {
       const res = await fetch(`/api/me/sites/${siteId}`, { cache: "no-store" });
       if (res.status === 401) {
@@ -113,7 +118,10 @@ export function SiteWorkspace({ siteId }: { siteId: string }) {
       }
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        if (!cancelled) setError(j.error ?? "Failed to load site.");
+        if (!cancelled) {
+          setError(j.error ?? "Failed to load site.");
+          setLoading(false);
+        }
         return;
       }
       const json: SiteMeta = await res.json();
@@ -122,8 +130,18 @@ export function SiteWorkspace({ siteId }: { siteId: string }) {
       const scanId = json.latestCompleteScanId ?? json.latestScanId;
       if (scanId) {
         const scanRes = await fetch(`/api/scans/${scanId}`, { cache: "no-store" });
-        if (scanRes.ok && !cancelled) setScan(await scanRes.json());
+        if (cancelled) return;
+        if (scanRes.ok) {
+          setScan(await scanRes.json());
+        } else {
+          setScan(null);
+          const j = await scanRes.json().catch(() => ({}));
+          setScanError(j.error ?? "Could not load scan report.");
+        }
+      } else {
+        setScan(null);
       }
+      if (!cancelled) setLoading(false);
     })();
     return () => {
       cancelled = true;
@@ -181,6 +199,10 @@ export function SiteWorkspace({ siteId }: { siteId: string }) {
   }, [scan?.history]);
 
   const title = meta ? hostOf(meta.url) : "Site";
+  const showReportLoading =
+    loading || (!!meta?.latestCompleteScanId && !scan && !scanError);
+  const showEmpty =
+    !loading && meta && !scan && !runningScan && !meta.latestCompleteScanId;
 
   if (error) {
     return (
@@ -232,15 +254,39 @@ export function SiteWorkspace({ siteId }: { siteId: string }) {
         </FadeIn>
       )}
 
-      {!meta && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-36" />
-          ))}
-        </div>
+      {!meta && loading && (
+        <Card className="flex flex-col items-center justify-center py-24">
+          <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-slate-200 border-t-sky-500" />
+          <p className="mt-4 text-sm font-medium text-slate-600">
+            Loading site…
+          </p>
+        </Card>
       )}
 
-      {meta && !scan && !runningScan && (
+      {showReportLoading && meta && (
+        <Card className="flex flex-col items-center justify-center py-24">
+          <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-slate-200 border-t-sky-500" />
+          <p className="mt-4 text-sm font-medium text-slate-600">
+            Loading report…
+          </p>
+          <p className="mt-1 text-xs text-slate-400">{hostOf(meta.url)}</p>
+        </Card>
+      )}
+
+      {scanError && !scan && !loading && (
+        <Card className="p-8 text-center">
+          <p className="text-red-600">{scanError}</p>
+          <Button
+            className="mt-4"
+            variant="secondary"
+            onClick={() => setPollTick((t) => t + 1)}
+          >
+            Try again
+          </Button>
+        </Card>
+      )}
+
+      {showEmpty && (
         <Card className="p-10 text-center">
           <p className="font-medium text-slate-700">No scans yet for this site.</p>
           <p className="mt-1 text-sm text-slate-400">

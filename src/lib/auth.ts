@@ -11,6 +11,19 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
+  user: {
+    deleteUser: {
+      enabled: true,
+    },
+    additionalFields: {
+      plan: {
+        type: "string",
+        required: false,
+        defaultValue: "FREE",
+        input: false,
+      },
+    },
+  },
   trustedOrigins: [
     process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
   ].filter(Boolean),

@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
-    "setup:browsers": "playwright install chromium"
+    "setup:browsers": "playwright install chromium",
+    "db:migrate": "prisma migrate deploy",
+    "db:generate": "prisma generate"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",
@@ -21,6 +23,7 @@
     "clsx": "^2.1.1",
     "dotenv": "^17.4.2",
     "framer-motion": "^12.43.0",
+    "jspdf": "^4.2.1",
     "lucide-react": "^1.28.0",
     "next": "16.2.12",
     "openai": "^7.3.0",
@@ -28,6 +31,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "recharts": "^3.10.1",
+    "stripe": "^22.4.0",
     "tailwind-merge": "^3.6.0",
     "zod": "^4.4.3"
   },

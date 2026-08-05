@@ -1,6 +1,8 @@
 import { prisma } from "./db";
 import { crawlSite } from "./crawler";
 import { analyzeSite } from "./analysis";
+import { getPlanForScanId } from "./user-plan";
+import { getPlanLimits } from "./plans";
 import type { PageExtraction } from "./types";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -32,10 +34,11 @@ export async function runScan(scanId: string): Promise<void> {
   }
 
   try {
-
+    const plan = await getPlanForScanId(scanId);
+    const limits = getPlanLimits(plan);
     const maxPages = scan.benchmarkScanId
-      ? Number(process.env.COMPETITOR_MAX_CRAWL_PAGES ?? 8)
-      : Number(process.env.MAX_CRAWL_PAGES ?? 15);
+      ? limits.competitorMaxPages
+      : limits.maxPagesPerScan;
     const pages: PageExtraction[] = await crawlSite(scan.site.url, {
       maxPages,
       onPage: async (page, count) => {
