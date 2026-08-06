@@ -62,7 +62,10 @@ export function MarketingFooter() {
   );
 }
 
-export function FinalCta() {
+export function FinalCta({ signUpDisabled = false }: { signUpDisabled?: boolean }) {
+  const href = signUpDisabled ? "/login" : "/login?sign-up=1";
+  const label = signUpDisabled ? "Sign in" : "Get started for free";
+
   return (
     <section className="mx-4 mb-16 sm:mx-6">
       <div className="mx-auto max-w-6xl overflow-hidden rounded-3xl bg-slate-900 px-8 py-14 text-center shadow-xl sm:px-16">
@@ -74,10 +77,10 @@ export function FinalCta() {
           site — upgrade when you need depth and volume.
         </p>
         <Link
-          href="/login?sign-up=1"
+          href={href}
           className="mt-8 inline-flex items-center gap-2 rounded-full bg-sky-500 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-sky-500/30 transition hover:bg-sky-400"
         >
-          Get started for free
+          {label}
           <ArrowRight className="h-4 w-4" />
         </Link>
       </div>

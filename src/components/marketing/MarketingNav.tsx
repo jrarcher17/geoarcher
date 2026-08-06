@@ -6,8 +6,6 @@ import { useState } from "react";
 import { BrandWordmark } from "@/components/BrandWordmark";
 import { cn } from "@/lib/utils";
 
-const SIGN_UP_HREF = "/login?sign-up=1";
-
 const LINKS = [
   { href: "/#features", label: "Features" },
   { href: "/#platform", label: "Platform" },
@@ -15,8 +13,14 @@ const LINKS = [
   { href: "/#guides", label: "Guides" },
 ];
 
-export function MarketingNav() {
+export function MarketingNav({
+  signUpDisabled = false,
+}: {
+  signUpDisabled?: boolean;
+}) {
   const [open, setOpen] = useState(false);
+  const getStartedHref = signUpDisabled ? "/login" : "/login?sign-up=1";
+  const getStartedLabel = signUpDisabled ? "Sign in" : "Get started";
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
@@ -45,10 +49,10 @@ export function MarketingNav() {
             Login
           </Link>
           <Link
-            href={SIGN_UP_HREF}
+            href={getStartedHref}
             className="inline-flex items-center gap-2 rounded-full bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-sky-500/25 transition hover:bg-sky-600"
           >
-            Get started
+            {getStartedLabel}
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
@@ -84,11 +88,11 @@ export function MarketingNav() {
             Login
           </Link>
           <Link
-            href={SIGN_UP_HREF}
+            href={getStartedHref}
             className="inline-flex justify-center rounded-full bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white"
             onClick={() => setOpen(false)}
           >
-            Get started
+            {getStartedLabel}
           </Link>
         </div>
       </div>

@@ -12,6 +12,7 @@ import {
 import { GUIDES } from "@/lib/guides-content";
 import { resolveProPriceLabel } from "@/lib/billing-price";
 import { getPlans } from "@/lib/plans";
+import { registrationLoginHref, signUpDisabled } from "@/lib/sign-up-config";
 import { formatSiteLimit } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +22,8 @@ export default async function Home() {
   const plans = getPlans();
   const free = plans.free;
   const pro = { ...plans.pro, priceLabel: proPrice };
+  const registrationsClosed = signUpDisabled();
+  const startFreeHref = registrationLoginHref();
 
   const pricingRows = [
     { label: "Price", free: free.priceLabel, pro: pro.priceLabel },
@@ -53,7 +56,7 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <MarketingNav />
+      <MarketingNav signUpDisabled={registrationsClosed} />
       <HeroAnalyze />
 
       <section id="features" className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
@@ -212,10 +215,10 @@ export default async function Home() {
                     <td className="px-6 py-6" />
                     <td className="px-6 py-6">
                       <Link
-                        href="/login?sign-up=1"
+                        href={startFreeHref}
                         className="inline-flex w-full justify-center rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 sm:w-auto"
                       >
-                        Start free
+                        {registrationsClosed ? "Sign in" : "Start free"}
                       </Link>
                     </td>
                     <td className="bg-sky-50/40 px-6 py-6">
@@ -234,7 +237,7 @@ export default async function Home() {
         </div>
       </section>
 
-      <FinalCta />
+      <FinalCta signUpDisabled={registrationsClosed} />
       <MarketingFooter />
     </div>
   );

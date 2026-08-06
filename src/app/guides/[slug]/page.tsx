@@ -3,6 +3,7 @@ import { GuideArticleView } from "@/components/marketing/GuideArticleView";
 import { MarketingFooter } from "@/components/marketing/MarketingSections";
 import { MarketingNav } from "@/components/marketing/MarketingNav";
 import { getGuide, GUIDES_LIST } from "@/lib/guides-content";
+import { signUpDisabled } from "@/lib/sign-up-config";
 
 export function generateStaticParams() {
   return GUIDES_LIST.map((g) => ({ slug: g.slug }));
@@ -33,7 +34,7 @@ export default async function GuidePage({
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <MarketingNav />
+      <MarketingNav signUpDisabled={signUpDisabled()} />
       <GuideArticleView guide={guide} />
       <MarketingFooter />
     </div>
