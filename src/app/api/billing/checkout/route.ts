@@ -27,6 +27,7 @@ export async function POST() {
     mode: "subscription",
     customer: customerId,
     line_items: [{ price: priceId, quantity: 1 }],
+    allow_promotion_codes: true,
     success_url: `${base}/settings?tab=billing&checkout=success`,
     cancel_url: `${base}/settings?tab=billing&checkout=cancel`,
     client_reference_id: session.user.id,
