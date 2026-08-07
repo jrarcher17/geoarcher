@@ -166,19 +166,27 @@ async function discoverSitemapUrls(
   return found;
 }
 
-/** Ensure Browserless session lives long enough for a full Pro crawl. */
-function withBrowserlessSessionTimeout(wsUrl: string, maxPages: number): string {
+/**
+ * Browserless rejects timeouts above the plan max (hobby = 60_000ms / 1 minute).
+ * Override with BROWSERLESS_MAX_SESSION_MS if your plan allows longer.
+ */
+function browserlessMaxSessionMs(): number {
+  const fromEnv = Number(process.env.BROWSERLESS_MAX_SESSION_MS ?? 60_000);
+  if (!Number.isFinite(fromEnv) || fromEnv < 1) return 60_000;
+  return Math.min(Math.floor(fromEnv), 900_000);
+}
+
+/** Clamp/set session timeout so connect doesn't 400 on plan limits. */
+function withBrowserlessSessionTimeout(wsUrl: string): string {
   try {
     const u = new URL(wsUrl);
-    // ~4s/page budget + buffer; min 3m, max 15m
-    const neededMs = Math.min(
-      900_000,
-      Math.max(180_000, maxPages * 4_000 + 60_000)
-    );
+    const maxMs = browserlessMaxSessionMs();
     const existing = Number(u.searchParams.get("timeout") ?? 0);
-    if (!Number.isFinite(existing) || existing < neededMs) {
-      u.searchParams.set("timeout", String(neededMs));
-    }
+    const next =
+      Number.isFinite(existing) && existing >= 1
+        ? Math.min(Math.floor(existing), maxMs)
+        : maxMs;
+    u.searchParams.set("timeout", String(next));
     return u.toString();
   } catch {
     return wsUrl;
@@ -235,9 +243,7 @@ async function launchLocalBrowser(): Promise<Browser> {
   }
 }
 
-async function openBrowser(
-  maxPages: number
-): Promise<{ browser: Browser; via: "browserless" | "local" }> {
+async function openBrowser(): Promise<{ browser: Browser; via: "browserless" | "local" }> {
   const ws = process.env.BROWSERLESS_WS_URL?.trim();
   const isDev = process.env.NODE_ENV === "development";
   const forceLocal = process.env.FORCE_LOCAL_BROWSER === "true";
@@ -246,9 +252,7 @@ async function openBrowser(
 
   if (tryBrowserless && ws) {
     try {
-      const browser = await connectBrowserless(
-        withBrowserlessSessionTimeout(ws, maxPages)
-      );
+      const browser = await connectBrowserless(withBrowserlessSessionTimeout(ws));
       console.info("[crawler] connected via Browserless");
       return { browser, via: "browserless" };
     } catch (err) {
@@ -393,41 +397,58 @@ export async function crawlSite(
     );
   }
 
-  const { browser } = await openBrowser(maxPages);
+  // Prefer HTTP for the full crawl. Browserless hobby plans only allow 1-minute
+  // sessions, so open a browser lazily and reconnect when a session expires.
   const results: PageExtraction[] = [];
   let httpOk = 0;
   let browserOk = 0;
   let failed = 0;
+  let browser: Browser | null = null;
+  let context: BrowserContext | null = null;
+  let page: Page | null = null;
+
+  async function closeBrowser() {
+    await browser?.close().catch(() => undefined);
+    browser = null;
+    context = null;
+    page = null;
+  }
+
+  async function ensureBrowserPage(): Promise<Page> {
+    if (page && !page.isClosed() && browser?.isConnected()) return page;
+    await closeBrowser();
+    const opened = await openBrowser();
+    browser = opened.browser;
+    context = await browser.newContext({
+      userAgent: BOT_UA,
+      viewport: { width: 1366, height: 900 },
+    });
+    page = await context.newPage();
+    return page;
+  }
 
   try {
-    let context: BrowserContext | null = null;
-    let page: Page | null = null;
-
-    async function ensureBrowserPage(): Promise<Page> {
-      if (page && !page.isClosed()) return page;
-      context = await browser.newContext({
-        userAgent: BOT_UA,
-        viewport: { width: 1366, height: 900 },
-      });
-      page = await context.newPage();
-      return page;
-    }
-
     while (queue.length > 0 && results.length < maxPages) {
       const url = queue.shift()!;
-      const preferBrowser = results.length === 0; // homepage via browser for richer nav
 
-      let loaded =
-        preferBrowser ? null : await fetchHtmlHttp(url);
+      // Always try fast HTTP first (sitemap + static HTML sites).
+      let loaded = await fetchHtmlHttp(url);
       if (!loaded) {
         try {
           const browserPage = await ensureBrowserPage();
           loaded = await fetchHtmlBrowser(browserPage, url);
-          if (loaded) browserOk += 1;
+          if (loaded) {
+            browserOk += 1;
+          } else {
+            // Session may have died mid-request — one reconnect retry.
+            await closeBrowser();
+            const retryPage = await ensureBrowserPage();
+            loaded = await fetchHtmlBrowser(retryPage, url);
+            if (loaded) browserOk += 1;
+          }
         } catch (err) {
           console.warn(`[crawler] browser session error on ${url}:`, err);
-          page = null;
-          context = null;
+          await closeBrowser();
           failed += 1;
           continue;
         }
@@ -459,7 +480,7 @@ export async function crawlSite(
         `(discovered ${seen.size}, sitemap ${sitemapUrls.length}, http ${httpOk}, browser ${browserOk}, failed ${failed}, queue left ${queue.length})`
     );
   } finally {
-    await browser.close().catch(() => undefined);
+    await closeBrowser();
   }
 
   if (results.length === 0) {
