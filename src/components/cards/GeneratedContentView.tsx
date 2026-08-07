@@ -35,7 +35,7 @@ const markdownComponents = {
     <strong className="font-semibold text-slate-900">{children}</strong>
   ),
   table: ({ children }: { children?: React.ReactNode }) => (
-    <div className="mb-4 overflow-x-auto rounded-md border border-slate-200">
+    <div className="mb-4 overflow-x-auto rounded-none border border-slate-200">
       <table className="w-full min-w-[280px] text-left text-sm">{children}</table>
     </div>
   ),
@@ -65,7 +65,7 @@ const markdownComponents = {
     const isBlock = className?.includes("language-");
     if (isBlock) {
       return (
-        <code className="block overflow-x-auto rounded-md bg-slate-900 p-4 font-mono text-xs leading-relaxed text-slate-100">
+        <code className="block overflow-x-auto rounded-none bg-slate-900 p-4 font-mono text-xs leading-relaxed text-slate-100">
           {children}
         </code>
       );
@@ -77,7 +77,7 @@ const markdownComponents = {
     );
   },
   pre: ({ children }: { children?: React.ReactNode }) => (
-    <pre className="mb-4 overflow-x-auto rounded-md bg-slate-900 p-0">{children}</pre>
+    <pre className="mb-4 overflow-x-auto rounded-none bg-slate-900 p-0">{children}</pre>
   ),
 };
 
@@ -95,7 +95,7 @@ export function GeneratedContentView({
     return (
       <div
         className={cn(
-          "max-h-[min(70vh,520px)] overflow-y-auto rounded-md border border-slate-200 bg-slate-50 p-4",
+          "max-h-[min(70vh,520px)] overflow-y-auto rounded-none border border-slate-200 bg-slate-50 p-4",
           className
         )}
       >
@@ -109,7 +109,7 @@ export function GeneratedContentView({
   return (
     <article
       className={cn(
-        "generated-content max-h-[min(70vh,520px)] overflow-y-auto rounded-md border border-slate-200 bg-white px-5 py-4 shadow-sm",
+        "generated-content max-h-[min(70vh,520px)] overflow-y-auto rounded-none border border-slate-200 bg-white px-5 py-4 shadow-sm",
         kind === "brief" && "ring-1 ring-sky-100",
         className
       )}

@@ -183,7 +183,7 @@ export function AppShell({
                       href={item.href}
                       onClick={() => setMobileOpen(false)}
                       className={cn(
-                        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition",
+                        "flex items-center gap-3 rounded-none px-3 py-2 text-sm transition",
                         active
                           ? "bg-sky-500/90 font-medium text-white shadow-sm shadow-sky-900/40"
                           : "text-slate-400 hover:bg-white/5 hover:text-slate-100"
@@ -231,14 +231,14 @@ export function AppShell({
             <div className="flex min-w-0 items-center gap-3">
               <button
                 type="button"
-                className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600 lg:hidden"
+                className="rounded-full border border-slate-200 bg-white p-2 text-slate-600 lg:hidden"
                 onClick={() => setMobileOpen(true)}
                 aria-label="Open menu"
               >
                 <Menu className="h-5 w-5" />
               </button>
               <div className="hidden min-w-0 items-center gap-2 text-sm text-slate-500 sm:flex">
-                <span className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1 font-medium text-slate-700">
+                <span className="inline-flex items-center gap-1 rounded-none border border-slate-200 bg-white px-2.5 py-1 font-medium text-slate-700">
                   Personal
                   <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
                 </span>
@@ -254,7 +254,7 @@ export function AppShell({
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="hidden items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-400 md:flex">
+              <div className="hidden items-center gap-2 rounded-none border border-slate-200 bg-white px-3 py-2 text-sm text-slate-400 md:flex">
                 <Search className="h-4 w-4" />
                 <span>Search</span>
                 <kbd className="ml-6 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">

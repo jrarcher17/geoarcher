@@ -123,7 +123,7 @@ export function CompetitorPanel({ scanId }: { scanId: string }) {
           onChange={(e) => setUrlsText(e.target.value)}
           placeholder="https://competitor1.com&#10;https://competitor2.com"
           rows={2}
-          className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm placeholder:text-slate-400 focus:border-sky-400 focus:outline-none"
+          className="input-field flex-1 bg-slate-50 px-3 py-2 text-sm"
         />
         <button
           type="submit"
@@ -135,7 +135,7 @@ export function CompetitorPanel({ scanId }: { scanId: string }) {
       </form>
 
       {data.conceptsCompetitorsCoverMore.length > 0 && (
-        <div className="mt-4 rounded-md border border-amber-200/70 bg-amber-50/70 p-4">
+        <div className="mt-4 rounded-none border border-amber-200/70 bg-amber-50/70 p-4">
           <p className="text-sm font-medium text-amber-800">
             Concepts competitors emphasize more than you
           </p>

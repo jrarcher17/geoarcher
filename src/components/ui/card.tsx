@@ -7,7 +7,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-md border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]",
+        "rounded-none border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]",
         className
       )}
       {...props}

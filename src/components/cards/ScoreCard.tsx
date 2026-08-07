@@ -31,7 +31,7 @@ export function ScoreCard({
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm font-medium text-slate-500">{label}</p>
         {icon && (
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-50 text-slate-500">
+          <span className="flex h-8 w-8 items-center justify-center rounded-none bg-slate-50 text-slate-500">
             {icon}
           </span>
         )}

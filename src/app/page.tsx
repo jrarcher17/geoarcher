@@ -72,10 +72,10 @@ export default async function Home() {
             return (
               <div
                 key={card.title}
-                className={`flex flex-col rounded-3xl border p-8 ${card.tint} transition hover:shadow-lg hover:shadow-slate-200/50`}
+                className={`flex flex-col rounded-none border p-8 ${card.tint} transition hover:shadow-lg hover:shadow-slate-200/50`}
               >
                 <div
-                  className={`mb-5 inline-flex h-12 w-12 items-center justify-center rounded-2xl ${card.iconClass}`}
+                  className={`mb-5 inline-flex h-12 w-12 items-center justify-center rounded-none ${card.iconClass}`}
                 >
                   <Icon className="h-6 w-6" />
                 </div>
@@ -158,7 +158,7 @@ export default async function Home() {
             <Link
               key={g.title}
               href={g.href}
-              className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-sky-200 hover:shadow-md"
+              className="group flex flex-col rounded-none border border-slate-200 bg-white p-6 shadow-sm transition hover:border-sky-200 hover:shadow-md"
             >
               <span className="text-[10px] font-bold uppercase tracking-wider text-sky-600">
                 {g.tag}
@@ -186,7 +186,7 @@ export default async function Home() {
             </p>
           </div>
 
-          <div className="mt-12 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/40">
+          <div className="mt-12 overflow-hidden rounded-none border border-slate-200 bg-white shadow-xl shadow-slate-200/40">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[640px] text-left text-sm">
                 <thead>

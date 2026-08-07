@@ -64,7 +64,7 @@ export function RecommendationCard({
         {open ? "Hide implementation notes" : "How to implement"}
       </button>
       {open && (
-        <p className="mt-2 rounded-md border border-slate-100 bg-slate-50/80 p-4 text-sm leading-relaxed text-slate-600">
+        <p className="mt-2 rounded-none border border-slate-100 bg-slate-50/80 p-4 text-sm leading-relaxed text-slate-600">
           {rec.how}
         </p>
       )}

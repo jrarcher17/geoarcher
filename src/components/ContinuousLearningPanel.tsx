@@ -141,7 +141,7 @@ export function ContinuousLearningPanel({
       {rescanError && <p className="mt-3 text-sm text-red-600">{rescanError}</p>}
 
       {completed.length >= 2 && history && (
-        <div className="mt-6 flex flex-wrap gap-8 rounded-lg border border-slate-200 bg-slate-50 p-4">
+        <div className="mt-6 flex flex-wrap gap-8 rounded-none border border-slate-200 bg-slate-50 p-4">
           <div>
             <p className="text-xs uppercase tracking-wide text-slate-400">
               AI Understanding trend
@@ -170,7 +170,7 @@ export function ContinuousLearningPanel({
               {comparison.highlights.map((h) => (
                 <li
                   key={h}
-                  className="rounded-lg border border-sky-100 bg-sky-50 px-4 py-2 text-sm text-sky-800"
+                  className="rounded-none border border-sky-100 bg-sky-50 px-4 py-2 text-sm text-sky-800"
                 >
                   {h}
                 </li>
@@ -187,7 +187,7 @@ export function ContinuousLearningPanel({
             ).map(([label, delta]) => (
               <div
                 key={label}
-                className="rounded-lg border border-slate-200 bg-slate-50 p-3"
+                className="rounded-none border border-slate-200 bg-slate-50 p-3"
               >
                 <p className="text-slate-400">{label}</p>
                 <p className={`mt-1 font-mono text-lg ${deltaClass(delta)}`}>
@@ -249,7 +249,7 @@ export function ContinuousLearningPanel({
               <li key={e.id}>
                 <Link
                   href={`/scan/${e.id}`}
-                  className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm transition hover:border-slate-300 ${
+                  className={`flex flex-wrap items-center justify-between gap-2 rounded-none border px-3 py-2 text-sm transition hover:border-slate-300 ${
                     e.id === scanId
                       ? "border-sky-200 bg-sky-50"
                       : "border-slate-200 bg-slate-50"

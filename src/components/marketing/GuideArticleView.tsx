@@ -28,7 +28,7 @@ export function GuideArticleView({ guide }: { guide: GuideArticle }) {
         {guide.heroStats.map((s) => (
           <div
             key={s.label}
-            className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+            className="rounded-none border border-slate-200 bg-white p-5 shadow-sm"
           >
             <p className="text-3xl font-bold tracking-tight text-sky-600">{s.value}</p>
             <p className="mt-1 text-sm font-semibold text-slate-900">{s.label}</p>
@@ -39,7 +39,7 @@ export function GuideArticleView({ guide }: { guide: GuideArticle }) {
         ))}
       </div>
 
-      <div className="mt-10 flex gap-4 rounded-2xl border border-amber-200 bg-amber-50/80 p-5 sm:p-6">
+      <div className="mt-10 flex gap-4 rounded-none border border-amber-200 bg-amber-50/80 p-5 sm:p-6">
         <AlertTriangle className="mt-0.5 h-6 w-6 shrink-0 text-amber-600" />
         <div>
           <p className="font-semibold text-amber-950">{guide.urgency.title}</p>
@@ -69,11 +69,11 @@ export function GuideArticleView({ guide }: { guide: GuideArticle }) {
       </div>
 
       {guide.framework && (
-        <div className="mt-12 rounded-2xl border border-slate-200 bg-slate-900 p-6 text-white sm:p-8">
+        <div className="mt-12 rounded-none border border-slate-200 bg-slate-900 p-6 text-white sm:p-8">
           <h2 className="text-lg font-semibold">{guide.framework.title}</h2>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             {guide.framework.items.map((item) => (
-              <div key={item.name} className="rounded-xl bg-white/10 p-4">
+              <div key={item.name} className="rounded-none bg-white/10 p-4">
                 <p className="font-semibold text-sky-300">{item.name}</p>
                 <p className="mt-2 text-sm leading-relaxed text-slate-300">{item.desc}</p>
               </div>
@@ -118,7 +118,7 @@ export function GuideArticleView({ guide }: { guide: GuideArticle }) {
         </p>
       </div>
 
-      <div className="mt-14 rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50 to-white p-8 shadow-sm">
+      <div className="mt-14 rounded-none border border-sky-200 bg-gradient-to-br from-sky-50 to-white p-8 shadow-sm">
         <p className="text-xl font-bold text-slate-900">{guide.cta.title}</p>
         <p className="mt-2 text-sm leading-relaxed text-slate-600">{guide.cta.body}</p>
         <Link

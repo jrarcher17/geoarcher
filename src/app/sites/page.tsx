@@ -150,7 +150,7 @@ export default function SitesPage() {
                             e.preventDefault();
                             void removeSite(s.siteId, s.url);
                           }}
-                          className="absolute bottom-4 right-4 rounded-md p-2 text-slate-300 opacity-0 transition hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
+                          className="absolute bottom-4 right-4 rounded-full p-2 text-slate-300 opacity-0 transition hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
                           aria-label={`Remove ${s.url}`}
                           title="Remove site (Pro)"
                         >

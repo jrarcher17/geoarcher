@@ -160,7 +160,7 @@ export function AutoFixPanel({ scanId }: { scanId: string }) {
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
       {data.published?.enabled && (
-        <p className="mt-3 rounded-lg border border-sky-100 bg-sky-50 px-3 py-2 text-sm text-sky-800">
+        <p className="mt-3 rounded-none border border-sky-100 bg-sky-50 px-3 py-2 text-sm text-sky-800">
           Live — {data.published.blockCount} JSON-LD block
           {data.published.blockCount === 1 ? "" : "s"} · updated{" "}
           {new Date(data.published.updatedAt).toLocaleString()} ·{" "}
@@ -171,7 +171,7 @@ export function AutoFixPanel({ scanId }: { scanId: string }) {
 
       <div className="mt-4">
         <p className="text-sm font-medium text-slate-700">Install snippet</p>
-        <pre className="mt-2 overflow-x-auto rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+        <pre className="mt-2 overflow-x-auto rounded-none border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
           {snippet}
         </pre>
         <p className="mt-2 text-xs text-slate-400">
@@ -196,7 +196,7 @@ export function AutoFixPanel({ scanId }: { scanId: string }) {
             type="button"
             onClick={() => publish(false)}
             disabled={publishing}
-            className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm text-slate-700 hover:border-slate-300 disabled:opacity-50"
+            className="rounded-full border border-slate-300 px-5 py-2.5 text-sm text-slate-700 hover:border-slate-300 disabled:opacity-50"
           >
             Disable on site
           </button>
@@ -205,7 +205,7 @@ export function AutoFixPanel({ scanId }: { scanId: string }) {
           type="button"
           onClick={draftGapFaqs}
           disabled={drafting}
-          className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm text-slate-700 hover:border-slate-300 disabled:opacity-50"
+          className="rounded-full border border-slate-200 px-4 py-2.5 text-sm text-slate-700 hover:border-slate-300 disabled:opacity-50"
         >
           {drafting ? "Drafting…" : "Draft gap FAQs (AI)"}
         </button>
@@ -215,7 +215,7 @@ export function AutoFixPanel({ scanId }: { scanId: string }) {
         {data.proposal.blocks.map((block) => (
           <li
             key={block.id}
-            className="rounded-lg border border-slate-200 bg-slate-50 p-4"
+            className="rounded-none border border-slate-200 bg-slate-50 p-4"
           >
             <label className="flex cursor-pointer items-start gap-3">
               <input

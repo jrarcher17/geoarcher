@@ -68,7 +68,7 @@ export function FinalCta({ signUpDisabled = false }: { signUpDisabled?: boolean 
 
   return (
     <section className="mx-4 mb-16 sm:mx-6">
-      <div className="mx-auto max-w-6xl overflow-hidden rounded-3xl bg-slate-900 px-8 py-14 text-center shadow-xl sm:px-16">
+      <div className="mx-auto max-w-6xl overflow-hidden rounded-none bg-slate-900 px-8 py-14 text-center shadow-xl sm:px-16">
         <h2 className="text-2xl font-bold text-white sm:text-3xl">
           Ready to see how AI understands your site?
         </h2>
@@ -124,7 +124,7 @@ export const PLATFORM_POINTS = [
 
 export function DashboardMock() {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/50">
+    <div className="rounded-none border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/50">
       <div className="mb-4 flex items-center justify-between">
         <span className="text-sm font-semibold text-slate-800">Usage summary</span>
         <BarChart3 className="h-4 w-4 text-sky-500" />
@@ -139,15 +139,15 @@ export function DashboardMock() {
         ))}
       </div>
       <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
-        <div className="rounded-lg bg-slate-50 py-2">
+        <div className="rounded-none bg-slate-50 py-2">
           <p className="font-bold text-slate-800">71</p>
           <p className="text-slate-500">GEO</p>
         </div>
-        <div className="rounded-lg bg-slate-50 py-2">
+        <div className="rounded-none bg-slate-50 py-2">
           <p className="font-bold text-slate-800">68</p>
           <p className="text-slate-500">Understand</p>
         </div>
-        <div className="rounded-lg bg-slate-50 py-2">
+        <div className="rounded-none bg-slate-50 py-2">
           <p className="font-bold text-sky-600">+6</p>
           <p className="text-slate-500">Trend</p>
         </div>

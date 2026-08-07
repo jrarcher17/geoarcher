@@ -28,7 +28,7 @@ export function HeroAnalyze() {
             best chance to appear in ChatGPT, Claude, Gemini, Perplexity, and
             Copilot.
           </p>
-          <div className="mt-8 max-w-md [&_.btn-primary]:rounded-full [&_.btn-primary]:bg-sky-500 [&_.btn-primary]:shadow-lg [&_.btn-primary]:shadow-sky-500/25 [&_.btn-primary]:hover:bg-sky-600">
+          <div className="mt-8 max-w-md [&_.btn-primary]:bg-sky-500 [&_.btn-primary]:shadow-lg [&_.btn-primary]:shadow-sky-500/25 [&_.btn-primary]:hover:bg-sky-600">
             <ScanForm requireAuth submitLabel="Analyze my site →" />
           </div>
           <div className="mt-8 flex flex-wrap items-center gap-3 text-sm text-slate-500">
@@ -42,7 +42,7 @@ export function HeroAnalyze() {
         </div>
 
         <div className="relative mx-auto w-full max-w-lg lg:max-w-none">
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-2 shadow-2xl shadow-slate-200/60 ring-1 ring-slate-100">
+          <div className="rounded-none border border-slate-200/80 bg-white p-2 shadow-2xl shadow-slate-200/60 ring-1 ring-slate-100">
             <ScanPreviewMock />
           </div>
         </div>
@@ -53,7 +53,7 @@ export function HeroAnalyze() {
 
 function ScanPreviewMock() {
   return (
-    <div className="overflow-hidden rounded-xl bg-slate-950 p-4 text-left font-mono text-xs text-slate-300">
+    <div className="overflow-hidden rounded-none bg-slate-950 p-4 text-left font-mono text-xs text-slate-300">
       <div className="mb-3 flex items-center gap-2 border-b border-white/10 pb-3">
         <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
         <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />

@@ -128,7 +128,7 @@ export default function ScansPage() {
                               ? `/sites/${s.siteId}`
                               : `/scan/${s.id}`
                           }
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 text-slate-500 transition hover:border-sky-200 hover:bg-sky-50 hover:text-sky-600"
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-sky-200 hover:bg-sky-50 hover:text-sky-600"
                           aria-label={
                             s.status === "COMPLETE" ? "Open report" : "View scan"
                           }
@@ -147,7 +147,7 @@ export default function ScansPage() {
                           disabled={deletingId === s.id}
                           aria-label="Delete scan"
                           title="Delete scan"
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
                           onClick={() => void deleteScan(s)}
                         >
                           <Trash2 className="h-4 w-4" />

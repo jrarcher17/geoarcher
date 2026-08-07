@@ -108,7 +108,7 @@ export function SimulationPanel({
 
       {results && (
         <div className="mt-6 flex flex-col gap-6">
-          <div className="flex flex-wrap items-center justify-around gap-6 rounded-lg border border-slate-200 bg-slate-50 p-5">
+          <div className="flex flex-wrap items-center justify-around gap-6 rounded-none border border-slate-200 bg-slate-50 p-5">
             <div className="text-center">
               <p className="text-xs uppercase tracking-wide text-slate-400">
                 Likelihood of citation — today
@@ -132,7 +132,7 @@ export function SimulationPanel({
             {results.prompts.map((p) => (
               <li
                 key={p.prompt}
-                className="rounded-lg border border-slate-200 bg-slate-50 p-4"
+                className="rounded-none border border-slate-200 bg-slate-50 p-4"
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="font-medium">“{p.prompt}”</p>

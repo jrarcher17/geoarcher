@@ -584,7 +584,7 @@ export function SiteWorkspace({ siteId }: { siteId: string }) {
               <FadeIn className="flex flex-col gap-4">
                 <Card className="p-6">
                   <div className="flex items-center gap-3">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-50 text-violet-500">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-none bg-violet-50 text-violet-500">
                       <Network className="h-4 w-4" />
                     </span>
                     <div>
@@ -666,7 +666,7 @@ export function SiteWorkspace({ siteId }: { siteId: string }) {
                         <p className="leading-relaxed text-slate-600">
                           {c.findings}
                         </p>
-                        <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 p-3">
+                        <div className="rounded-none border border-emerald-100 bg-emerald-50/60 p-3">
                           <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
                             Quick win
                           </p>
@@ -767,7 +767,7 @@ export function SiteWorkspace({ siteId }: { siteId: string }) {
                       {scan.comparison.highlights.map((h) => (
                         <li
                           key={h}
-                          className="rounded-lg border border-sky-100 bg-sky-50/70 px-3 py-2 text-sm text-sky-800"
+                          className="rounded-none border border-sky-100 bg-sky-50/70 px-3 py-2 text-sm text-sky-800"
                         >
                           {h}
                         </li>

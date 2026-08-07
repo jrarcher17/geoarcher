@@ -30,7 +30,7 @@ export function TrendChart({
   if (data.length < 2) {
     return (
       <div
-        className="flex flex-col items-center justify-center rounded-md border border-dashed border-slate-200 bg-slate-50/60 text-center"
+        className="flex flex-col items-center justify-center rounded-none border border-dashed border-slate-200 bg-slate-50/60 text-center"
         style={{ height }}
       >
         <p className="text-sm font-medium text-slate-500">Not enough history yet</p>

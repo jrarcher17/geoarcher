@@ -58,7 +58,7 @@ export function ActionChecklist({
               <li
                 key={a.id}
                 className={cn(
-                  "flex items-start gap-3 rounded-md border p-4 transition",
+                  "flex items-start gap-3 rounded-none border p-4 transition",
                   checked
                     ? "border-emerald-100 bg-emerald-50/50"
                     : "border-slate-100 bg-slate-50/60 hover:border-slate-200"
@@ -69,7 +69,7 @@ export function ActionChecklist({
                   onClick={() => toggle(a.id)}
                   aria-label={checked ? "Mark not done" : "Mark done"}
                   className={cn(
-                    "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition",
+                    "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-none border transition",
                     checked
                       ? "border-emerald-500 bg-emerald-500 text-white"
                       : "border-slate-300 bg-white text-transparent hover:border-sky-400"

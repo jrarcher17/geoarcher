@@ -369,12 +369,12 @@ function SettingsPageInner() {
 
           <TabsContent value="billing">
             {scanError && (
-              <p className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <p className="mb-4 rounded-none border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
                 {scanError}
               </p>
             )}
             {checkoutNotice === "success" && (
-              <p className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+              <p className="mb-4 rounded-none border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
                 Payment received — your Pro plan should activate within a minute.
                 Refresh if limits haven&apos;t updated yet.
               </p>

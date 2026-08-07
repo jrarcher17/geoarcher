@@ -20,7 +20,7 @@ const AMBER = "#f59e0b";
 
 export function GuideChartBlock({ chart }: { chart: GuideChart }) {
   return (
-    <figure className="my-10 rounded-2xl border border-slate-200 bg-slate-50/50 p-4 sm:p-6">
+    <figure className="my-10 rounded-none border border-slate-200 bg-slate-50/50 p-4 sm:p-6">
       <figcaption className="mb-4 text-sm font-semibold text-slate-900">
         {chart.title}
       </figcaption>

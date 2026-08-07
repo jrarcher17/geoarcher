@@ -13,7 +13,7 @@ export function AccordionItem({
   return (
     <AccordionPrimitive.Item
       className={cn(
-        "rounded-md border border-slate-200/80 bg-white",
+        "rounded-none border border-slate-200/80 bg-white",
         className
       )}
       {...props}
