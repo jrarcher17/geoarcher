@@ -58,23 +58,40 @@ async function launchLocalBrowser(): Promise<Browser> {
   }
 }
 
-/** Prefer Browserless when configured; fall back to local Playwright on failure. */
+/**
+ * Prefer Browserless when configured.
+ * In production, Browserless is required (containers usually lack Chromium).
+ * Local Playwright is for development, or when FORCE_LOCAL_BROWSER=true.
+ */
 async function openBrowser(): Promise<{ browser: Browser; via: "browserless" | "local" }> {
   const ws = process.env.BROWSERLESS_WS_URL?.trim();
+  const isDev = process.env.NODE_ENV === "development";
+  const forceLocal = process.env.FORCE_LOCAL_BROWSER === "true";
   const useBrowserlessInDev = process.env.BROWSERLESS_IN_DEV === "true";
-  const tryBrowserless =
-    ws &&
-    (process.env.NODE_ENV !== "development" || useBrowserlessInDev);
+  const tryBrowserless = Boolean(ws) && !forceLocal && (!isDev || useBrowserlessInDev);
 
-  if (tryBrowserless) {
+  if (tryBrowserless && ws) {
     try {
       const browser = await connectBrowserless(ws);
       console.info("[crawler] connected via Browserless");
       return { browser, via: "browserless" };
     } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      if (!isDev) {
+        throw new Error(
+          `Could not connect to Browserless. Check BROWSERLESS_WS_URL and your Browserless account.\n\n${detail}`
+        );
+      }
       console.warn("[crawler] Browserless failed, trying local Chromium:", err);
     }
   }
+
+  if (!isDev && !forceLocal) {
+    throw new Error(
+      "Crawling in production requires BROWSERLESS_WS_URL (remote Chromium). Set it in your host env, or set FORCE_LOCAL_BROWSER=true only if Chromium is installed in the image (pnpm exec playwright install --with-deps chromium)."
+    );
+  }
+
   const browser = await launchLocalBrowser();
   console.info("[crawler] using local Chromium");
   return { browser, via: "local" };
