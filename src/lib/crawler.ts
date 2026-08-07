@@ -6,7 +6,7 @@ const SKIP_EXTENSIONS =
   /\.(pdf|jpe?g|png|gif|webp|svg|ico|css|js|mp4|mp3|zip|gz|xml|txt|woff2?)(\?|$)/i;
 
 const BROWSERLESS_CONNECT_MS = Number(
-  process.env.BROWSERLESS_CONNECT_TIMEOUT_MS ?? 8_000
+  process.env.BROWSERLESS_CONNECT_TIMEOUT_MS ?? 30_000
 );
 
 function normalizeUrl(raw: string): string | null {
@@ -27,21 +27,41 @@ function normalizeUrl(raw: string): string | null {
   }
 }
 
+/**
+ * Browserless uses two protocols:
+ * - CDP: `/chrome`, `/chromium`, `/` → playwright.chromium.connectOverCDP()
+ * - Playwright native: `/chromium/playwright` → playwright.chromium.connect()
+ * Using the wrong method hangs until timeout (common with `/chrome` + connect()).
+ */
 async function connectBrowserless(wsUrl: string): Promise<Browser> {
-  return Promise.race([
-    chromium.connect(wsUrl),
-    new Promise<Browser>((_, reject) =>
-      setTimeout(
-        () =>
-          reject(
-            new Error(
-              `Browserless connection timed out after ${BROWSERLESS_CONNECT_MS}ms. Check BROWSERLESS_WS_URL and your Browserless plan, or remove it from .env to use local Chromium.`
-            )
-          ),
-        BROWSERLESS_CONNECT_MS
-      )
-    ),
-  ]);
+  let parsed: URL;
+  try {
+    parsed = new URL(wsUrl);
+  } catch {
+    throw new Error(
+      "BROWSERLESS_WS_URL is not a valid URL. Expected wss://…browserless.io/chromium?token=…"
+    );
+  }
+
+  const path = parsed.pathname.replace(/\/+$/, "") || "/";
+  const usePlaywrightProtocol = /\/playwright$/i.test(path);
+  const timeout = Number.isFinite(BROWSERLESS_CONNECT_MS)
+    ? BROWSERLESS_CONNECT_MS
+    : 30_000;
+
+  try {
+    if (usePlaywrightProtocol) {
+      return await chromium.connect(wsUrl, { timeout });
+    }
+    return await chromium.connectOverCDP(wsUrl, { timeout });
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `Browserless connection failed (${usePlaywrightProtocol ? "playwright" : "CDP"} via ${path}). ` +
+        `For /chrome or /chromium use CDP; for /chromium/playwright use native connect. ` +
+        `Also verify the token and plan concurrency.\n\n${detail}`
+    );
+  }
 }
 
 async function launchLocalBrowser(): Promise<Browser> {
