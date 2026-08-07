@@ -10,6 +10,8 @@ import { getServerSession } from "@/lib/session";
 import type { ScanResult } from "@/lib/types";
 import { userOwnsScan } from "@/lib/user-plan";
 
+export const maxDuration = 800;
+
 const ACTIVE = new Set(["QUEUED", "CRAWLING", "ANALYZING"]);
 
 export async function GET(

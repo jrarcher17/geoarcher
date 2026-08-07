@@ -1,9 +1,11 @@
-import { chromium, type Browser } from "playwright";
+import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
 import { extractPage } from "./extract";
 import type { PageExtraction } from "./types";
 
 const SKIP_EXTENSIONS =
   /\.(pdf|jpe?g|png|gif|webp|svg|ico|css|js|mp4|mp3|zip|gz|xml|txt|woff2?)(\?|$)/i;
+
+const BOT_UA = "GEOArcherBot/0.1 (+https://geoarcher.app)";
 
 const BROWSERLESS_CONNECT_MS = Number(
   process.env.BROWSERLESS_CONNECT_TIMEOUT_MS ?? 30_000
@@ -49,7 +51,7 @@ function toStartOrigin(url: string, startOrigin: string): string {
   return u.toString();
 }
 
-async function fetchText(url: string, timeoutMs = 12_000): Promise<string | null> {
+async function fetchText(url: string, timeoutMs = 15_000): Promise<string | null> {
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -57,8 +59,8 @@ async function fetchText(url: string, timeoutMs = 12_000): Promise<string | null
       signal: ctrl.signal,
       redirect: "follow",
       headers: {
-        "User-Agent": "GEOArcherBot/0.1 (+https://geoarcher.app)",
-        Accept: "application/xml,text/xml,text/plain,*/*",
+        "User-Agent": BOT_UA,
+        Accept: "application/xml,text/xml,text/html,text/plain,*/*",
       },
     });
     clearTimeout(timer);
@@ -89,18 +91,35 @@ async function discoverSitemapUrls(
   maxUrls: number
 ): Promise<string[]> {
   const candidates: string[] = [];
-  const robots = await fetchText(`${origin}/robots.txt`);
-  if (robots) {
-    for (const line of robots.split(/\r?\n/)) {
-      const m = line.match(/^\s*sitemap:\s*(.+?)\s*$/i);
-      if (m?.[1]) candidates.push(m[1].trim());
+
+  // Try both www and apex for robots/sitemap — hosts often redirect one way.
+  const hostVariants = [origin];
+  try {
+    const u = new URL(origin);
+    if (u.hostname.startsWith("www.")) {
+      u.hostname = u.hostname.slice(4);
+    } else {
+      u.hostname = `www.${u.hostname}`;
     }
+    hostVariants.push(u.origin);
+  } catch {
+    /* ignore */
   }
-  candidates.push(
-    `${origin}/sitemap.xml`,
-    `${origin}/sitemap_index.xml`,
-    `${origin}/wp-sitemap.xml`
-  );
+
+  for (const base of hostVariants) {
+    const robots = await fetchText(`${base}/robots.txt`);
+    if (robots) {
+      for (const line of robots.split(/\r?\n/)) {
+        const m = line.match(/^\s*sitemap:\s*(.+?)\s*$/i);
+        if (m?.[1]) candidates.push(m[1].trim());
+      }
+    }
+    candidates.push(
+      `${base}/sitemap.xml`,
+      `${base}/sitemap_index.xml`,
+      `${base}/wp-sitemap.xml`
+    );
+  }
 
   const found: string[] = [];
   const seenSitemaps = new Set<string>();
@@ -136,24 +155,40 @@ async function discoverSitemapUrls(
     }
   }
 
-  for (const candidate of candidates) {
+  for (const candidate of [...new Set(candidates)]) {
     await ingestSitemap(candidate, 0);
     if (found.length >= maxUrls) break;
   }
 
-  if (found.length > 0) {
-    console.info(
-      `[crawler] seeded ${found.length} URL(s) from sitemap(s) for ${origin}`
-    );
-  }
+  console.info(
+    `[crawler] sitemap discovery for ${origin}: ${found.length} URL(s) from ${seenSitemaps.size} sitemap file(s)`
+  );
   return found;
+}
+
+/** Ensure Browserless session lives long enough for a full Pro crawl. */
+function withBrowserlessSessionTimeout(wsUrl: string, maxPages: number): string {
+  try {
+    const u = new URL(wsUrl);
+    // ~4s/page budget + buffer; min 3m, max 15m
+    const neededMs = Math.min(
+      900_000,
+      Math.max(180_000, maxPages * 4_000 + 60_000)
+    );
+    const existing = Number(u.searchParams.get("timeout") ?? 0);
+    if (!Number.isFinite(existing) || existing < neededMs) {
+      u.searchParams.set("timeout", String(neededMs));
+    }
+    return u.toString();
+  } catch {
+    return wsUrl;
+  }
 }
 
 /**
  * Browserless uses two protocols:
  * - CDP: `/chrome`, `/chromium`, `/` → playwright.chromium.connectOverCDP()
  * - Playwright native: `/chromium/playwright` → playwright.chromium.connect()
- * Using the wrong method hangs until timeout (common with `/chrome` + connect()).
  */
 async function connectBrowserless(wsUrl: string): Promise<Browser> {
   let parsed: URL;
@@ -200,12 +235,9 @@ async function launchLocalBrowser(): Promise<Browser> {
   }
 }
 
-/**
- * Prefer Browserless when configured.
- * In production, Browserless is required (containers usually lack Chromium).
- * Local Playwright is for development, or when FORCE_LOCAL_BROWSER=true.
- */
-async function openBrowser(): Promise<{ browser: Browser; via: "browserless" | "local" }> {
+async function openBrowser(
+  maxPages: number
+): Promise<{ browser: Browser; via: "browserless" | "local" }> {
   const ws = process.env.BROWSERLESS_WS_URL?.trim();
   const isDev = process.env.NODE_ENV === "development";
   const forceLocal = process.env.FORCE_LOCAL_BROWSER === "true";
@@ -214,7 +246,9 @@ async function openBrowser(): Promise<{ browser: Browser; via: "browserless" | "
 
   if (tryBrowserless && ws) {
     try {
-      const browser = await connectBrowserless(ws);
+      const browser = await connectBrowserless(
+        withBrowserlessSessionTimeout(ws, maxPages)
+      );
       console.info("[crawler] connected via Browserless");
       return { browser, via: "browserless" };
     } catch (err) {
@@ -260,74 +294,187 @@ function enqueueUrl(
   queue.push(canonical);
 }
 
+function looksLikeChallengeOrEmpty(html: string): boolean {
+  if (html.length < 400) return true;
+  const lower = html.toLowerCase();
+  return (
+    lower.includes("just a moment") ||
+    lower.includes("cf-browser-verification") ||
+    lower.includes("attention required") ||
+    lower.includes("enable javascript and cookies")
+  );
+}
+
+async function fetchHtmlHttp(
+  url: string
+): Promise<{ html: string; statusCode: number; loadTimeMs: number } | null> {
+  const t0 = Date.now();
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 15_000);
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      redirect: "follow",
+      headers: {
+        "User-Agent": BOT_UA,
+        Accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
+      },
+    });
+    clearTimeout(timer);
+    const statusCode = res.status;
+    if (statusCode >= 400) return null;
+    const ct = res.headers.get("content-type") ?? "";
+    if (
+      ct &&
+      !ct.includes("text/html") &&
+      !ct.includes("application/xhtml") &&
+      !ct.includes("text/plain")
+    ) {
+      return null;
+    }
+    const html = await res.text();
+    if (looksLikeChallengeOrEmpty(html)) return null;
+    return { html, statusCode, loadTimeMs: Date.now() - t0 };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchHtmlBrowser(
+  page: Page,
+  url: string
+): Promise<{ html: string; statusCode: number; loadTimeMs: number } | null> {
+  const t0 = Date.now();
+  try {
+    const response = await page.goto(url, {
+      waitUntil: "domcontentloaded",
+      timeout: 20_000,
+    });
+    const statusCode = response?.status() ?? null;
+    if (statusCode !== null && statusCode >= 400) return null;
+    await page.waitForTimeout(400);
+    const html = await page.content();
+    if (looksLikeChallengeOrEmpty(html)) return null;
+    return {
+      html,
+      statusCode: statusCode ?? 200,
+      loadTimeMs: Date.now() - t0,
+    };
+  } catch (err) {
+    console.warn(`[crawler] browser failed ${url}:`, err);
+    return null;
+  }
+}
+
 export async function crawlSite(
   startUrl: string,
   { maxPages = 15, onPage }: CrawlOptions = {}
 ): Promise<PageExtraction[]> {
-  const { browser } = await openBrowser();
+  const start = normalizeUrl(startUrl);
+  if (!start) throw new Error(`Invalid start URL: ${startUrl}`);
+  const origin = new URL(start).origin;
 
+  const queue: string[] = [];
+  const seen = new Set<string>();
+  enqueueUrl(start, origin, seen, queue);
+
+  // Discover sitemap BEFORE opening a browser — this is the main URL source.
+  const sitemapUrls = await discoverSitemapUrls(
+    origin,
+    Math.max(maxPages * 5, 250)
+  );
+  for (const loc of sitemapUrls) {
+    enqueueUrl(loc, origin, seen, queue);
+  }
+
+  if (sitemapUrls.length === 0) {
+    console.warn(
+      `[crawler] no sitemap URLs found for ${origin}; crawl will rely on HTML links only`
+    );
+  }
+
+  const { browser } = await openBrowser(maxPages);
   const results: PageExtraction[] = [];
+  let httpOk = 0;
+  let browserOk = 0;
+  let failed = 0;
+
   try {
-    const context = await browser.newContext({
-      userAgent: "GEOArcherBot/0.1 (+https://geoarcher.app)",
-      viewport: { width: 1366, height: 900 },
-    });
-    const page = await context.newPage();
+    let context: BrowserContext | null = null;
+    let page: Page | null = null;
 
-    const start = normalizeUrl(startUrl);
-    if (!start) throw new Error(`Invalid start URL: ${startUrl}`);
-    const origin = new URL(start).origin;
-
-    const queue: string[] = [];
-    const seen = new Set<string>();
-    enqueueUrl(start, origin, seen, queue);
-
-    // Seed deep URLs from sitemap so we don't stop at homepage nav depth.
-    const sitemapUrls = await discoverSitemapUrls(origin, Math.max(maxPages * 4, 80));
-    for (const loc of sitemapUrls) {
-      enqueueUrl(loc, origin, seen, queue);
+    async function ensureBrowserPage(): Promise<Page> {
+      if (page && !page.isClosed()) return page;
+      context = await browser.newContext({
+        userAgent: BOT_UA,
+        viewport: { width: 1366, height: 900 },
+      });
+      page = await context.newPage();
+      return page;
     }
 
     while (queue.length > 0 && results.length < maxPages) {
       const url = queue.shift()!;
-      const t0 = Date.now();
-      let statusCode: number | null = null;
-      let html: string;
-      try {
-        const response = await page.goto(url, {
-          waitUntil: "domcontentloaded",
-          timeout: 20_000,
-        });
-        statusCode = response?.status() ?? null;
-        // Give client-rendered nav/menus a moment to hydrate links.
-        await page.waitForTimeout(900);
-        html = await page.content();
-      } catch (err) {
-        console.warn(`[crawler] failed to load ${url}:`, err);
+      const preferBrowser = results.length === 0; // homepage via browser for richer nav
+
+      let loaded =
+        preferBrowser ? null : await fetchHtmlHttp(url);
+      if (!loaded) {
+        try {
+          const browserPage = await ensureBrowserPage();
+          loaded = await fetchHtmlBrowser(browserPage, url);
+          if (loaded) browserOk += 1;
+        } catch (err) {
+          console.warn(`[crawler] browser session error on ${url}:`, err);
+          page = null;
+          context = null;
+          failed += 1;
+          continue;
+        }
+      } else {
+        httpOk += 1;
+      }
+
+      if (!loaded) {
+        failed += 1;
         continue;
       }
-      const loadTimeMs = Date.now() - t0;
-      if (statusCode !== null && statusCode >= 400) continue;
 
-      const extraction = extractPage(html, url, statusCode, loadTimeMs);
+      const extraction = extractPage(
+        loaded.html,
+        url,
+        loaded.statusCode,
+        loaded.loadTimeMs
+      );
       results.push(extraction);
       await onPage?.(extraction, results.length);
 
       for (const link of extraction.internalLinks) {
         enqueueUrl(link, origin, seen, queue);
       }
-      await page.waitForTimeout(250);
     }
 
     console.info(
-      `[crawler] finished ${results.length}/${maxPages} pages (${seen.size} discovered) for ${origin}`
+      `[crawler] finished ${results.length}/${maxPages} pages for ${origin} ` +
+        `(discovered ${seen.size}, sitemap ${sitemapUrls.length}, http ${httpOk}, browser ${browserOk}, failed ${failed}, queue left ${queue.length})`
     );
   } finally {
-    await browser.close();
+    await browser.close().catch(() => undefined);
   }
 
   if (results.length === 0) {
     throw new Error("Could not crawl any pages from this site.");
   }
+
+  if (
+    sitemapUrls.length >= 40 &&
+    results.length < Math.min(maxPages, 40) &&
+    results.length < sitemapUrls.length * 0.25
+  ) {
+    console.warn(
+      `[crawler] low yield vs sitemap: crawled ${results.length} of ${sitemapUrls.length} sitemap URLs (cap ${maxPages})`
+    );
+  }
+
   return results;
 }

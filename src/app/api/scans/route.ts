@@ -4,7 +4,7 @@ import { runScan } from "@/lib/scan-runner";
 import { getServerSession } from "@/lib/session";
 import { assertCanAddSite, assertCanStartScan } from "@/lib/user-plan";
 
-export const maxDuration = 300;
+export const maxDuration = 800;
 
 function normalizeSiteUrl(input: string): string | null {
   const raw = input.trim();

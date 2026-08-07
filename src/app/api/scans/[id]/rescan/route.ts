@@ -4,7 +4,7 @@ import { runScan } from "@/lib/scan-runner";
 import { getServerSession } from "@/lib/session";
 import { assertCanStartScan, userOwnsScan } from "@/lib/user-plan";
 
-export const maxDuration = 300;
+export const maxDuration = 800;
 
 export async function POST(
   _request: Request,
