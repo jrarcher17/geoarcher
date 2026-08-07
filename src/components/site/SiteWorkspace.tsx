@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Eye, FileText, Network, RefreshCw } from "lucide-react";
+import { Eye, FileText, Network, RefreshCw, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -66,6 +66,8 @@ const TAB_LABELS: Record<Tab, string> = {
 interface SiteMeta {
   siteId: string;
   url: string;
+  plan?: "free" | "pro";
+  canDeleteSite?: boolean;
   latestScanId: string | null;
   latestCompleteScanId: string | null;
   scans: {
@@ -96,6 +98,7 @@ export function SiteWorkspace({ siteId }: { siteId: string }) {
   const [loading, setLoading] = useState(true);
   const [pollTick, setPollTick] = useState(0);
   const [rescanning, setRescanning] = useState(false);
+  const [removing, setRemoving] = useState(false);
 
   const setTab = useCallback(
     (next: string) => {
@@ -191,6 +194,28 @@ export function SiteWorkspace({ siteId }: { siteId: string }) {
     }
   }
 
+  async function removeSite() {
+    if (!meta?.canDeleteSite || removing) return;
+    if (
+      !confirm(
+        `Remove ${meta.url} and all its scans from your workspace? This cannot be undone.`
+      )
+    ) {
+      return;
+    }
+    setRemoving(true);
+    try {
+      const res = await fetch(`/api/me/sites/${siteId}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Could not remove site.");
+      router.push("/sites");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not remove site.");
+      setRemoving(false);
+    }
+  }
+
   const analysis = scan?.analysis ?? null;
   const runningScan = meta?.scans.find((s) =>
     ["QUEUED", "CRAWLING", "ANALYZING"].includes(s.status)
@@ -248,6 +273,17 @@ export function SiteWorkspace({ siteId }: { siteId: string }) {
       subtitle={meta?.url}
       actions={
         <>
+          {meta?.canDeleteSite && (
+            <Button
+              variant="danger"
+              size="md"
+              onClick={() => void removeSite()}
+              disabled={removing}
+            >
+              <Trash2 className="h-4 w-4" />
+              {removing ? "Removing…" : "Remove site"}
+            </Button>
+          )}
           {scan && (
             <GenerateActionButton scanId={scan.id} kind="brief" variant="secondary" size="md" />
           )}

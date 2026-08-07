@@ -8,7 +8,7 @@ datasource db {
 }
 
 model Site {
-  id        String     @id @default(cuid())
+  id        String     @id @default(uuid())
   url       String     @unique
   geoKey    String     @unique @default(cuid())
   createdAt DateTime   @default(now())
@@ -130,7 +130,7 @@ enum ScanStatus {
 }
 
 model Scan {
-  id              String      @id @default(cuid())
+  id              String      @id @default(uuid())
   site            Site        @relation(fields: [siteId], references: [id], onDelete: Cascade)
   siteId          String
   benchmarkScanId String?

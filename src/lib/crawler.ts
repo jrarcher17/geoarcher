@@ -9,6 +9,10 @@ const BROWSERLESS_CONNECT_MS = Number(
   process.env.BROWSERLESS_CONNECT_TIMEOUT_MS ?? 30_000
 );
 
+function stripWww(hostname: string): string {
+  return hostname.replace(/^www\./i, "").toLowerCase();
+}
+
 function normalizeUrl(raw: string): string | null {
   try {
     const url = new URL(raw);
@@ -25,6 +29,124 @@ function normalizeUrl(raw: string): string | null {
   } catch {
     return null;
   }
+}
+
+/** Same registrable host, ignoring www. */
+function sameSite(url: string, origin: string): boolean {
+  try {
+    return stripWww(new URL(url).hostname) === stripWww(new URL(origin).hostname);
+  } catch {
+    return false;
+  }
+}
+
+/** Rewrite host/protocol to the crawl start origin so www/non-www don't duplicate. */
+function toStartOrigin(url: string, startOrigin: string): string {
+  const u = new URL(url);
+  const s = new URL(startOrigin);
+  u.protocol = s.protocol;
+  u.host = s.host;
+  return u.toString();
+}
+
+async function fetchText(url: string, timeoutMs = 12_000): Promise<string | null> {
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      redirect: "follow",
+      headers: {
+        "User-Agent": "GEOArcherBot/0.1 (+https://geoarcher.app)",
+        Accept: "application/xml,text/xml,text/plain,*/*",
+      },
+    });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    return await res.text();
+  } catch {
+    return null;
+  }
+}
+
+function locsFromSitemapXml(xml: string): string[] {
+  const locs: string[] = [];
+  const re = /<loc>\s*([^<]+)\s*<\/loc>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(xml))) {
+    const loc = match[1]?.trim();
+    if (loc) locs.push(loc);
+  }
+  return locs;
+}
+
+/**
+ * Seed the crawl frontier from robots.txt + sitemap(s). Many sites only expose
+ * a shallow link graph in HTML; sitemaps list the deep pages.
+ */
+async function discoverSitemapUrls(
+  origin: string,
+  maxUrls: number
+): Promise<string[]> {
+  const candidates: string[] = [];
+  const robots = await fetchText(`${origin}/robots.txt`);
+  if (robots) {
+    for (const line of robots.split(/\r?\n/)) {
+      const m = line.match(/^\s*sitemap:\s*(.+?)\s*$/i);
+      if (m?.[1]) candidates.push(m[1].trim());
+    }
+  }
+  candidates.push(
+    `${origin}/sitemap.xml`,
+    `${origin}/sitemap_index.xml`,
+    `${origin}/wp-sitemap.xml`
+  );
+
+  const found: string[] = [];
+  const seenSitemaps = new Set<string>();
+
+  async function ingestSitemap(sitemapUrl: string, depth: number) {
+    if (depth > 4 || found.length >= maxUrls) return;
+    let normalized: string;
+    try {
+      normalized = new URL(sitemapUrl).toString();
+    } catch {
+      return;
+    }
+    if (seenSitemaps.has(normalized)) return;
+    seenSitemaps.add(normalized);
+
+    const xml = await fetchText(normalized);
+    if (!xml || !/<loc>/i.test(xml)) return;
+
+    const locs = locsFromSitemapXml(xml);
+    const isIndex = /<sitemapindex[\s>]/i.test(xml);
+
+    if (isIndex) {
+      for (const child of locs) {
+        await ingestSitemap(child, depth + 1);
+        if (found.length >= maxUrls) break;
+      }
+      return;
+    }
+
+    for (const loc of locs) {
+      found.push(loc);
+      if (found.length >= maxUrls) break;
+    }
+  }
+
+  for (const candidate of candidates) {
+    await ingestSitemap(candidate, 0);
+    if (found.length >= maxUrls) break;
+  }
+
+  if (found.length > 0) {
+    console.info(
+      `[crawler] seeded ${found.length} URL(s) from sitemap(s) for ${origin}`
+    );
+  }
+  return found;
 }
 
 /**
@@ -122,6 +244,22 @@ export interface CrawlOptions {
   onPage?: (page: PageExtraction, index: number) => Promise<void> | void;
 }
 
+function enqueueUrl(
+  raw: string,
+  startOrigin: string,
+  seen: Set<string>,
+  queue: string[]
+): void {
+  const normalized = normalizeUrl(raw);
+  if (!normalized) return;
+  if (!sameSite(normalized, startOrigin)) return;
+  if (SKIP_EXTENSIONS.test(normalized)) return;
+  const canonical = normalizeUrl(toStartOrigin(normalized, startOrigin));
+  if (!canonical || seen.has(canonical)) return;
+  seen.add(canonical);
+  queue.push(canonical);
+}
+
 export async function crawlSite(
   startUrl: string,
   { maxPages = 15, onPage }: CrawlOptions = {}
@@ -140,8 +278,15 @@ export async function crawlSite(
     if (!start) throw new Error(`Invalid start URL: ${startUrl}`);
     const origin = new URL(start).origin;
 
-    const queue: string[] = [start];
-    const seen = new Set<string>([start]);
+    const queue: string[] = [];
+    const seen = new Set<string>();
+    enqueueUrl(start, origin, seen, queue);
+
+    // Seed deep URLs from sitemap so we don't stop at homepage nav depth.
+    const sitemapUrls = await discoverSitemapUrls(origin, Math.max(maxPages * 4, 80));
+    for (const loc of sitemapUrls) {
+      enqueueUrl(loc, origin, seen, queue);
+    }
 
     while (queue.length > 0 && results.length < maxPages) {
       const url = queue.shift()!;
@@ -154,7 +299,8 @@ export async function crawlSite(
           timeout: 20_000,
         });
         statusCode = response?.status() ?? null;
-        await page.waitForTimeout(700);
+        // Give client-rendered nav/menus a moment to hydrate links.
+        await page.waitForTimeout(900);
         html = await page.content();
       } catch (err) {
         console.warn(`[crawler] failed to load ${url}:`, err);
@@ -168,19 +314,14 @@ export async function crawlSite(
       await onPage?.(extraction, results.length);
 
       for (const link of extraction.internalLinks) {
-        const normalized = normalizeUrl(link);
-        if (
-          normalized &&
-          normalized.startsWith(origin) &&
-          !seen.has(normalized) &&
-          !SKIP_EXTENSIONS.test(normalized)
-        ) {
-          seen.add(normalized);
-          queue.push(normalized);
-        }
+        enqueueUrl(link, origin, seen, queue);
       }
-      await page.waitForTimeout(300);
+      await page.waitForTimeout(250);
     }
+
+    console.info(
+      `[crawler] finished ${results.length}/${maxPages} pages (${seen.size} discovered) for ${origin}`
+    );
   } finally {
     await browser.close();
   }

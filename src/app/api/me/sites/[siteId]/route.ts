@@ -40,10 +40,13 @@ export async function GET(
 
   const scans = link.site.scans;
   const latestComplete = scans.find((s) => s.status === "COMPLETE");
+  const plan = await getPlanForUser(session.user.id);
   return NextResponse.json({
     siteId: link.site.id,
     url: link.site.url,
     geoKey: link.site.geoKey,
+    plan,
+    canDeleteSite: plan === "pro",
     latestScanId: scans[0]?.id ?? null,
     latestCompleteScanId: latestComplete?.id ?? null,
     scans: scans.map((s) => ({

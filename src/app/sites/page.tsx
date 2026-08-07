@@ -148,13 +148,15 @@ export default function SitesPage() {
                           type="button"
                           onClick={(e) => {
                             e.preventDefault();
+                            e.stopPropagation();
                             void removeSite(s.siteId, s.url);
                           }}
-                          className="absolute bottom-4 right-4 rounded-full p-2 text-slate-300 opacity-0 transition hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
+                          className="absolute bottom-4 right-4 inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
                           aria-label={`Remove ${s.url}`}
-                          title="Remove site (Pro)"
+                          title="Remove site"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Remove
                         </button>
                       )}
                     </Card>
@@ -178,8 +180,10 @@ export default function SitesPage() {
             onSuccess={() => setAddOpen(false)}
           />
           <p className="mt-4 text-xs text-slate-400">
-            Scans are saved to your workspace. Removing a site and its history
-            is available on Pro (hover a site card and use the trash icon).
+            Scans are saved to your workspace.
+            {data?.plan === "pro"
+              ? " Pro: use Remove on a site card or the site page header."
+              : " Upgrade to Pro to remove sites from your workspace."}
           </p>
         </DialogContent>
       </Dialog>

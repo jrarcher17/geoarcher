@@ -167,7 +167,7 @@ export function extractPage(
     wordCount: mainContent ? mainContent.split(/\s+/).length : 0,
     navigationLinks,
     footerText,
-    internalLinks: [...internal].slice(0, 200),
+    internalLinks: [...internal].slice(0, 500),
     externalLinks: [...external].slice(0, 100),
     images: images.slice(0, 100),
     imagesMissingAlt,
