@@ -607,45 +607,160 @@ export function SiteWorkspace({ siteId }: { siteId: string }) {
             {analysis && (
               <FadeIn className="flex flex-col gap-4">
                 <Card className="p-6">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-none bg-violet-50 text-violet-500">
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-none bg-violet-50 text-violet-500">
                       <Network className="h-4 w-4" />
                     </span>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-sm font-semibold text-slate-900">
+                        What AI currently understands about this site
+                      </p>
+                      <p className="mt-1 text-sm text-slate-500">
+                        Assistants map your business as concepts, not pages. The
+                        primary topic and entities below are what the crawl
+                        established today.
+                      </p>
+                      <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
                         Primary topic
                       </p>
-                      <p className="text-lg font-semibold text-violet-600">
+                      <p className="mt-1 text-lg font-semibold text-violet-600">
                         {analysis.semanticMap.topic}
                       </p>
                     </div>
                   </div>
-                  <p className="mt-4 text-xs text-slate-400">
-                    AI doesn&apos;t index pages — it maps concepts. These are the
-                    entities your site currently establishes.
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {analysis.semanticMap.subtopics.map((s) => (
-                      <span
-                        key={s}
-                        className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-700"
-                      >
-                        {s}
-                      </span>
-                    ))}
+                  <div className="mt-5">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      Entities on your site
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {analysis.semanticMap.subtopics.map((s) => (
+                        <span
+                          key={s}
+                          className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-700"
+                        >
+                          {s}
+                        </span>
+                      ))}
+                    </div>
                   </div>
+                  {(analysis.understanding.serviceArea ||
+                    analysis.understanding.differentiators.length > 0) && (
+                    <div className="mt-5 grid gap-3 border-t border-slate-100 pt-5 sm:grid-cols-2">
+                      {analysis.understanding.serviceArea && (
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                            Service area AI inferred
+                          </p>
+                          <p className="mt-1 text-sm text-slate-700">
+                            {analysis.understanding.serviceArea}
+                          </p>
+                        </div>
+                      )}
+                      {analysis.understanding.differentiators.length > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                            Differentiators AI found
+                          </p>
+                          <ul className="mt-1 list-disc space-y-1 pl-4 text-sm text-slate-700">
+                            {analysis.understanding.differentiators
+                              .slice(0, 4)
+                              .map((d) => (
+                                <li key={d}>{d}</li>
+                              ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </Card>
-                <AIInsightCard
-                  title="Strengthen your entity graph"
-                  insight="Add or deepen pages for the subtopics closest to revenue, and name your business, services, and locations consistently across pages. Consistent entities are what let assistants connect 'who you are' to 'what users ask'."
-                  meta={
+
+                <Card className="p-6">
+                  <p className="text-sm font-semibold text-slate-900">
+                    What to do next
+                  </p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Use this checklist so assistants can connect who you are to
+                    what buyers ask.
+                  </p>
+                  <ol className="mt-5 space-y-4">
+                    <li className="flex gap-3">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sky-100 text-xs font-semibold text-sky-700">
+                        1
+                      </span>
+                      <div>
+                        <p className="text-sm font-medium text-slate-800">
+                          Name the business the same way everywhere
+                        </p>
+                        <p className="mt-0.5 text-sm text-slate-500">
+                          Use one brand name, service names, and location wording
+                          on Home, About, and service pages so models stop
+                          treating you as separate entities.
+                        </p>
+                      </div>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sky-100 text-xs font-semibold text-sky-700">
+                        2
+                      </span>
+                      <div>
+                        <p className="text-sm font-medium text-slate-800">
+                          Deepen pages for revenue-critical entities
+                        </p>
+                        <p className="mt-0.5 text-sm text-slate-500">
+                          Pick 2–3 of the entities above that drive sales and
+                          give each a dedicated page (or a stronger section)
+                          with clear H1s, FAQs, and concrete facts.
+                        </p>
+                        {analysis.semanticMap.subtopics.slice(0, 3).length >
+                          0 && (
+                          <p className="mt-2 text-sm text-slate-600">
+                            Start with:{" "}
+                            <span className="font-medium text-slate-800">
+                              {analysis.semanticMap.subtopics
+                                .slice(0, 3)
+                                .join(" · ")}
+                            </span>
+                          </p>
+                        )}
+                      </div>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sky-100 text-xs font-semibold text-sky-700">
+                        3
+                      </span>
+                      <div>
+                        <p className="text-sm font-medium text-slate-800">
+                          Close the questions AI still can&apos;t answer
+                        </p>
+                        <p className="mt-0.5 text-sm text-slate-500">
+                          Publish short FAQ or guide pages for the biggest
+                          content gaps so assistants have quotable answers.
+                        </p>
+                        {analysis.contentGaps.slice(0, 3).length > 0 && (
+                          <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-slate-600">
+                            {analysis.contentGaps.slice(0, 3).map((g) => (
+                              <li key={g.question}>{g.question}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    </li>
+                  </ol>
+                  <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-5">
                     <GenerateActionButton
                       scanId={scan.id}
                       kind="brief"
                       topic={`Entity coverage for ${analysis.semanticMap.topic}`}
                     />
-                  }
-                />
+                    <button
+                      type="button"
+                      className="text-sm font-medium text-sky-600 hover:text-sky-700"
+                      onClick={() => setTab("recommendations")}
+                    >
+                      View all recommendations →
+                    </button>
+                  </div>
+                </Card>
               </FadeIn>
             )}
           </TabsContent>
