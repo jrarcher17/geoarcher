@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { VisibilityState } from "@/lib/types";
 
 function scoreColor(score: number): string {
@@ -30,10 +30,23 @@ export function VisibilityPanel({
 }) {
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
+  /** Keeps the spinner up until parent props catch up after POST. */
+  const [pendingRun, setPendingRun] = useState(false);
+
+  useEffect(() => {
+    if (
+      visibility?.status === "RUNNING" ||
+      visibility?.status === "COMPLETE" ||
+      visibility?.status === "FAILED"
+    ) {
+      setPendingRun(false);
+    }
+  }, [visibility?.status]);
 
   async function start() {
     setStarting(true);
     setStartError(null);
+    setPendingRun(true);
     try {
       const res = await fetch(`/api/scans/${scanId}/visibility`, {
         method: "POST",
@@ -44,13 +57,15 @@ export function VisibilityPanel({
       }
       onStarted();
     } catch (err) {
+      setPendingRun(false);
       setStartError(err instanceof Error ? err.message : "Failed to start.");
     } finally {
       setStarting(false);
     }
   }
 
-  const results = visibility?.status === "COMPLETE" ? visibility.results : null;
+  const status = pendingRun ? "RUNNING" : visibility?.status;
+  const results = status === "COMPLETE" ? visibility?.results ?? null : null;
 
   return (
     <section className="card p-6">
@@ -62,7 +77,7 @@ export function VisibilityPanel({
             surface this site — not live rankings inside those products.
           </p>
         </div>
-        {(!visibility || visibility.status === "FAILED") && (
+        {(!status || status === "FAILED") && (
           <button
             type="button"
             onClick={start}
@@ -71,7 +86,7 @@ export function VisibilityPanel({
           >
             {starting
               ? "Starting…"
-              : visibility?.status === "FAILED"
+              : status === "FAILED"
                 ? "Retry"
                 : "Score AI visibility"}
           </button>
@@ -79,11 +94,11 @@ export function VisibilityPanel({
       </div>
 
       {startError && <p className="mt-3 text-sm text-red-600">{startError}</p>}
-      {visibility?.status === "FAILED" && (
+      {status === "FAILED" && visibility?.error && (
         <p className="mt-3 text-sm text-red-600">{visibility.error}</p>
       )}
 
-      {visibility?.status === "RUNNING" && (
+      {status === "RUNNING" && (
         <div className="mt-6 flex items-center gap-3 text-slate-700">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-200 border-t-sky-400" />
           Scoring ChatGPT, Claude, Gemini, Perplexity, and Copilot…

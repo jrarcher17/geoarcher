@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { SimulationState } from "@/lib/types";
 
 function likelihoodColor(score: number): string {
@@ -47,10 +47,22 @@ export function SimulationPanel({
 }) {
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
+  const [pendingRun, setPendingRun] = useState(false);
+
+  useEffect(() => {
+    if (
+      simulation?.status === "RUNNING" ||
+      simulation?.status === "COMPLETE" ||
+      simulation?.status === "FAILED"
+    ) {
+      setPendingRun(false);
+    }
+  }, [simulation?.status]);
 
   async function start() {
     setStarting(true);
     setStartError(null);
+    setPendingRun(true);
     try {
       const res = await fetch(`/api/scans/${scanId}/simulation`, {
         method: "POST",
@@ -61,13 +73,15 @@ export function SimulationPanel({
       }
       onStarted();
     } catch (err) {
+      setPendingRun(false);
       setStartError(err instanceof Error ? err.message : "Failed to start.");
     } finally {
       setStarting(false);
     }
   }
 
-  const results = simulation?.status === "COMPLETE" ? simulation.results : null;
+  const status = pendingRun ? "RUNNING" : simulation?.status;
+  const results = status === "COMPLETE" ? simulation?.results ?? null : null;
 
   return (
     <section className="card p-6">
@@ -79,7 +93,7 @@ export function SimulationPanel({
             recommendations? Simulated by GEO Archer&apos;s scoring model.
           </p>
         </div>
-        {(!simulation || simulation.status === "FAILED") && (
+        {(!status || status === "FAILED") && (
           <button
             onClick={start}
             disabled={starting}
@@ -87,7 +101,7 @@ export function SimulationPanel({
           >
             {starting
               ? "Starting…"
-              : simulation?.status === "FAILED"
+              : status === "FAILED"
                 ? "Retry simulation"
                 : "Run simulation"}
           </button>
@@ -95,11 +109,11 @@ export function SimulationPanel({
       </div>
 
       {startError && <p className="mt-3 text-sm text-red-600">{startError}</p>}
-      {simulation?.status === "FAILED" && (
+      {status === "FAILED" && simulation?.error && (
         <p className="mt-3 text-sm text-red-600">{simulation.error}</p>
       )}
 
-      {simulation?.status === "RUNNING" && (
+      {status === "RUNNING" && (
         <div className="mt-6 flex items-center gap-3 text-slate-700">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-200 border-t-sky-400" />
           Generating realistic user prompts and scoring citation likelihood…

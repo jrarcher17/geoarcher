@@ -104,49 +104,73 @@ export function SiteWorkspace({ siteId }: { siteId: string }) {
     [router, siteId]
   );
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setMeta(null);
-    setScan(null);
-    setScanError(null);
-    (async () => {
-      const res = await fetch(`/api/me/sites/${siteId}`, { cache: "no-store" });
-      if (res.status === 401) {
-        window.location.href = "/login";
-        return;
-      }
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        if (!cancelled) {
-          setError(j.error ?? "Failed to load site.");
-          setLoading(false);
-        }
-        return;
-      }
-      const json: SiteMeta = await res.json();
-      if (cancelled) return;
-      setMeta(json);
-      const scanId = json.latestCompleteScanId ?? json.latestScanId;
-      if (scanId) {
-        const scanRes = await fetch(`/api/scans/${scanId}`, { cache: "no-store" });
-        if (cancelled) return;
-        if (scanRes.ok) {
-          setScan(await scanRes.json());
-        } else {
-          setScan(null);
-          const j = await scanRes.json().catch(() => ({}));
-          setScanError(j.error ?? "Could not load scan report.");
-        }
+  const refreshSite = useCallback(async (opts?: { silent?: boolean }) => {
+    const silent = opts?.silent ?? false;
+    if (!silent) {
+      setLoading(true);
+      setMeta(null);
+      setScan(null);
+      setScanError(null);
+      setError(null);
+    }
+
+    const res = await fetch(`/api/me/sites/${siteId}`, { cache: "no-store" });
+    if (res.status === 401) {
+      window.location.href = "/login";
+      return;
+    }
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      setError(j.error ?? "Failed to load site.");
+      if (!silent) setLoading(false);
+      return;
+    }
+
+    const json: SiteMeta = await res.json();
+    setMeta(json);
+    setError(null);
+
+    const scanId = json.latestCompleteScanId ?? json.latestScanId;
+    if (scanId) {
+      const scanRes = await fetch(`/api/scans/${scanId}`, { cache: "no-store" });
+      if (scanRes.ok) {
+        setScan(await scanRes.json());
+        setScanError(null);
       } else {
-        setScan(null);
+        if (!silent) setScan(null);
+        const j = await scanRes.json().catch(() => ({}));
+        setScanError(j.error ?? "Could not load scan report.");
       }
-      if (!cancelled) setLoading(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [siteId, pollTick]);
+    } else if (!silent) {
+      setScan(null);
+    }
+
+    if (!silent) setLoading(false);
+  }, [siteId]);
+
+  // Full reload when site changes or a manual refresh is requested.
+  useEffect(() => {
+    void refreshSite({ silent: false });
+  }, [siteId, refreshSite]);
+
+  // Soft reload when pollTick advances (visibility/simulation jobs, retry button).
+  useEffect(() => {
+    if (pollTick === 0) return;
+    void refreshSite({ silent: true });
+  }, [pollTick, refreshSite]);
+
+  // Keep polling while AI visibility or simulation jobs are in flight.
+  const asyncJobRunning =
+    scan?.visibility?.status === "RUNNING" ||
+    scan?.simulation?.status === "RUNNING";
+
+  useEffect(() => {
+    if (!asyncJobRunning) return;
+    const timer = setInterval(() => {
+      setPollTick((t) => t + 1);
+    }, 2000);
+    return () => clearInterval(timer);
+  }, [asyncJobRunning]);
 
   async function rescan() {
     const scanId = meta?.latestScanId;
