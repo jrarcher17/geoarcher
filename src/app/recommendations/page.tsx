@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { SiteFilter } from "@/components/SiteFilter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,20 +16,23 @@ const FILTERS = ["all", "high", "medium", "low"] as const;
 export default function RecommendationsPage() {
   const { data, error, loading } = useInsights();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("all");
+  const [siteId, setSiteId] = useState("");
 
   const items = useMemo(() => {
-    const all = (data?.sites ?? []).flatMap((s) =>
-      (s.analysis?.recommendations ?? []).map((rec) => ({
-        rec,
-        siteLabel: hostOf(s.url),
-        scanId: data?.scanIds[s.siteId] ?? undefined,
-      }))
-    );
+    const all = (data?.sites ?? [])
+      .filter((s) => !siteId || s.siteId === siteId)
+      .flatMap((s) =>
+        (s.analysis?.recommendations ?? []).map((rec) => ({
+          rec,
+          siteLabel: hostOf(s.url),
+          scanId: data?.scanIds[s.siteId] ?? undefined,
+        }))
+      );
     const rank = { high: 0, medium: 1, low: 2 };
     return all
       .filter((i) => filter === "all" || i.rec.impact === filter)
       .sort((a, b) => rank[a.rec.impact] - rank[b.rec.impact]);
-  }, [data, filter]);
+  }, [data, filter, siteId]);
 
   return (
     <AppShell
@@ -40,17 +44,24 @@ export default function RecommendationsPage() {
 
       {data && (
         <FadeIn className="flex flex-col gap-4">
-          <div className="flex flex-wrap gap-2">
-            {FILTERS.map((f) => (
-              <Button
-                key={f}
-                size="sm"
-                variant={filter === f ? "primary" : "secondary"}
-                onClick={() => setFilter(f)}
-              >
-                {f === "all" ? "All" : `${f} impact`}
-              </Button>
-            ))}
+          <div className="flex flex-wrap items-center gap-3">
+            <SiteFilter
+              sites={data.sites}
+              value={siteId}
+              onChange={setSiteId}
+            />
+            <div className="flex flex-wrap gap-2">
+              {FILTERS.map((f) => (
+                <Button
+                  key={f}
+                  size="sm"
+                  variant={filter === f ? "primary" : "secondary"}
+                  onClick={() => setFilter(f)}
+                >
+                  {f === "all" ? "All impact" : `${f} impact`}
+                </Button>
+              ))}
+            </div>
           </div>
 
           {items.length === 0 ? (

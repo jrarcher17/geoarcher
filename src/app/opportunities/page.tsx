@@ -1,6 +1,8 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { SiteFilter } from "@/components/SiteFilter";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FadeIn } from "@/components/cards/FadeIn";
@@ -10,19 +12,35 @@ import { hostOf } from "@/lib/utils";
 
 export default function OpportunitiesPage() {
   const { data, error, loading } = useInsights();
+  const [siteId, setSiteId] = useState("");
 
-  const gaps = (data?.sites ?? []).flatMap((s) =>
-    (s.analysis?.contentGaps ?? []).map((gap) => ({
-      gap,
-      siteLabel: hostOf(s.url),
-      scanId: data?.scanIds[s.siteId] ?? undefined,
-    }))
+  const gaps = useMemo(
+    () =>
+      (data?.sites ?? [])
+        .filter((s) => !siteId || s.siteId === siteId)
+        .flatMap((s) =>
+          (s.analysis?.contentGaps ?? []).map((gap) => ({
+            gap,
+            siteLabel: hostOf(s.url),
+            scanId: data?.scanIds[s.siteId] ?? undefined,
+          }))
+        ),
+    [data, siteId]
   );
 
   return (
     <AppShell
       title="Content Opportunities"
       subtitle="Questions people ask AI assistants that your sites can't answer today. Each is a page or FAQ waiting to exist."
+      actions={
+        data && data.sites.length > 1 ? (
+          <SiteFilter
+            sites={data.sites}
+            value={siteId}
+            onChange={setSiteId}
+          />
+        ) : undefined
+      }
     >
       {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
       {loading && <Skeleton className="h-64" />}

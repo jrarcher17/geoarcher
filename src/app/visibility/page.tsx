@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { SiteFilter, filterSitesById } from "@/components/SiteFilter";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -13,12 +15,18 @@ import { hostOf, scoreTone } from "@/lib/utils";
 
 export default function VisibilityPage() {
   const { data, error, loading } = useInsights();
+  const [siteId, setSiteId] = useState("");
 
-  const scored = (data?.sites ?? []).filter((s) => s.visibility);
+  const sites = useMemo(
+    () => filterSitesById(data?.sites ?? [], siteId),
+    [data, siteId]
+  );
+  const scored = sites.filter((s) => s.visibility);
   const avg =
     scored.length > 0
       ? Math.round(
-          scored.reduce((sum, s) => sum + s.visibility!.overall, 0) / scored.length
+          scored.reduce((sum, s) => sum + s.visibility!.overall, 0) /
+            scored.length
         )
       : null;
 
@@ -26,6 +34,15 @@ export default function VisibilityPage() {
     <AppShell
       title="AI Visibility"
       subtitle="How likely each AI assistant is to understand and surface your sites."
+      actions={
+        data && data.sites.length > 1 ? (
+          <SiteFilter
+            sites={data.sites}
+            value={siteId}
+            onChange={setSiteId}
+          />
+        ) : undefined
+      }
     >
       {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
       {loading && <Skeleton className="h-64" />}
@@ -34,15 +51,19 @@ export default function VisibilityPage() {
         <FadeIn className="flex flex-col gap-6">
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <ScoreCard
-              label="Portfolio AI visibility"
+              label={siteId ? "Site AI visibility" : "Portfolio AI visibility"}
               score={avg}
               suffix="%"
-              explanation="Average modeled visibility across sites that have been scored."
+              explanation={
+                siteId
+                  ? "Modeled visibility for the selected site."
+                  : "Average modeled visibility across sites that have been scored."
+              }
             />
             <ScoreCard
               label="Sites scored"
               score={scored.length}
-              explanation={`${data.sites.length - scored.length} site(s) still need a visibility run — open a site and use the AI Visibility tab.`}
+              explanation={`${sites.length - scored.length} site(s) still need a visibility run — open a site and use the AI Visibility tab.`}
             />
           </div>
 
@@ -56,10 +77,7 @@ export default function VisibilityPage() {
                 to model how ChatGPT, Claude, Gemini, Perplexity, and Copilot see
                 it.
               </p>
-              <Link
-                href="/sites"
-                className="btn-primary mt-6 inline-block"
-              >
+              <Link href="/sites" className="btn-primary mt-6 inline-block">
                 Go to Sites
               </Link>
             </Card>

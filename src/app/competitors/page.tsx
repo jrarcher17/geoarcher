@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import { ArrowUpRight, Users } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { SiteFilter, filterSitesById } from "@/components/SiteFilter";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,13 +14,26 @@ import { gradeFor, hostOf, scoreTone } from "@/lib/utils";
 
 export default function CompetitorsPage() {
   const { data, error, loading } = useInsights();
+  const [siteId, setSiteId] = useState("");
 
-  const analyzed = (data?.sites ?? []).filter((s) => s.analysis);
+  const analyzed = useMemo(() => {
+    const sites = filterSitesById(data?.sites ?? [], siteId);
+    return sites.filter((s) => s.analysis);
+  }, [data, siteId]);
 
   return (
     <AppShell
       title="Competitors"
       subtitle="Benchmark each site against up to five rivals — scores, topics they own, and where you lead."
+      actions={
+        data && data.sites.length > 1 ? (
+          <SiteFilter
+            sites={data.sites}
+            value={siteId}
+            onChange={setSiteId}
+          />
+        ) : undefined
+      }
     >
       {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
       {loading && <Skeleton className="h-64" />}
@@ -46,7 +61,8 @@ export default function CompetitorsPage() {
                       <ArrowUpRight className="h-3.5 w-3.5 text-slate-300 transition group-hover:text-sky-500" />
                     </p>
                     <Badge tone={scoreTone(s.analysis!.geoOverall)}>
-                      GEO {s.analysis!.geoOverall} · {gradeFor(s.analysis!.geoOverall)}
+                      GEO {s.analysis!.geoOverall} ·{" "}
+                      {gradeFor(s.analysis!.geoOverall)}
                     </Badge>
                   </div>
                   <p className="mt-2 text-sm text-slate-500">
