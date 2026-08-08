@@ -222,3 +222,48 @@ export async function POST(
 
   return NextResponse.json({ started, skipped }, { status: 201 });
 }
+
+/** Remove a competitor scan linked to this primary scan. */
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getServerSession();
+  if (!session) {
+    return NextResponse.json({ error: "Sign in required." }, { status: 401 });
+  }
+
+  const { id } = await params;
+  if (!(await userOwnsScan(session.user.id, id))) {
+    return NextResponse.json({ error: "Not allowed." }, { status: 403 });
+  }
+
+  const body = await request.json().catch(() => null);
+  const competitorScanId =
+    typeof body?.competitorScanId === "string" ? body.competitorScanId : "";
+  if (!competitorScanId) {
+    return NextResponse.json(
+      { error: "Provide competitorScanId." },
+      { status: 400 }
+    );
+  }
+
+  const competitor = await prisma.scan.findUnique({
+    where: { id: competitorScanId },
+    select: { id: true, benchmarkScanId: true, site: { select: { url: true } } },
+  });
+  if (!competitor || competitor.benchmarkScanId !== id) {
+    return NextResponse.json(
+      { error: "Competitor not found on this scan." },
+      { status: 404 }
+    );
+  }
+
+  await prisma.scan.delete({ where: { id: competitorScanId } });
+
+  return NextResponse.json({
+    ok: true,
+    deleted: competitorScanId,
+    url: competitor.site.url,
+  });
+}

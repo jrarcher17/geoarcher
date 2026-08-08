@@ -36,7 +36,7 @@ const PRO_PLAN_BASE: Omit<PlanLimits, "priceLabel"> = {
   label: "Pro",
   sites: null,
   maxPagesPerScan: 200,
-  competitorMaxPages: 500,
+  competitorMaxPages: 200,
   scansPerMonth: 200,
   visibilityFeatures:
     "Full visibility scoring + deeper crawl coverage for large sites",

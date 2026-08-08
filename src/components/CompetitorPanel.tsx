@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { Trash2 } from "lucide-react";
 import { CompetitorComparisonCard } from "@/components/cards/CompetitorComparisonCard";
 import type { CompetitorComparisonResult } from "@/lib/competitor-compare";
+import { hostOf } from "@/lib/utils";
 
 function planFootnote(plan: CompetitorComparisonResult["plan"]): string {
   const pages = plan.competitorMaxPages.toLocaleString();
@@ -13,36 +15,43 @@ function planFootnote(plan: CompetitorComparisonResult["plan"]): string {
   return `Your Free plan crawls up to ${pages} pages per competitor. Upgrade to Pro in Settings → Billing for deeper coverage.`;
 }
 
+function competitorsBusy(data: CompetitorComparisonResult | null): boolean {
+  return Boolean(
+    data?.competitors.some((c) =>
+      ["QUEUED", "CRAWLING", "ANALYZING"].includes(c.status)
+    )
+  );
+}
+
 export function CompetitorPanel({ scanId }: { scanId: string }) {
   const [data, setData] = useState<CompetitorComparisonResult | null>(null);
   const [urlsText, setUrlsText] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const load = useCallback(async () => {
+    const res = await fetch(`/api/scans/${scanId}/competitors`, {
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.error ?? "Failed to load competitors.");
+    }
+    const json: CompetitorComparisonResult = await res.json();
+    setData(json);
+    setError(null);
+    return json;
+  }, [scanId]);
+
+  // Initial load
   useEffect(() => {
     let cancelled = false;
-    let timer: ReturnType<typeof setTimeout>;
-
-    async function load() {
+    setLoading(true);
+    (async () => {
       try {
-        const res = await fetch(`/api/scans/${scanId}/competitors`, {
-          cache: "no-store",
-        });
-        if (!res.ok) {
-          const j = await res.json().catch(() => ({}));
-          throw new Error(j.error ?? "Failed to load competitors.");
-        }
-        const json: CompetitorComparisonResult = await res.json();
-        if (cancelled) return;
-        setData(json);
-        const busy = json.competitors.some(
-          (c) =>
-            c.status === "QUEUED" ||
-            c.status === "CRAWLING" ||
-            c.status === "ANALYZING"
-        );
-        if (busy) timer = setTimeout(load, 2000);
+        await load();
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : "Failed to load.");
@@ -50,14 +59,34 @@ export function CompetitorPanel({ scanId }: { scanId: string }) {
       } finally {
         if (!cancelled) setLoading(false);
       }
-    }
-
-    load();
+    })();
     return () => {
       cancelled = true;
-      clearTimeout(timer);
     };
-  }, [scanId]);
+  }, [load]);
+
+  // Keep polling while any competitor scan is still running.
+  const busy = competitorsBusy(data);
+  useEffect(() => {
+    if (!busy) return;
+    let cancelled = false;
+    const timer = setInterval(() => {
+      void (async () => {
+        try {
+          if (cancelled) return;
+          await load();
+        } catch (e) {
+          if (!cancelled) {
+            setError(e instanceof Error ? e.message : "Failed to refresh.");
+          }
+        }
+      })();
+    }, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [busy, load]);
 
   async function addCompetitors(e: React.FormEvent) {
     e.preventDefault();
@@ -78,16 +107,37 @@ export function CompetitorPanel({ scanId }: { scanId: string }) {
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j.error ?? "Failed to add competitors.");
       setUrlsText("");
-      setLoading(true);
-      const refresh = await fetch(`/api/scans/${scanId}/competitors`, {
-        cache: "no-store",
-      });
-      setData(await refresh.json());
+      await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add.");
     } finally {
       setSubmitting(false);
-      setLoading(false);
+    }
+  }
+
+  async function removeCompetitor(competitorScanId: string, siteUrl: string) {
+    if (
+      !confirm(
+        `Remove ${hostOf(siteUrl)} from this comparison? Their crawl data for this benchmark will be deleted.`
+      )
+    ) {
+      return;
+    }
+    setDeletingId(competitorScanId);
+    setError(null);
+    try {
+      const res = await fetch(`/api/scans/${scanId}/competitors`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ competitorScanId }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error ?? "Could not remove competitor.");
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not remove.");
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -117,7 +167,10 @@ export function CompetitorPanel({ scanId }: { scanId: string }) {
 
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
-      <form onSubmit={addCompetitors} className="mt-4 flex flex-col gap-3 sm:flex-row">
+      <form
+        onSubmit={addCompetitors}
+        className="mt-4 flex flex-col gap-3 sm:flex-row"
+      >
         <textarea
           value={urlsText}
           onChange={(e) => setUrlsText(e.target.value)}
@@ -133,6 +186,13 @@ export function CompetitorPanel({ scanId }: { scanId: string }) {
           {submitting ? "Starting…" : "Add competitors"}
         </button>
       </form>
+
+      {busy && (
+        <div className="mt-4 flex items-center gap-3 text-sm text-slate-600">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-200 border-t-sky-500" />
+          Analyzing competitors — results will appear when each crawl finishes…
+        </div>
+      )}
 
       {data.conceptsCompetitorsCoverMore.length > 0 && (
         <div className="mt-4 rounded-none border border-amber-200/70 bg-amber-50/70 p-4">
@@ -157,12 +217,23 @@ export function CompetitorPanel({ scanId }: { scanId: string }) {
           {data.competitors.map((row) => (
             <div key={row.scanId} className="flex flex-col gap-1.5">
               <CompetitorComparisonCard you={data.primary} competitor={row} />
-              <Link
-                href={`/scan/${row.scanId}`}
-                className="self-end text-xs font-medium text-sky-600 hover:underline"
-              >
-                Full competitor breakdown →
-              </Link>
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  disabled={deletingId === row.scanId}
+                  onClick={() => void removeCompetitor(row.scanId, row.siteUrl)}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 transition hover:text-red-600 disabled:opacity-50"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  {deletingId === row.scanId ? "Removing…" : "Remove"}
+                </button>
+                <Link
+                  href={`/scan/${row.scanId}`}
+                  className="text-xs font-medium text-sky-600 hover:underline"
+                >
+                  Full competitor breakdown →
+                </Link>
+              </div>
             </div>
           ))}
         </div>

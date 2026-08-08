@@ -111,7 +111,7 @@ export const FEATURE_CARDS = [
     iconClass: "text-sky-600 bg-sky-100",
     title: "Competitor benchmarks",
     body: "Compare your scores against up to five rival sites on the same crawl budget — see where assistants would prefer them.",
-    bullets: ["Side-by-side scores", "500-page competitor budget", "Gap-driven actions"],
+    bullets: ["Side-by-side scores", "200-page competitor budget", "Gap-driven actions"],
   },
 ] as const;
 
