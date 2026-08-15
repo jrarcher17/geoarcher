@@ -28,6 +28,8 @@ export const config = {
     "/recommendations/:path*",
     "/opportunities/:path*",
     "/competitors/:path*",
+    "/seo/:path*",
+    "/seo",
     "/reports/:path*",
     "/settings/:path*",
   ],

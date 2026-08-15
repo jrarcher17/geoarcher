@@ -10,6 +10,8 @@ export interface PageExtraction {
   title: string | null;
   metaDescription: string | null;
   canonicalUrl: string | null;
+  /** Content of the robots/googlebot meta tag; optional — older scans predate it. */
+  metaRobots?: string | null;
   headings: { h1: string[]; h2: string[]; h3: string[] };
   mainContent: string;
   wordCount: number;

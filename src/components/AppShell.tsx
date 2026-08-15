@@ -7,15 +7,23 @@ import {
   ChevronDown,
   Eye,
   FileBarChart,
+  FileSearch,
+  FileText,
+  Gauge,
   Globe,
   LayoutDashboard,
   Lightbulb,
+  Link2,
   Menu,
   MessageCircleQuestion,
   Radar,
+  Rocket,
   Search,
   Settings,
+  Swords,
+  TrendingUp,
   Users,
+  Wrench,
 } from "lucide-react";
 import { signOut, useSession } from "@/lib/auth-client";
 import { BrandWordmark } from "@/components/BrandWordmark";
@@ -45,6 +53,19 @@ const NAV = [
     ],
   },
   {
+    label: "SEO Autopilot",
+    items: [
+      { href: "/seo", label: "Overview", icon: Gauge },
+      { href: "/seo/opportunities", label: "Opportunities", icon: Rocket },
+      { href: "/seo/technical", label: "Technical SEO", icon: Wrench },
+      { href: "/seo/pages", label: "Pages", icon: FileSearch },
+      { href: "/seo/content", label: "Content", icon: FileText },
+      { href: "/seo/internal-links", label: "Internal Links", icon: Link2 },
+      { href: "/seo/competitors", label: "Competitors", icon: Swords },
+      { href: "/seo/rankings", label: "Rankings", icon: TrendingUp },
+    ],
+  },
+  {
     label: "Operate",
     items: [
       { href: "/reports", label: "Reports", icon: FileBarChart },
@@ -55,6 +76,7 @@ const NAV = [
 
 function isActive(pathname: string, href: string): boolean {
   if (href === "/dashboard") return pathname === "/dashboard";
+  if (href === "/seo") return pathname === "/seo";
   if (href === "/sites") return pathname === "/sites" || pathname.startsWith("/sites/");
   if (href === "/scans") return pathname === "/scans" || pathname.startsWith("/scan/");
   return pathname === href || pathname.startsWith(`${href}/`);

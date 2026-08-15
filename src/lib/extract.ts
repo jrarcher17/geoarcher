@@ -162,6 +162,9 @@ export function extractPage(
     title: cleanText($("title").first().text(), 300) || null,
     metaDescription: $('meta[name="description"]').attr("content")?.trim() ?? null,
     canonicalUrl: $('link[rel="canonical"]').attr("href") ?? null,
+    metaRobots:
+      $('meta[name="robots"], meta[name="googlebot"]').attr("content")?.trim().toLowerCase() ??
+      null,
     headings: { h1: heads("h1"), h2: heads("h2"), h3: heads("h3") },
     mainContent,
     wordCount: mainContent ? mainContent.split(/\s+/).length : 0,
