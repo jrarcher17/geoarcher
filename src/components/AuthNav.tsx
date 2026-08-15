@@ -21,6 +21,7 @@ export function AuthNav() {
     "/competitors",
     "/reports",
     "/settings",
+    "/seo",
   ];
   if (
     pathname === "/" ||
