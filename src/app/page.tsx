@@ -10,7 +10,10 @@ import {
   PLATFORM_POINTS,
 } from "@/components/marketing/MarketingSections";
 import { GUIDES } from "@/lib/guides-content";
-import { resolveProPriceLabel } from "@/lib/billing-price";
+import {
+  resolveProPlusPriceLabel,
+  resolveProPriceLabel,
+} from "@/lib/billing-price";
 import { getPlans } from "@/lib/plans";
 import { registrationLoginHref, signUpDisabled } from "@/lib/sign-up-config";
 import { formatSiteLimit } from "@/lib/utils";
@@ -18,39 +21,65 @@ import { formatSiteLimit } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const proPrice = await resolveProPriceLabel();
+  const [proPrice, proPlusPrice] = await Promise.all([
+    resolveProPriceLabel(),
+    resolveProPlusPriceLabel(),
+  ]);
   const plans = getPlans();
   const free = plans.free;
   const pro = { ...plans.pro, priceLabel: proPrice };
+  const proPlus = { ...plans.proPlus, priceLabel: proPlusPrice };
   const registrationsClosed = signUpDisabled();
   const startFreeHref = registrationLoginHref();
 
   const pricingRows = [
-    { label: "Price", free: free.priceLabel, pro: pro.priceLabel },
+    {
+      label: "Price",
+      free: free.priceLabel,
+      pro: pro.priceLabel,
+      proPlus: proPlus.priceLabel,
+    },
     {
       label: "Sites",
       free: formatSiteLimit(free.sites),
       pro: formatSiteLimit(pro.sites),
+      proPlus: formatSiteLimit(proPlus.sites),
     },
     {
       label: "Scans / month",
       free: String(free.scansPerMonth),
       pro: String(pro.scansPerMonth),
+      proPlus: String(proPlus.scansPerMonth),
     },
     {
       label: "Pages per scan",
       free: String(free.maxPagesPerScan),
       pro: String(pro.maxPagesPerScan),
+      proPlus: String(proPlus.maxPagesPerScan),
     },
     {
       label: "Competitor crawl",
       free: String(free.competitorMaxPages),
       pro: String(pro.competitorMaxPages),
+      proPlus: String(proPlus.competitorMaxPages),
     },
     {
       label: "AI visibility",
       free: "5 assistants modeled",
       pro: "Full scoring + deep crawl",
+      proPlus: "Full scoring + deep crawl",
+    },
+    {
+      label: "SEO Autopilot",
+      free: "—",
+      pro: "Continuous audits + rankings",
+      proPlus: "Continuous audits + rankings",
+    },
+    {
+      label: "AI Lead Generation Machine",
+      free: "—",
+      pro: "—",
+      proPlus: `${proPlus.prospectsPerMonth} prospects / mo`,
     },
   ];
 
@@ -182,7 +211,8 @@ export default async function Home() {
           <div className="text-center">
             <h2 className="text-3xl font-bold text-slate-900">Simple plan pricing</h2>
             <p className="mt-2 text-slate-500">
-              Start free on one site. Scale crawls and volume on Pro.
+              Start free on one site. Scale crawls and volume on Pro. Find your
+              next customers on Pro Plus.
             </p>
           </div>
 
@@ -199,6 +229,12 @@ export default async function Home() {
                       </span>
                       Pro
                     </th>
+                    <th className="relative px-6 py-4 font-semibold text-slate-900">
+                      <span className="absolute -top-px left-6 rounded-b-md bg-violet-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                        New
+                      </span>
+                      Pro Plus
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -208,6 +244,9 @@ export default async function Home() {
                       <td className="px-6 py-4 text-slate-800">{row.free}</td>
                       <td className="bg-sky-50/40 px-6 py-4 font-medium text-slate-900">
                         {row.pro}
+                      </td>
+                      <td className="bg-violet-50/40 px-6 py-4 font-medium text-slate-900">
+                        {row.proPlus}
                       </td>
                     </tr>
                   ))}
@@ -227,6 +266,14 @@ export default async function Home() {
                         className="inline-flex w-full justify-center rounded-full bg-sky-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-sky-500/25 transition hover:bg-sky-600 sm:w-auto"
                       >
                         Upgrade to Pro
+                      </Link>
+                    </td>
+                    <td className="bg-violet-50/40 px-6 py-6">
+                      <Link
+                        href="/settings?tab=billing"
+                        className="inline-flex w-full justify-center rounded-full bg-violet-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-violet-500/25 transition hover:bg-violet-600 sm:w-auto"
+                      >
+                        Go Pro Plus
                       </Link>
                     </td>
                   </tr>

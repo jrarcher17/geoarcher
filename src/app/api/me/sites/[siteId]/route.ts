@@ -46,7 +46,7 @@ export async function GET(
     url: link.site.url,
     geoKey: link.site.geoKey,
     plan,
-    canDeleteSite: plan === "pro",
+    canDeleteSite: plan !== "free",
     latestScanId: scans[0]?.id ?? null,
     latestCompleteScanId: latestComplete?.id ?? null,
     scans: scans.map((s) => ({
@@ -82,7 +82,7 @@ export async function DELETE(
   }
 
   const plan = await getPlanForUser(session.user.id);
-  if (plan !== "pro") {
+  if (plan === "free") {
     return NextResponse.json(
       {
         error:

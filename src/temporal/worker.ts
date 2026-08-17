@@ -1,6 +1,7 @@
 import path from "node:path";
 import { NativeConnection, Worker } from "@temporalio/worker";
 import * as activities from "./activities";
+import * as leadActivities from "./lead-activities";
 import { AUTOPILOT_TASK_QUEUE } from "./shared";
 
 /**
@@ -26,13 +27,13 @@ async function main() {
     namespace,
     taskQueue: AUTOPILOT_TASK_QUEUE,
     workflowsPath: path.join(__dirname, "workflows.ts"),
-    activities,
+    activities: { ...activities, ...leadActivities },
     // Crawls are heavy (Browserless sessions); keep concurrency conservative.
-    maxConcurrentActivityTaskExecutions: 4,
+    maxConcurrentActivityTaskExecutions: 6,
   });
 
   console.log(
-    `[worker] SEO Autopilot worker started (namespace=${namespace}, taskQueue=${AUTOPILOT_TASK_QUEUE}, address=${address})`
+    `[worker] GEO Archer worker started (namespace=${namespace}, taskQueue=${AUTOPILOT_TASK_QUEUE}, address=${address})`
   );
   await worker.run();
 }

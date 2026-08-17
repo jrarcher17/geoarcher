@@ -40,6 +40,7 @@ model UserSite {
 enum PlanTier {
   FREE
   PRO
+  PRO_PLUS
 }
 
 model User {
@@ -56,6 +57,7 @@ model User {
   sessions      Session[]
   accounts      Account[]
   userSites     UserSite[]
+  leadCampaigns LeadCampaign[]
 
   @@unique([email])
   @@map("user")
@@ -355,6 +357,125 @@ model SeoRankCheck {
   checkedAt  DateTime   @default(now())
 
   @@index([keywordId, checkedAt])
+}
+
+// ---- AI Lead Generation Machine (Pro Plus) ----
+
+enum LeadCampaignMode {
+  APPROVE_FIRST
+  AUTO_SEND
+}
+
+enum LeadCampaignStatus {
+  RUNNING
+  PAUSED
+  COMPLETE
+  CANCELLED
+  FAILED
+}
+
+enum ProspectStatus {
+  FOUND
+  ANALYZING
+  QUALIFIED
+  DISQUALIFIED
+  CONTACTED
+  REPLIED
+  BOUNCED
+  CLOSED
+  FAILED
+}
+
+enum OutreachEmailStatus {
+  DRAFT
+  QUEUED
+  SENT
+  DELIVERED
+  OPENED
+  BOUNCED
+  REPLIED
+}
+
+model LeadCampaign {
+  id          String             @id @default(cuid())
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  name        String
+  /// Apollo Organization Search inputs
+  industry    String
+  location    String?
+  employeeMin Int?
+  employeeMax Int?
+  targetCount Int
+  mode        LeadCampaignMode   @default(APPROVE_FIRST)
+  status      LeadCampaignStatus @default(RUNNING)
+  workflowId  String?
+  error       String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  prospects   Prospect[]
+
+  @@index([userId, createdAt])
+}
+
+model Prospect {
+  id             String          @id @default(cuid())
+  campaign       LeadCampaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaignId     String
+  companyName    String
+  domain         String
+  apolloOrgId    String?
+  status         ProspectStatus  @default(FOUND)
+  /// 0-100: higher = worse GEO/SEO = better prospect
+  score          Int?
+  scoreBreakdown Json?
+  /// Problems found: [{ id, severity, title, detail }]
+  problems       Json?
+  /// Crawl summary facts used for report/outreach generation
+  analysis       Json?
+  contactName    String?
+  contactTitle   String?
+  contactEmail   String?
+  /// Generated personalized report content (rendered at /r/[reportToken])
+  report         Json?
+  reportToken    String          @unique @default(cuid())
+  error          String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  emails         OutreachEmail[]
+
+  @@unique([campaignId, domain])
+  @@index([campaignId, status])
+  @@index([campaignId, score])
+}
+
+model OutreachEmail {
+  id            String              @id @default(cuid())
+  prospect      Prospect            @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  prospectId    String
+  subject       String
+  body          String
+  status        OutreachEmailStatus @default(DRAFT)
+  /// 0 = initial outreach, 1-2 = follow-ups
+  followUpIndex Int                 @default(0)
+  resendId      String?             @unique
+  error         String?
+  createdAt     DateTime            @default(now())
+  sentAt        DateTime?
+  deliveredAt   DateTime?
+  openedAt      DateTime?
+  bouncedAt     DateTime?
+  repliedAt     DateTime?
+
+  @@index([prospectId, followUpIndex])
+}
+
+/// Never email these addresses again (bounces, complaints, unsubscribes).
+model EmailSuppression {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  reason    String
+  createdAt DateTime @default(now())
 }
 
 model SeoSearchOpportunity {

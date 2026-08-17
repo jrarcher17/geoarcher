@@ -43,7 +43,7 @@ export async function checkAccess(siteId: string): Promise<AccessCheck> {
   if (!site.autopilotEnabled) {
     return { ok: false, reason: "Autopilot was turned off.", intervalMs };
   }
-  const hasPro = site.userSites.some((us) => us.user.plan === "PRO");
+  const hasPro = site.userSites.some((us) => us.user.plan !== "FREE");
   if (!hasPro) {
     return {
       ok: false,

@@ -6,3 +6,7 @@ export const AUTOPILOT_TASK_QUEUE =
 export function autopilotWorkflowId(siteId: string): string {
   return `seo-autopilot-${siteId}`;
 }
+
+export function leadGenWorkflowId(campaignId: string): string {
+  return `leadgen-campaign-${campaignId}`;
+}

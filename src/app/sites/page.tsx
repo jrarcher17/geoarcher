@@ -143,7 +143,7 @@ export default function SitesPage() {
                             : "never"}
                         </p>
                       </Link>
-                      {data.plan === "pro" && (
+                      {data.plan !== "free" && (
                         <button
                           type="button"
                           onClick={(e) => {
@@ -181,7 +181,7 @@ export default function SitesPage() {
           />
           <p className="mt-4 text-xs text-slate-400">
             Scans are saved to your workspace.
-            {data?.plan === "pro"
+            {data && data.plan !== "free"
               ? " Pro: use Remove on a site card or the site page header."
               : " Upgrade to Pro to remove sites from your workspace."}
           </p>

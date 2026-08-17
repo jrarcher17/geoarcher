@@ -81,7 +81,7 @@ export async function POST(request: Request) {
   await startScanPipeline({
     scanId: scan.id,
     siteId: site.id,
-    withSeoAudit: plan === "pro",
+    withSeoAudit: plan !== "free",
   });
 
   return NextResponse.json({ scanId: scan.id }, { status: 201 });

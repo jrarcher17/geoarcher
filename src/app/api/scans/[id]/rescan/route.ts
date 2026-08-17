@@ -55,7 +55,7 @@ export async function POST(
   await startScanPipeline({
     scanId: newScan.id,
     siteId: scan.siteId,
-    withSeoAudit: plan === "pro",
+    withSeoAudit: plan !== "free",
   });
 
   return NextResponse.json({ scanId: newScan.id }, { status: 201 });

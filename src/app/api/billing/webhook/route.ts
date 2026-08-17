@@ -46,10 +46,10 @@ export async function POST(request: Request) {
             : session.customer?.id;
 
         if (userId && customerId) {
+          // Tier is set by syncUserPlanFromSubscription below (price → plan).
           await prisma.user.update({
             where: { id: userId },
             data: {
-              plan: "PRO",
               stripeCustomerId: customerId,
               stripeSubscriptionId: subId ?? undefined,
             },

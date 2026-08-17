@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
     "playwright-core",
     "@prisma/adapter-pg",
     "@temporalio/client",
+    "@temporalio/activity",
   ],
 };
 

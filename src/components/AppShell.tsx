@@ -16,12 +16,14 @@ import {
   Link2,
   Menu,
   MessageCircleQuestion,
+  Plus,
   Radar,
   Rocket,
   Search,
   Settings,
   Swords,
   TrendingUp,
+  Target,
   Users,
   Wrench,
 } from "lucide-react";
@@ -66,6 +68,13 @@ const NAV = [
     ],
   },
   {
+    label: "Lead Machine",
+    items: [
+      { href: "/leads", label: "Campaigns", icon: Target },
+      { href: "/leads/new", label: "New campaign", icon: Plus },
+    ],
+  },
+  {
     label: "Operate",
     items: [
       { href: "/reports", label: "Reports", icon: FileBarChart },
@@ -77,6 +86,12 @@ const NAV = [
 function isActive(pathname: string, href: string): boolean {
   if (href === "/dashboard") return pathname === "/dashboard";
   if (href === "/seo") return pathname === "/seo";
+  if (href === "/leads") {
+    return (
+      pathname === "/leads" ||
+      (pathname.startsWith("/leads/") && !pathname.startsWith("/leads/new"))
+    );
+  }
   if (href === "/sites") return pathname === "/sites" || pathname.startsWith("/sites/");
   if (href === "/scans") return pathname === "/scans" || pathname.startsWith("/scan/");
   return pathname === href || pathname.startsWith(`${href}/`);

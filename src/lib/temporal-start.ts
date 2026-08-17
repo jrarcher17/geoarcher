@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { runScan } from "@/lib/scan-runner";
 import { runSeoAudit } from "@/lib/seo/audit-runner";
 import { getTemporalClient, temporalConfigured } from "@/temporal/client";
-import { AUTOPILOT_TASK_QUEUE } from "@/temporal/shared";
+import { AUTOPILOT_TASK_QUEUE, leadGenWorkflowId } from "@/temporal/shared";
 
 /**
  * Background job starters used by API routes. Temporal-first for durability
@@ -92,4 +92,22 @@ export async function startSeoAuditJob(options: {
 
   after(() => runSeoAuditInline(siteId, scanId));
   return "inline";
+}
+
+/**
+ * Start a Lead Generation campaign workflow. No `after()` fallback — this is a
+ * multi-hour job that must run on the Temporal worker.
+ */
+export async function startLeadGenCampaign(campaignId: string): Promise<void> {
+  if (!temporalConfigured()) {
+    throw new Error(
+      "The Lead Generation Machine needs Temporal configured. Set TEMPORAL_ADDRESS (or run `temporal server start-dev` locally) and start the worker."
+    );
+  }
+  const client = await getTemporalClient();
+  await client.workflow.start("leadGenCampaignWorkflow", {
+    workflowId: leadGenWorkflowId(campaignId),
+    taskQueue: AUTOPILOT_TASK_QUEUE,
+    args: [{ campaignId }],
+  });
 }

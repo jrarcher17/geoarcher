@@ -9,8 +9,8 @@ import { hostOf } from "@/lib/utils";
 
 function planFootnote(plan: CompetitorComparisonResult["plan"]): string {
   const pages = plan.competitorMaxPages.toLocaleString();
-  if (plan.id === "pro") {
-    return `Your Pro plan crawls up to ${pages} pages per competitor (up to ${plan.maxCompetitors} rivals per scan).`;
+  if (plan.id !== "free") {
+    return `Your ${plan.id === "proPlus" ? "Pro Plus" : "Pro"} plan crawls up to ${pages} pages per competitor (up to ${plan.maxCompetitors} rivals per scan).`;
   }
   return `Your Free plan crawls up to ${pages} pages per competitor. Upgrade to Pro in Settings → Billing for deeper coverage.`;
 }

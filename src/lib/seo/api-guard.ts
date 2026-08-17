@@ -19,7 +19,7 @@ export async function requireSeoAccess(
     return NextResponse.json({ error: "Not allowed." }, { status: 403 });
   }
   const plan = await getPlanForUser(userId);
-  if (plan !== "pro") {
+  if (plan === "free") {
     return NextResponse.json(
       {
         error: "SEO Autopilot is available on the Pro plan.",

@@ -19,7 +19,7 @@ export interface CompetitorComparisonCore {
 }
 
 export interface CompetitorPlanLimits {
-  id: "free" | "pro";
+  id: "free" | "pro" | "proPlus";
   label: string;
   competitorMaxPages: number;
   maxCompetitors: number;

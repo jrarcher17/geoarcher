@@ -34,6 +34,7 @@ interface SettingsPayload {
     proPriceLabel: string;
     limits: PlanLimits;
     stripeEnabled: boolean;
+    stripeProPlusEnabled: boolean;
     devBillingToggle: boolean;
     hasSubscription: boolean;
     usage: {
@@ -84,6 +85,18 @@ function PlanFeatureList({ plan }: { plan: PlanLimits }) {
           {plan.visibilityFeatures}
         </span>
       </li>
+      {plan.prospectsPerMonth > 0 && (
+        <li className="flex items-start gap-2">
+          <Check className="mt-0.5 h-4 w-4 shrink-0 text-violet-500" />
+          <span>
+            <strong className="font-medium text-slate-800">
+              AI Lead Generation Machine:
+            </strong>{" "}
+            {plan.prospectsPerMonth} prospects / month — automated discovery,
+            GEO/SEO scoring, personalized reports + outreach
+          </span>
+        </li>
+      )}
     </ul>
   );
 }
@@ -196,12 +209,22 @@ function SettingsPageInner() {
     }
   }
 
-  async function startCheckout() {
+  async function startCheckout(plan: "pro" | "proPlus") {
     setBillingBusy(true);
     try {
-      const res = await fetch("/api/billing/checkout", { method: "POST" });
+      const res = await fetch("/api/billing/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan }),
+      });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j.error ?? "Checkout failed.");
+      if (j.updated) {
+        // Existing subscription switched price in place — no redirect needed.
+        await loadSettings();
+        setBillingBusy(false);
+        return;
+      }
       if (typeof j.url === "string") {
         window.location.href = j.url;
         return;
@@ -375,7 +398,7 @@ function SettingsPageInner() {
             )}
             {checkoutNotice === "success" && (
               <p className="mb-4 rounded-none border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-                Payment received — your Pro plan should activate within a minute.
+                Payment received — your new plan should activate within a minute.
                 Refresh if limits haven&apos;t updated yet.
               </p>
             )}
@@ -383,7 +406,7 @@ function SettingsPageInner() {
               <p className="mb-4 text-sm text-slate-500">Checkout canceled.</p>
             )}
             <div className="mb-4 flex flex-wrap items-center gap-2">
-              <Badge tone={currentPlan === "pro" ? "info" : "neutral"}>
+              <Badge tone={currentPlan !== "free" ? "info" : "neutral"}>
                 Current: {settings.billing.planLabel}
               </Badge>
               <span className="text-sm text-slate-500">
@@ -397,7 +420,7 @@ function SettingsPageInner() {
               </span>
             </div>
 
-            {currentPlan === "pro" &&
+            {currentPlan !== "free" &&
               settings.billing.hasSubscription &&
               settings.billing.stripeEnabled && (
                 <div className="mb-4">
@@ -411,18 +434,23 @@ function SettingsPageInner() {
                 </div>
               )}
 
-            <div className="grid gap-4 lg:grid-cols-2">
-              {(["free", "pro"] as PlanId[]).map((id) => {
+            <div className="grid gap-4 lg:grid-cols-3">
+              {(["free", "pro", "proPlus"] as PlanId[]).map((id) => {
                 const plan = settings.plans[id];
                 const active = currentPlan === id;
-                const stripeOn = settings.billing.stripeEnabled;
+                const stripeOn =
+                  id === "proPlus"
+                    ? settings.billing.stripeProPlusEnabled
+                    : settings.billing.stripeEnabled;
                 const devToggle = settings.billing.devBillingToggle;
+                const paid = id !== "free";
                 return (
                   <Card
                     key={id}
                     className={cn(
                       "relative flex flex-col p-6",
-                      active && "border-sky-300 ring-1 ring-sky-200"
+                      active && "border-sky-300 ring-1 ring-sky-200",
+                      id === "proPlus" && !active && "border-violet-200"
                     )}
                   >
                     {active && (
@@ -433,9 +461,7 @@ function SettingsPageInner() {
                     <div className="flex flex-col gap-0.5">
                       <h3 className="text-lg font-bold text-slate-900">{plan.label}</h3>
                       <p className="text-sm font-semibold text-slate-800">
-                        {id === "pro"
-                          ? settings.billing.proPriceLabel || plan.priceLabel
-                          : plan.priceLabel}
+                        {plan.priceLabel}
                       </p>
                     </div>
                     <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -443,40 +469,42 @@ function SettingsPageInner() {
                     </p>
                     <PlanFeatureList plan={plan} />
                     <div className="mt-6 flex-1" />
-                    {id === "pro" ? (
+                    {paid ? (
                       active ? (
                         <Button className="w-full" disabled>
                           <Sparkles className="h-4 w-4" />
-                          You&apos;re on Pro
+                          You&apos;re on {plan.label}
                         </Button>
                       ) : stripeOn ? (
                         <Button
                           className="w-full"
                           disabled={billingBusy}
-                          onClick={() => void startCheckout()}
+                          onClick={() =>
+                            void startCheckout(id as "pro" | "proPlus")
+                          }
                         >
                           <Sparkles className="h-4 w-4" />
-                          Upgrade to Pro
+                          Upgrade to {plan.label}
                         </Button>
                       ) : devToggle ? (
                         <Button
                           className="w-full"
                           disabled={billingBusy}
-                          onClick={() => void switchPlan("pro")}
+                          onClick={() => void switchPlan(id)}
                         >
                           <Sparkles className="h-4 w-4" />
-                          Enable Pro (dev)
+                          Enable {plan.label} (dev)
                         </Button>
                       ) : (
                         <p className="text-center text-xs text-slate-400">
-                          Pro checkout is not configured yet.
+                          {plan.label} checkout is not configured yet.
                         </p>
                       )
                     ) : active ? (
                       <Button variant="secondary" className="w-full" disabled>
                         Current plan
                       </Button>
-                    ) : devToggle && currentPlan === "pro" ? (
+                    ) : devToggle ? (
                       <Button
                         variant="secondary"
                         className="w-full"

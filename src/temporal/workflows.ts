@@ -9,6 +9,7 @@ import {
 } from "@temporalio/workflow";
 import type * as activities from "./activities";
 import type { ScanChanges, StepResult } from "./activities";
+import type * as leadActivities from "./lead-activities";
 
 /**
  * Continuous SEO Autopilot: one workflow per site, looping
@@ -186,5 +187,163 @@ export async function siteAutopilotWorkflow(input: AutopilotInput): Promise<void
   await continueAsNew<typeof siteAutopilotWorkflow>({
     siteId: input.siteId,
     paused,
+  });
+}
+
+// ---- AI Lead Generation Machine ----
+
+const leadPipeline = proxyActivities<typeof leadActivities>({
+  startToCloseTimeout: "20 minutes",
+  heartbeatTimeout: "2 minutes",
+  retry: { maximumAttempts: 3, initialInterval: "20 seconds" },
+});
+
+const leadDb = proxyActivities<typeof leadActivities>({
+  startToCloseTimeout: "1 minute",
+  retry: { maximumAttempts: 5, initialInterval: "2 seconds" },
+});
+
+export const leadPauseSignal = defineSignal("leadPause");
+export const leadResumeSignal = defineSignal("leadResume");
+export const leadCancelSignal = defineSignal("leadCancel");
+
+export type LeadGenPhase = "discover" | "analyze" | "followup";
+
+export interface LeadGenStatus {
+  paused: boolean;
+  cancelled: boolean;
+  phase: LeadGenPhase;
+  currentStep: string;
+}
+
+export const leadStatusQuery = defineQuery<LeadGenStatus>("leadStatus");
+
+export interface LeadGenInput {
+  campaignId: string;
+  paused?: boolean;
+  phase?: LeadGenPhase;
+}
+
+const ANALYZE_BATCH = 5;
+
+/**
+ * One workflow per campaign: find companies → analyze/score in batches →
+ * reveal + report + outreach for qualified leads → daily follow-up pass.
+ * continueAsNew between batches so history stays bounded.
+ */
+export async function leadGenCampaignWorkflow(
+  input: LeadGenInput
+): Promise<void> {
+  let paused = input.paused ?? false;
+  let cancelled = false;
+  const phase: LeadGenPhase = input.phase ?? "discover";
+  let currentStep = "starting";
+
+  setHandler(leadPauseSignal, () => {
+    paused = true;
+  });
+  setHandler(leadResumeSignal, () => {
+    paused = false;
+  });
+  setHandler(leadCancelSignal, () => {
+    cancelled = true;
+    paused = false;
+  });
+  setHandler(leadStatusQuery, () => ({
+    paused,
+    cancelled,
+    phase,
+    currentStep,
+  }));
+
+  const waitIfPaused = async () => {
+    if (paused && !cancelled) {
+      currentStep = "paused";
+      await condition(() => !paused || cancelled);
+    }
+  };
+
+  const stopIfNeeded = async (): Promise<boolean> => {
+    if (cancelled) {
+      await leadDb.markCampaignStatus(input.campaignId, "CANCELLED");
+      return true;
+    }
+    const access = await leadDb.checkLeadGenAccess(input.campaignId);
+    if (!access.ok) {
+      await leadDb.markCampaignStatus(
+        input.campaignId,
+        "FAILED",
+        access.reason
+      );
+      return true;
+    }
+    return false;
+  };
+
+  await waitIfPaused();
+  if (await stopIfNeeded()) return;
+
+  if (phase === "discover") {
+    currentStep = "finding companies";
+    await leadPipeline.findCompanies(input.campaignId);
+    await continueAsNew<typeof leadGenCampaignWorkflow>({
+      campaignId: input.campaignId,
+      paused,
+      phase: "analyze",
+    });
+    return;
+  }
+
+  if (phase === "analyze") {
+    currentStep = "analyzing prospects";
+    const ids = await leadDb.listPendingProspects(
+      input.campaignId,
+      ANALYZE_BATCH
+    );
+    if (ids.length === 0) {
+      await continueAsNew<typeof leadGenCampaignWorkflow>({
+        campaignId: input.campaignId,
+        paused,
+        phase: "followup",
+      });
+      return;
+    }
+
+    const access = await leadDb.checkLeadGenAccess(input.campaignId);
+    await Promise.all(
+      ids.map(async (id) => {
+        const outcome = await leadPipeline.analyzeProspect(id);
+        if (outcome !== "QUALIFIED") return;
+        const prep = await leadPipeline.prepareOutreach(id);
+        if (prep === "ready" && access.mode === "AUTO_SEND") {
+          await leadPipeline.sendOutreach(id);
+        }
+      })
+    );
+
+    await continueAsNew<typeof leadGenCampaignWorkflow>({
+      campaignId: input.campaignId,
+      paused,
+      phase: "analyze",
+    });
+    return;
+  }
+
+  // followup phase — daily pass until nothing is pending.
+  currentStep = "follow-ups";
+  const result = await leadPipeline.processFollowUps(input.campaignId);
+  if (result.pending === 0) {
+    await leadDb.markCampaignStatus(input.campaignId, "COMPLETE");
+    return;
+  }
+
+  currentStep = "waiting for follow-up window";
+  await condition(() => cancelled, "24 hours");
+  if (await stopIfNeeded()) return;
+
+  await continueAsNew<typeof leadGenCampaignWorkflow>({
+    campaignId: input.campaignId,
+    paused,
+    phase: "followup",
   });
 }

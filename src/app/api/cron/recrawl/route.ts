@@ -63,7 +63,7 @@ export async function POST(request: Request) {
   // ---- SEO Autopilot upkeep (Pro sites only, not managed by Temporal) ----
   const proSites = await prisma.site.findMany({
     where: {
-      userSites: { some: { user: { plan: "PRO" } } },
+      userSites: { some: { user: { plan: { in: ["PRO", "PRO_PLUS"] } } } },
       autopilotEnabled: false,
     },
     select: { id: true },

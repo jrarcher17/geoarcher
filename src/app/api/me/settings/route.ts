@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
-import { resolveProPriceLabel } from "@/lib/billing-price";
+import {
+  resolveProPlusPriceLabel,
+  resolveProPriceLabel,
+} from "@/lib/billing-price";
 import { prisma } from "@/lib/db";
 import {
   devBillingToggleAllowed,
   getPlans,
   planFromDb,
   stripeConfigured,
+  stripeProPlusConfigured,
 } from "@/lib/plans";
 import {
   countUserScansThisMonth,
@@ -36,11 +40,15 @@ export async function GET() {
     return NextResponse.json({ error: "User not found." }, { status: 404 });
   }
 
-  const proPrice = await resolveProPriceLabel();
+  const [proPrice, proPlusPrice] = await Promise.all([
+    resolveProPriceLabel(),
+    resolveProPlusPriceLabel(),
+  ]);
   const basePlans = getPlans();
   const plans = {
     ...basePlans,
     pro: { ...basePlans.pro, priceLabel: proPrice },
+    proPlus: { ...basePlans.proPlus, priceLabel: proPlusPrice },
   };
   const planId = planFromDb(user.plan);
   const limits = plans[planId];
@@ -60,6 +68,7 @@ export async function GET() {
       proPriceLabel: proPrice,
       limits,
       stripeEnabled: stripeConfigured(),
+      stripeProPlusEnabled: stripeProPlusConfigured(),
       devBillingToggle: devBillingToggleAllowed(),
       hasSubscription: Boolean(user.stripeSubscriptionId),
       usage: {

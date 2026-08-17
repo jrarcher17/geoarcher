@@ -1,6 +1,22 @@
 import type Stripe from "stripe";
+import type { PlanTier } from "@/generated/prisma/enums";
 import { prisma } from "./db";
 import { getStripe } from "./stripe";
+
+/** Resolve the plan tier a Stripe subscription grants. */
+function tierFromSubscription(subscription: Stripe.Subscription): PlanTier {
+  const active =
+    subscription.status === "active" ||
+    subscription.status === "trialing" ||
+    subscription.status === "past_due";
+  if (!active) return "FREE";
+
+  const proPlusPriceId = process.env["STRIPE_PRICE_ID_PRO_PLUS"]?.trim();
+  const isProPlus =
+    Boolean(proPlusPriceId) &&
+    subscription.items.data.some((item) => item.price.id === proPlusPriceId);
+  return isProPlus ? "PRO_PLUS" : "PRO";
+}
 
 export async function syncUserPlanFromSubscription(
   subscription: Stripe.Subscription
@@ -11,16 +27,13 @@ export async function syncUserPlanFromSubscription(
       ? subscription.customer
       : subscription.customer.id;
 
-  const active =
-    subscription.status === "active" ||
-    subscription.status === "trialing" ||
-    subscription.status === "past_due";
+  const plan = tierFromSubscription(subscription);
 
   if (userId) {
     await prisma.user.update({
       where: { id: userId },
       data: {
-        plan: active ? "PRO" : "FREE",
+        plan,
         stripeCustomerId: customerId,
         stripeSubscriptionId: subscription.id,
       },
@@ -36,7 +49,7 @@ export async function syncUserPlanFromSubscription(
     await prisma.user.update({
       where: { id: bySub.id },
       data: {
-        plan: active ? "PRO" : "FREE",
+        plan,
         stripeCustomerId: customerId,
         stripeSubscriptionId: subscription.id,
       },
@@ -52,7 +65,7 @@ export async function syncUserPlanFromSubscription(
     await prisma.user.update({
       where: { id: byCustomer.id },
       data: {
-        plan: active ? "PRO" : "FREE",
+        plan,
         stripeSubscriptionId: subscription.id,
       },
     });

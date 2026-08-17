@@ -9,6 +9,7 @@ export const PROTECTED_PATH_PREFIXES = [
   "/opportunities",
   "/competitors",
   "/seo",
+  "/leads",
   "/reports",
   "/settings",
 ] as const;
@@ -21,6 +22,7 @@ export function isProtectedAppPath(pathname: string): boolean {
   if (pathname === "/opportunities") return true;
   if (pathname === "/competitors") return true;
   if (pathname === "/seo" || pathname.startsWith("/seo/")) return true;
+  if (pathname === "/leads" || pathname.startsWith("/leads/")) return true;
   if (pathname === "/reports") return true;
   if (pathname === "/settings") return true;
   if (pathname === "/sites" || pathname.startsWith("/sites/")) return true;

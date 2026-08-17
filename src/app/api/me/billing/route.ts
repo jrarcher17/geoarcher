@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { devBillingToggleAllowed } from "@/lib/plans";
+import { devBillingToggleAllowed, planFromDb } from "@/lib/plans";
 import { getServerSession } from "@/lib/session";
 
 /** Dev-only plan toggle. Production upgrades go through Stripe Checkout. */
@@ -18,7 +18,14 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => null);
-  const plan = body?.plan === "free" ? "FREE" : body?.plan === "pro" ? "PRO" : null;
+  const plan =
+    body?.plan === "free"
+      ? ("FREE" as const)
+      : body?.plan === "pro"
+        ? ("PRO" as const)
+        : body?.plan === "proPlus"
+          ? ("PRO_PLUS" as const)
+          : null;
   if (!plan) {
     return NextResponse.json({ error: "Invalid plan." }, { status: 400 });
   }
@@ -28,5 +35,5 @@ export async function POST(request: Request) {
     data: { plan },
   });
 
-  return NextResponse.json({ ok: true, plan: plan === "PRO" ? "pro" : "free" });
+  return NextResponse.json({ ok: true, plan: planFromDb(plan) });
 }

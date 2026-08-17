@@ -1,3 +1,4 @@
+import { proPlusPriceLabel, proPriceLabel } from "./plans";
 import { getStripe } from "./stripe";
 
 /** Dynamic key lookup so Next.js does not freeze env at build time. */
@@ -21,15 +22,26 @@ function formatStripePrice(
   return formatted;
 }
 
-/** Pro card display price: env label, else Stripe Price, else default. */
-export async function resolveProPriceLabel(): Promise<string> {
-  const fromEnv = "$99 / mo";
+type PaidPlanId = "pro" | "proPlus";
+
+const PRICE_ENV_KEY: Record<PaidPlanId, string> = {
+  pro: "STRIPE_PRICE_ID_PRO",
+  proPlus: "STRIPE_PRICE_ID_PRO_PLUS",
+};
+
+function defaultLabel(plan: PaidPlanId): string {
+  return plan === "proPlus" ? proPlusPriceLabel() : proPriceLabel();
+}
+
+/** Card display price: env label, else Stripe Price, else default. */
+export async function resolvePlanPriceLabel(plan: PaidPlanId): Promise<string> {
+  const fromEnv = env(plan === "proPlus" ? "PRO_PLUS_PRICE_LABEL" : "PRO_PRICE_LABEL");
   if (fromEnv) return fromEnv;
 
-  const priceId = env("STRIPE_PRICE_ID_PRO");
+  const priceId = env(PRICE_ENV_KEY[plan]);
   const stripeKey = env("STRIPE_SECRET_KEY");
   if (!priceId || !stripeKey || priceId.includes("...")) {
-    return "$99 / mo";
+    return defaultLabel(plan);
   }
 
   try {
@@ -45,5 +57,13 @@ export async function resolveProPriceLabel(): Promise<string> {
     console.warn("[billing] Stripe price lookup failed:", err);
   }
 
-  return "$49 / mo";
+  return defaultLabel(plan);
+}
+
+export async function resolveProPriceLabel(): Promise<string> {
+  return resolvePlanPriceLabel("pro");
+}
+
+export async function resolveProPlusPriceLabel(): Promise<string> {
+  return resolvePlanPriceLabel("proPlus");
 }
