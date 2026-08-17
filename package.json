@@ -10,7 +10,8 @@
     "postinstall": "prisma generate",
     "setup:browsers": "playwright install chromium",
     "db:migrate": "prisma migrate deploy",
-    "db:generate": "prisma generate"
+    "db:generate": "prisma generate",
+    "worker": "tsx --env-file=.env src/temporal/worker.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",
@@ -18,6 +19,10 @@
     "@radix-ui/react-accordion": "^1.2.20",
     "@radix-ui/react-dialog": "^1.1.23",
     "@radix-ui/react-tabs": "^1.1.21",
+    "@temporalio/activity": "^1.22.0",
+    "@temporalio/client": "^1.22.0",
+    "@temporalio/worker": "^1.22.0",
+    "@temporalio/workflow": "^1.22.0",
     "better-auth": "^1.6.25",
     "cheerio": "^1.2.0",
     "clsx": "^2.1.1",
@@ -46,6 +51,7 @@
     "eslint-config-next": "16.2.12",
     "prisma": "^7.9.1",
     "tailwindcss": "^4",
+    "tsx": "^4.23.12",
     "typescript": "^5"
   }
 }

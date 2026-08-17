@@ -1,10 +1,10 @@
 import { NextResponse, after } from "next/server";
 import { prisma } from "@/lib/db";
 import { findSitesDueForRecrawl } from "@/lib/site-history";
-import { runScan } from "@/lib/scan-runner";
-import { latestAuditableScan, runSeoAudit } from "@/lib/seo/audit-runner";
+import { latestAuditableScan } from "@/lib/seo/audit-runner";
 import { dataForSeoConfigured } from "@/lib/seo/dataforseo";
 import { lastRankCheckAt, runRankCheck } from "@/lib/seo/rank-tracker";
+import { startScanPipeline, startSeoAuditJob } from "@/lib/temporal-start";
 
 export const maxDuration = 300;
 
@@ -30,7 +30,16 @@ export async function POST(request: Request) {
   }
 
   const intervalDays = Number(process.env.RECRAWL_INTERVAL_DAYS ?? 7);
-  const due = await findSitesDueForRecrawl(intervalDays);
+  const dueAll = await findSitesDueForRecrawl(intervalDays);
+
+  // Autopilot-enabled sites are managed by their Temporal workflow — the cron
+  // must not double-crawl or double-audit them.
+  const autopilotSites = await prisma.site.findMany({
+    where: { autopilotEnabled: true },
+    select: { id: true },
+  });
+  const autopilotIds = new Set(autopilotSites.map((s) => s.id));
+  const due = dueAll.filter((site) => !autopilotIds.has(site.siteId));
   const started: string[] = [];
 
   for (const site of due) {
@@ -44,12 +53,19 @@ export async function POST(request: Request) {
 
     const scan = await prisma.scan.create({ data: { siteId: site.siteId } });
     started.push(scan.id);
-    after(() => runScan(scan.id));
+    await startScanPipeline({
+      scanId: scan.id,
+      siteId: site.siteId,
+      withSeoAudit: false, // the upkeep loop below audits Pro sites
+    });
   }
 
-  // ---- SEO Autopilot upkeep (Pro sites only) ----
+  // ---- SEO Autopilot upkeep (Pro sites only, not managed by Temporal) ----
   const proSites = await prisma.site.findMany({
-    where: { userSites: { some: { user: { plan: "PRO" } } } },
+    where: {
+      userSites: { some: { user: { plan: "PRO" } } },
+      autopilotEnabled: false,
+    },
     select: { id: true },
   });
 
@@ -67,11 +83,7 @@ export async function POST(request: Request) {
       });
       if (!existing) {
         seoAudits.push(site.id);
-        after(() =>
-          runSeoAudit(site.id, scan.id).catch((err) =>
-            console.error(`[cron] SEO audit failed for site ${site.id}:`, err)
-          )
-        );
+        await startSeoAuditJob({ siteId: site.id, scanId: scan.id });
       }
     }
 

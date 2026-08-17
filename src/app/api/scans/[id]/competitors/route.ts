@@ -1,12 +1,12 @@
-import { NextResponse, after } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import {
   buildCompetitorComparison,
   rowFromScan,
 } from "@/lib/competitor-compare";
 import { getPlanLimits } from "@/lib/plans";
-import { runScan } from "@/lib/scan-runner";
 import { getServerSession } from "@/lib/session";
+import { startScanPipeline } from "@/lib/temporal-start";
 import { assertCanStartScan, getPlanForScanId, userOwnsScan } from "@/lib/user-plan";
 
 export const maxDuration = 300;
@@ -204,7 +204,11 @@ export async function POST(
     });
     existingUrls.add(siteUrl);
     started.push(scan.id);
-    after(() => runScan(scan.id));
+    await startScanPipeline({
+      scanId: scan.id,
+      siteId: site.id,
+      withSeoAudit: false, // competitor sites never get opportunities/plans
+    });
   }
 
   if (started.length === 0) {

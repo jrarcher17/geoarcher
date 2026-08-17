@@ -39,7 +39,7 @@ const PRO_PLAN_BASE: Omit<PlanLimits, "priceLabel"> = {
   competitorMaxPages: 200,
   scansPerMonth: 200,
   visibilityFeatures:
-    "Full visibility scoring + deeper crawl coverage for large sites",
+    "Full visibility scoring, deeper crawls + continuous SEO Autopilot",
 };
 
 export function getPlans(): Record<PlanId, PlanLimits> {

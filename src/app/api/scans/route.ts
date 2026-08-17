@@ -1,8 +1,12 @@
-import { NextResponse, after } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { runScan } from "@/lib/scan-runner";
 import { getServerSession } from "@/lib/session";
-import { assertCanAddSite, assertCanStartScan } from "@/lib/user-plan";
+import { startScanPipeline } from "@/lib/temporal-start";
+import {
+  assertCanAddSite,
+  assertCanStartScan,
+  getPlanForUser,
+} from "@/lib/user-plan";
 
 export const maxDuration = 800;
 
@@ -71,8 +75,13 @@ export async function POST(request: Request) {
     create: { userId: session.user.id, siteId: site.id },
   });
 
-  after(async () => {
-    await runScan(scan.id);
+  // Pro sites get the SEO audit chained onto the scan so SEO Autopilot data
+  // is ready without any further user action.
+  const plan = await getPlanForUser(session.user.id);
+  await startScanPipeline({
+    scanId: scan.id,
+    siteId: site.id,
+    withSeoAudit: plan === "pro",
   });
 
   return NextResponse.json({ scanId: scan.id }, { status: 201 });

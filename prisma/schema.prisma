@@ -21,6 +21,8 @@ model Site {
   seoLinkSuggestions     SeoLinkSuggestion[]
   seoSearchOpportunities SeoSearchOpportunity[]
   seoKeywords            SeoKeyword[]
+  autopilotEnabled       Boolean                @default(false)
+  autopilotRuns          AutopilotRun[]
 }
 
 model UserSite {
@@ -303,6 +305,30 @@ model SeoLinkSuggestion {
 
   @@unique([siteId, fromUrl, toUrl])
   @@index([siteId, status])
+}
+
+enum AutopilotRunStatus {
+  RUNNING
+  COMPLETE
+  FAILED
+  STOPPED
+}
+
+model AutopilotRun {
+  id            String             @id @default(cuid())
+  site          Site               @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId        String
+  workflowRunId String?
+  status        AutopilotRunStatus @default(RUNNING)
+  /// Per-step outcomes: [{ step, status, detail }]
+  steps         Json?
+  /// Diff vs previous scan: { newPages, removedPages, changedPages }
+  changes       Json?
+  error         String?
+  startedAt     DateTime           @default(now())
+  finishedAt    DateTime?
+
+  @@index([siteId, startedAt])
 }
 
 model SeoKeyword {

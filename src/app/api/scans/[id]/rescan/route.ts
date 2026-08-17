@@ -1,8 +1,12 @@
-import { NextResponse, after } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { runScan } from "@/lib/scan-runner";
 import { getServerSession } from "@/lib/session";
-import { assertCanStartScan, userOwnsScan } from "@/lib/user-plan";
+import { startScanPipeline } from "@/lib/temporal-start";
+import {
+  assertCanStartScan,
+  getPlanForUser,
+  userOwnsScan,
+} from "@/lib/user-plan";
 
 export const maxDuration = 800;
 
@@ -47,8 +51,11 @@ export async function POST(
     data: { siteId: scan.siteId },
   });
 
-  after(async () => {
-    await runScan(newScan.id);
+  const plan = await getPlanForUser(session.user.id);
+  await startScanPipeline({
+    scanId: newScan.id,
+    siteId: scan.siteId,
+    withSeoAudit: plan === "pro",
   });
 
   return NextResponse.json({ scanId: newScan.id }, { status: 201 });

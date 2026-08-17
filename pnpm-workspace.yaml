@@ -6,3 +6,5 @@ allowBuilds:
   prisma: true
   esbuild: true
   core-js: true
+  '@swc/core': true
+  protobufjs: true

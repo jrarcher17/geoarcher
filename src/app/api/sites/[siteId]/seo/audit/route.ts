@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { after } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireSeoAccess } from "@/lib/seo/api-guard";
-import { latestAuditableScan, runSeoAudit } from "@/lib/seo/audit-runner";
+import { latestAuditableScan } from "@/lib/seo/audit-runner";
+import { startSeoAuditJob } from "@/lib/temporal-start";
 
 export const maxDuration = 300;
 
@@ -37,21 +37,7 @@ export async function POST(
     return NextResponse.json({ started: false, auditId: running.id, scanId: scan.id });
   }
 
-  after(async () => {
-    try {
-      await runSeoAudit(siteId, scan.id);
-    } catch (err) {
-      console.error("[seo-audit] failed:", err);
-      await prisma.seoAudit.updateMany({
-        where: { scanId: scan.id, status: "RUNNING" },
-        data: {
-          status: "FAILED",
-          error: err instanceof Error ? err.message : "SEO audit failed.",
-          finishedAt: new Date(),
-        },
-      });
-    }
-  });
+  await startSeoAuditJob({ siteId, scanId: scan.id });
 
   return NextResponse.json({ started: true, scanId: scan.id }, { status: 202 });
 }

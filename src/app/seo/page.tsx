@@ -15,6 +15,7 @@ import { FadeIn } from "@/components/cards/FadeIn";
 import { ScoreCard } from "@/components/cards/ScoreCard";
 import { TrendChart } from "@/components/cards/TrendChart";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AutopilotCard } from "@/components/seo/AutopilotCard";
 import { SeoShell } from "@/components/seo/SeoShell";
 import { downloadSeoReportPdf } from "@/lib/seo-report-pdf";
 import { useSeoAutopilot } from "@/lib/useSeoAutopilot";
@@ -198,6 +199,9 @@ function SeoOverviewInner() {
               />
             ))}
           </div>
+
+          {/* Continuous Autopilot (Temporal) */}
+          {overview && <AutopilotCard siteId={overview.siteId} />}
 
           {/* Unified SEO + GEO strengths and opportunities */}
           {(overview?.geoComponents.length ?? 0) > 0 && (
