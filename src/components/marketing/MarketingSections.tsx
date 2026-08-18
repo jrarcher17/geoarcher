@@ -1,7 +1,6 @@
 import Link from "next/link";
 import {
   ArrowRight,
-  BarChart3,
   FileSearch,
   Gauge,
   Globe,
@@ -15,10 +14,10 @@ import { BrandWordmark } from "@/components/BrandWordmark";
 export function MarketingFooter() {
   return (
     <footer className="border-t border-slate-200 bg-white">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-3">
-        <div>
+      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-4">
+        <div className="md:col-span-2">
           <BrandWordmark />
-          <p className="mt-3 text-sm leading-relaxed text-slate-500">
+          <p className="mt-3 max-w-sm text-sm leading-relaxed text-slate-500">
             GEO Archer helps you see your website the way AI assistants do —
             then fix what they cannot cite.
           </p>
@@ -31,12 +30,12 @@ export function MarketingFooter() {
               { href: "/#autopilot", label: "SEO Autopilot" },
               { href: "/#pricing", label: "Pricing" },
               { href: "/#guides", label: "Guides" },
-              { href: "/login", label: "Sign in" },
             ],
           },
           {
-            title: "Legal",
+            title: "Company",
             links: [
+              { href: "/login", label: "Sign in" },
               { href: "/terms", label: "Terms of Service" },
               { href: "/privacy", label: "Privacy Policy" },
             ],
@@ -71,14 +70,17 @@ export function FinalCta({ signUpDisabled = false }: { signUpDisabled?: boolean 
   const label = signUpDisabled ? "Sign in" : "Get started for free";
 
   return (
-    <section className="mx-4 mb-16 sm:mx-6">
-      <div className="mx-auto max-w-6xl overflow-hidden rounded-none bg-slate-900 px-8 py-14 text-center shadow-xl sm:px-16">
-        <h2 className="text-2xl font-bold text-white sm:text-3xl">
+    <section className="px-4 py-8 sm:px-6">
+      <div className="mx-auto max-w-6xl overflow-hidden rounded-3xl bg-slate-900 px-8 py-16 text-center sm:px-16">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-400">
+          Get started with GEO Archer today
+        </p>
+        <h2 className="mt-3 text-2xl font-bold text-white sm:text-4xl">
           Ready to see how AI understands your site?
         </h2>
         <p className="mx-auto mt-3 max-w-xl text-slate-400">
-          Run your first crawl in minutes. Free tier includes full scoring on one
-          site — upgrade when you need depth and volume.
+          Run your first crawl in minutes. Free includes full scoring on one
+          site — upgrade when you need Autopilot, depth, and volume.
         </p>
         <Link
           href={href}
@@ -95,24 +97,18 @@ export function FinalCta({ signUpDisabled = false }: { signUpDisabled?: boolean 
 export const FEATURE_CARDS = [
   {
     icon: Globe,
-    tint: "bg-sky-50 border-sky-100",
-    iconClass: "text-sky-600 bg-sky-100",
     title: "AI website crawl",
     body: "GEO-powered crawl builds the semantic map assistants infer: topics, entities, and gaps — not just a page list.",
     bullets: ["Up to 200 pages on Pro", "Schema & technical audit", "Page-level health"],
   },
   {
     icon: Radar,
-    tint: "bg-violet-50 border-violet-100",
-    iconClass: "text-violet-600 bg-violet-100",
     title: "Visibility & GEO scores",
     body: "Understanding score, 13-component GEO score, and modeled visibility across ChatGPT, Claude, Gemini, Perplexity, and Copilot.",
     bullets: ["Executive dashboard KPIs", "Trend over rescans", "Simulation prompts"],
   },
   {
     icon: Users,
-    tint: "bg-sky-50 border-sky-100",
-    iconClass: "text-sky-600 bg-sky-100",
     title: "Competitor benchmarks",
     body: "Compare your scores against up to five rival sites on the same crawl budget — see where assistants would prefer them.",
     bullets: ["Side-by-side scores", "200-page competitor budget", "Gap-driven actions"],
@@ -142,42 +138,102 @@ export const AUTOPILOT_CARDS = [
   },
 ] as const;
 
-export const PLATFORM_POINTS = [
-  "Sites workspace with 10-tab reports per property",
-  "SEO Autopilot: continuous audits, rankings, and change detection",
-  "Recommendations, content opportunities, and one-click drafts",
-  "PDF exports and scan history for stakeholders",
+const VISIBILITY_ROWS = [
+  { name: "Your site", value: 71, you: true },
+  { name: "Competitor A", value: 84 },
+  { name: "Competitor B", value: 62 },
+  { name: "Competitor C", value: 55 },
 ] as const;
 
-export function DashboardMock() {
+export function HeroDashboardMock() {
   return (
-    <div className="rounded-none border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/50">
-      <div className="mb-4 flex items-center justify-between">
-        <span className="text-sm font-semibold text-slate-800">Usage summary</span>
-        <BarChart3 className="h-4 w-4 text-sky-500" />
+    <div className="bg-[#0b1220] p-4 text-left sm:p-6">
+      <div className="mb-5 flex items-center justify-between">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-sky-400">
+            Overview
+          </p>
+          <p className="text-sm font-semibold text-white">yoursite.com</p>
+        </div>
+        <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-300">
+          Scan complete
+        </span>
       </div>
-      <div className="flex items-end gap-2 h-32">
-        {[40, 65, 52, 78, 71, 88, 74].map((h, i) => (
+      <div className="grid gap-3 sm:grid-cols-3">
+        {[
+          { label: "GEO score", value: "71" },
+          { label: "Understanding", value: "68" },
+          { label: "Trend", value: "+6" },
+        ].map((kpi) => (
           <div
-            key={i}
-            className="flex-1 rounded-t-md bg-gradient-to-t from-sky-500 to-sky-300 opacity-90"
-            style={{ height: `${h}%` }}
-          />
+            key={kpi.label}
+            className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
+          >
+            <p className="text-[11px] text-slate-400">{kpi.label}</p>
+            <p className="mt-1 text-2xl font-bold text-white">{kpi.value}</p>
+          </div>
         ))}
       </div>
-      <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
-        <div className="rounded-none bg-slate-50 py-2">
-          <p className="font-bold text-slate-800">71</p>
-          <p className="text-slate-500">GEO</p>
+      <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+        <p className="text-xs font-semibold text-slate-300">
+          Modeled assistant visibility
+        </p>
+        <div className="mt-3 space-y-2.5">
+          {[
+            { name: "ChatGPT", w: "72%" },
+            { name: "Claude", w: "64%" },
+            { name: "Gemini", w: "58%" },
+            { name: "Perplexity", w: "69%" },
+          ].map((row) => (
+            <div key={row.name} className="flex items-center gap-3">
+              <span className="w-20 shrink-0 text-[11px] text-slate-400">
+                {row.name}
+              </span>
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-sky-500 to-sky-300"
+                  style={{ width: row.w }}
+                />
+              </div>
+            </div>
+          ))}
         </div>
-        <div className="rounded-none bg-slate-50 py-2">
-          <p className="font-bold text-slate-800">68</p>
-          <p className="text-slate-500">Understand</p>
-        </div>
-        <div className="rounded-none bg-slate-50 py-2">
-          <p className="font-bold text-sky-600">+6</p>
-          <p className="text-slate-500">Trend</p>
-        </div>
+      </div>
+    </div>
+  );
+}
+
+export function VisibilityIndexMock() {
+  return (
+    <div className="overflow-hidden rounded-3xl border border-white/10 bg-[#0b1220]">
+      <div className="border-b border-white/10 px-6 py-4">
+        <p className="text-xs font-semibold uppercase tracking-wider text-sky-400">
+          AI visibility index
+        </p>
+        <p className="mt-1 text-sm text-slate-400">
+          Example competitive view after a scan — not live rankings inside the
+          assistants.
+        </p>
+      </div>
+      <div className="divide-y divide-white/5 px-6 py-2">
+        {VISIBILITY_ROWS.map((row) => (
+          <div key={row.name} className="flex items-center gap-4 py-4">
+            <span
+              className={`w-32 shrink-0 text-sm font-medium ${row.you ? "text-sky-300" : "text-slate-300"}`}
+            >
+              {row.name}
+            </span>
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
+              <div
+                className={`h-full rounded-full ${row.you ? "bg-sky-400" : "bg-violet-400/80"}`}
+                style={{ width: `${row.value}%` }}
+              />
+            </div>
+            <span className="w-8 text-right text-sm font-semibold text-white">
+              {row.value}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );

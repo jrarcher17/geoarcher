@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { RefreshCw, Rocket, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { Globe, Plus, RefreshCw, Rocket, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { ScanForm } from "@/components/ScanForm";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { useSeoAutopilot } from "@/lib/useSeoAutopilot";
 import { hostOf } from "@/lib/utils";
@@ -48,7 +51,9 @@ export function SeoShell({
   autopilot: Autopilot;
   children: React.ReactNode;
 }) {
-  const { overview, error, upgradeRequired, loading, auditRunning } = autopilot;
+  const { overview, error, upgradeRequired, loading, auditRunning, plan } =
+    autopilot;
+  const [addOpen, setAddOpen] = useState(false);
 
   let body: React.ReactNode;
 
@@ -86,17 +91,16 @@ export function SeoShell({
     );
   } else if (autopilot.sites.length === 0) {
     body = (
-      <Card className="mx-auto max-w-xl p-10 text-center">
-        <Rocket className="mx-auto h-8 w-8 text-slate-300" />
+      <Card className="p-10 text-center">
+        <Globe className="mx-auto h-8 w-8 text-slate-300" />
         <p className="mt-3 font-medium text-slate-700">No sites yet</p>
         <p className="mt-1 text-sm text-slate-400">
-          Add and scan a website to start using SEO Autopilot.
+          Add a URL to crawl, score, and track over time.
         </p>
-        <div className="mt-5">
-          <Link href="/sites">
-            <Button variant="secondary">Go to Sites</Button>
-          </Link>
-        </div>
+        <Button className="mt-6" onClick={() => setAddOpen(true)}>
+          <Plus className="h-4 w-4" />
+          Add a site
+        </Button>
       </Card>
     );
   } else if (overview && !overview.latestScanId) {
@@ -136,6 +140,7 @@ export function SeoShell({
   }
 
   return (
+    <>
     <AppShell
       title={title}
       subtitle={subtitle}
@@ -161,5 +166,25 @@ export function SeoShell({
     >
       {body}
     </AppShell>
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent
+          title="Add a site"
+          description="Enter a URL to crawl. We'll map AI understanding, GEO score, gaps, and recommendations."
+          className="max-w-md"
+        >
+          <ScanForm
+            layout="stacked"
+            submitLabel="Start scan"
+            onSuccess={() => setAddOpen(false)}
+          />
+          <p className="mt-4 text-xs text-slate-400">
+            Scans are saved to your workspace.
+            {plan && plan !== "free"
+              ? " Pro: use Remove on a site card or the site page header."
+              : " Upgrade to Pro to remove sites from your workspace."}
+          </p>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

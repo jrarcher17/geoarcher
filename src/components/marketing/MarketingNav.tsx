@@ -20,12 +20,11 @@ export function MarketingNav({
   signUpDisabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const getStartedHref = signUpDisabled ? "/login" : "/login?sign-up=1";
-  const getStartedLabel = signUpDisabled ? "Sign in" : "Get started";
+  const signupHref = "/login?sign-up=1";
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
+    <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/90 backdrop-blur-md">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
         <Link href="/" className="shrink-0">
           <BrandWordmark className="text-lg sm:text-xl" />
         </Link>
@@ -45,17 +44,19 @@ export function MarketingNav({
         <div className="hidden items-center gap-3 md:flex">
           <Link
             href="/login"
-            className="text-sm font-medium text-slate-600 hover:text-slate-900"
+            className="inline-flex items-center rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 transition hover:border-slate-400 hover:bg-slate-50"
           >
-            Login
+            Log in
           </Link>
-          <Link
-            href={getStartedHref}
-            className="inline-flex items-center gap-2 rounded-full bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-sky-500/25 transition hover:bg-sky-600"
-          >
-            {getStartedLabel}
-            <ArrowRight className="h-4 w-4" />
-          </Link>
+          {!signUpDisabled && (
+            <Link
+              href={signupHref}
+              className="inline-flex items-center gap-2 rounded-full bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-sky-500/25 transition hover:bg-sky-600"
+            >
+              Sign up
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          )}
         </div>
 
         <button
@@ -85,16 +86,22 @@ export function MarketingNav({
               {l.label}
             </Link>
           ))}
-          <Link href="/login" className="text-sm font-medium text-slate-600">
-            Login
-          </Link>
           <Link
-            href={getStartedHref}
-            className="inline-flex justify-center rounded-full bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white"
+            href="/login"
+            className="inline-flex justify-center rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800"
             onClick={() => setOpen(false)}
           >
-            {getStartedLabel}
+            Log in
           </Link>
+          {!signUpDisabled && (
+            <Link
+              href={signupHref}
+              className="inline-flex justify-center rounded-full bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white"
+              onClick={() => setOpen(false)}
+            >
+              Sign up
+            </Link>
+          )}
         </div>
       </div>
     </header>

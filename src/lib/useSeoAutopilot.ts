@@ -16,7 +16,8 @@ const POLL_MS = 4000;
  * overview payload, audit start/polling, and opportunity status updates.
  */
 export function useSeoAutopilot() {
-  const { data: insights, error: insightsError } = useInsights();
+  const { data: insights, error: insightsError, loading: insightsLoading } =
+    useInsights();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -153,7 +154,9 @@ export function useSeoAutopilot() {
     overview,
     error: error ?? insightsError,
     upgradeRequired,
-    loading: !overview && !error && !insightsError && !upgradeRequired,
+    loading:
+      insightsLoading ||
+      (Boolean(siteId) && !overview && !error && !insightsError && !upgradeRequired),
     auditRunning: polling || starting,
     runAudit,
     updateOpportunityStatus,
