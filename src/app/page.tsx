@@ -3,6 +3,7 @@ import { ArrowRight, Check } from "lucide-react";
 import { HeroAnalyze } from "@/components/marketing/HeroAnalyze";
 import { MarketingNav } from "@/components/marketing/MarketingNav";
 import {
+  AUTOPILOT_CARDS,
   DashboardMock,
   FEATURE_CARDS,
   FinalCta,
@@ -126,6 +127,56 @@ export default async function Home() {
               </div>
             );
           })}
+        </div>
+      </section>
+
+      <section
+        id="autopilot"
+        className="border-y border-slate-100 bg-slate-950 py-20 text-white"
+      >
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <p className="text-sm font-semibold uppercase tracking-widest text-sky-400">
+            Pro
+          </p>
+          <h2 className="mt-2 max-w-2xl text-3xl font-bold tracking-tight sm:text-4xl">
+            SEO Autopilot: continuous audits + rankings
+          </h2>
+          <p className="mt-4 max-w-2xl text-base leading-relaxed text-slate-400">
+            The first scan is the start. Autopilot keeps watching the site —
+            recrawling, re-auditing, and refreshing Google rankings on a
+            durable loop so technical issues and position changes show up
+            without another manual run.
+          </p>
+          <div className="mt-12 grid gap-4 sm:grid-cols-2">
+            {AUTOPILOT_CARDS.map((card) => {
+              const Icon = card.icon;
+              return (
+                <div
+                  key={card.title}
+                  className="rounded-none border border-white/10 bg-white/5 p-6"
+                >
+                  <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-none bg-sky-500/15 text-sky-400">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="font-semibold text-white">{card.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                    {card.body}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-8 text-sm text-slate-500">
+            Included on Pro and Pro Plus. Open SEO Autopilot after you scan a
+            site, or{" "}
+            <Link
+              href="/settings?tab=billing"
+              className="font-medium text-sky-400 hover:text-sky-300"
+            >
+              upgrade in billing
+            </Link>
+            .
+          </p>
         </div>
       </section>
 

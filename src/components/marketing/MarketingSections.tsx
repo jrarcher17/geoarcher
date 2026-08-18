@@ -2,9 +2,12 @@ import Link from "next/link";
 import {
   ArrowRight,
   BarChart3,
+  FileSearch,
+  Gauge,
   Globe,
   Radar,
   Sparkles,
+  TrendingUp,
   Users,
 } from "lucide-react";
 import { BrandWordmark } from "@/components/BrandWordmark";
@@ -25,6 +28,7 @@ export function MarketingFooter() {
             title: "Product",
             links: [
               { href: "/#features", label: "Features" },
+              { href: "/#autopilot", label: "SEO Autopilot" },
               { href: "/#pricing", label: "Pricing" },
               { href: "/#guides", label: "Guides" },
               { href: "/login", label: "Sign in" },
@@ -95,7 +99,7 @@ export const FEATURE_CARDS = [
     iconClass: "text-sky-600 bg-sky-100",
     title: "AI website crawl",
     body: "GEO-powered crawl builds the semantic map assistants infer: topics, entities, and gaps — not just a page list.",
-    bullets: ["Up to 150 pages on Pro", "Schema & technical audit", "Page-level health"],
+    bullets: ["Up to 200 pages on Pro", "Schema & technical audit", "Page-level health"],
   },
   {
     icon: Radar,
@@ -115,11 +119,34 @@ export const FEATURE_CARDS = [
   },
 ] as const;
 
+export const AUTOPILOT_CARDS = [
+  {
+    icon: Gauge,
+    title: "Continuous loop",
+    body: "Turn Autopilot on and the site stays on a durable cycle: recrawl, GEO analysis, SEO audit, competitors, then sleep until the next run.",
+  },
+  {
+    icon: FileSearch,
+    title: "Audits that stay current",
+    body: "Technical SEO, page scores, content plans, and internal-link suggestions refresh from the latest crawl — not a one-off PDF.",
+  },
+  {
+    icon: TrendingUp,
+    title: "Keyword rankings",
+    body: "Track real Google positions for the terms you care about. Autopilot re-checks them each cycle so movement shows up without a manual run.",
+  },
+  {
+    icon: Radar,
+    title: "Change detection",
+    body: "Each cycle diffs the crawl against the last one — new, changed, and removed pages — so you see what actually moved.",
+  },
+] as const;
+
 export const PLATFORM_POINTS = [
   "Sites workspace with 10-tab reports per property",
+  "SEO Autopilot: continuous audits, rankings, and change detection",
   "Recommendations, content opportunities, and one-click drafts",
   "PDF exports and scan history for stakeholders",
-  "Plan limits: scans/month, pages per scan, and site caps",
 ] as const;
 
 export function DashboardMock() {
