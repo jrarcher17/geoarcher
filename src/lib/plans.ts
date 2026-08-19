@@ -62,9 +62,9 @@ const PRO_PLUS_PLAN_BASE: Omit<PlanLimits, "priceLabel" | "prospectsPerMonth"> =
     id: "proPlus",
     label: "Pro Plus",
     sites: 200,
-    maxPagesPerScan: 200,
+    maxPagesPerScan: 400,
     competitorMaxPages: 200,
-    scansPerMonth: 200,
+    scansPerMonth: 400,
     visibilityFeatures:
       "Everything in Pro + AI Lead Generation Machine: find, score, and reach companies that need better GEO",
   };
