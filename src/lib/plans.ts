@@ -48,7 +48,7 @@ const FREE_PLAN: PlanLimits = {
 const PRO_PLAN_BASE: Omit<PlanLimits, "priceLabel"> = {
   id: "pro",
   label: "Pro",
-  sites: null,
+  sites: 100,
   maxPagesPerScan: 200,
   competitorMaxPages: 200,
   scansPerMonth: 200,
@@ -61,7 +61,7 @@ const PRO_PLUS_PLAN_BASE: Omit<PlanLimits, "priceLabel" | "prospectsPerMonth"> =
   {
     id: "proPlus",
     label: "Pro Plus",
-    sites: null,
+    sites: 200,
     maxPagesPerScan: 200,
     competitorMaxPages: 200,
     scansPerMonth: 200,

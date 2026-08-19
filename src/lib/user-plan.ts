@@ -78,7 +78,13 @@ export async function assertCanAddSite(userId: string): Promise<string | null> {
   if (limits.sites == null) return null;
   const count = await countUserSites(userId);
   if (count >= limits.sites) {
-    return `Your ${limits.label} plan includes ${limits.sites} site. Upgrade to Pro for unlimited sites.`;
+    const next =
+      plan === "free"
+        ? "Upgrade to Pro for 100 sites."
+        : plan === "pro"
+          ? "Upgrade to Pro Plus for 200 sites."
+          : "You've reached the site limit for this plan.";
+    return `Your ${limits.label} plan includes ${limits.sites} sites. ${next}`;
   }
   return null;
 }
