@@ -138,12 +138,12 @@ export const AUTOPILOT_CARDS = [
   },
 ] as const;
 
-const VISIBILITY_ROWS = [
+const VISIBILITY_ROWS: { name: string; value: number; you?: boolean }[] = [
   { name: "Your site", value: 71, you: true },
   { name: "Competitor A", value: 84 },
   { name: "Competitor B", value: 62 },
   { name: "Competitor C", value: 55 },
-] as const;
+];
 
 export function HeroDashboardMock() {
   return (
