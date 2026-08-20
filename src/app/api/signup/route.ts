@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { serializeSignedCookie } from "better-call";
 import { APIError } from "better-auth/api";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -19,6 +20,32 @@ function apiErrorMessage(error: unknown, fallback: string) {
   }
   if (error instanceof Error && error.message) return error.message;
   return fallback;
+}
+
+function cookieSecret(ctx: { secret: unknown }): string {
+  if (typeof ctx.secret === "string" && ctx.secret) return ctx.secret;
+  const envSecret = process.env.BETTER_AUTH_SECRET?.trim();
+  if (envSecret) return envSecret;
+  throw new Error("BETTER_AUTH_SECRET is not set.");
+}
+
+async function sessionCookieHeader(
+  ctx: Awaited<typeof auth.$context>,
+  token: string
+) {
+  const cookie = ctx.authCookies.sessionToken;
+  const sameSite = cookie.attributes.sameSite;
+  return serializeSignedCookie(cookie.name, token, cookieSecret(ctx), {
+    httpOnly: cookie.attributes.httpOnly,
+    secure: cookie.attributes.secure,
+    path: cookie.attributes.path ?? "/",
+    maxAge: cookie.attributes.maxAge,
+    domain: cookie.attributes.domain,
+    sameSite:
+      sameSite === "lax" || sameSite === "strict" || sameSite === "none"
+        ? sameSite
+        : "lax",
+  });
 }
 
 export async function POST(request: Request) {
@@ -67,10 +94,7 @@ export async function POST(request: Request) {
       const matches = await ctx.password
         .verify({ hash: credential.password, password })
         .catch(() => false);
-      if (matches) {
-        return NextResponse.json({ ok: true });
-      }
-      if (existing && existing.sessions.length > 0) {
+      if (!matches && existing && existing.sessions.length > 0) {
         return NextResponse.json(
           { error: "User already exists. Use another email." },
           { status: 409 }
@@ -90,25 +114,44 @@ export async function POST(request: Request) {
       });
     }
 
-    const hash = await ctx.password.hash(password);
-    if (credential) {
-      await prisma.account.update({
-        where: { id: credential.id },
-        data: { password: hash },
-      });
-    } else {
-      await prisma.account.create({
-        data: {
-          id: newId(),
-          accountId: userId,
-          providerId: "credential",
-          userId,
-          password: hash,
-        },
-      });
+    const needsNewHash =
+      !credential?.password ||
+      !(await ctx.password
+        .verify({ hash: credential.password, password })
+        .catch(() => false));
+
+    if (needsNewHash) {
+      const hash = await ctx.password.hash(password);
+      if (credential) {
+        await prisma.account.update({
+          where: { id: credential.id },
+          data: { password: hash },
+        });
+      } else {
+        await prisma.account.create({
+          data: {
+            id: newId(),
+            accountId: userId,
+            providerId: "credential",
+            userId,
+            password: hash,
+          },
+        });
+      }
     }
 
-    return NextResponse.json({ ok: true });
+    const session = await ctx.internalAdapter.createSession(userId);
+    const token =
+      session && typeof session === "object" && "token" in session
+        ? String(session.token ?? "")
+        : "";
+    if (!token) {
+      throw new Error("Failed to create session.");
+    }
+
+    const response = NextResponse.json({ ok: true });
+    response.headers.append("Set-Cookie", await sessionCookieHeader(ctx, token));
+    return response;
   } catch (error) {
     console.error("[signup]", error);
     return NextResponse.json(

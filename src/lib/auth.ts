@@ -39,9 +39,19 @@ function authTrustedOrigins(): string[] {
   return [...origins];
 }
 
+const productionHost = process.env.BETTER_AUTH_URL?.includes("geoarcher.com");
+
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.BETTER_AUTH_URL,
+  advanced: productionHost
+    ? {
+        crossSubDomainCookies: {
+          enabled: true,
+          domain: "geoarcher.com",
+        },
+      }
+    : undefined,
   database: prismaAdapter(prisma, {
     provider: "postgresql",
   }),

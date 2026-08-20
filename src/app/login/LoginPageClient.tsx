@@ -86,21 +86,19 @@ function LoginPageInner({
         const res = await fetch("/api/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({ name, email, password }),
         });
         const data = (await res.json().catch(() => ({}))) as {
           error?: string;
         };
-        if (!res.ok && res.status !== 409) {
+        if (res.status === 409) {
+          const session = await signIn.email({ email, password });
+          if (session.error) {
+            throw new Error(data.error ?? "User already exists. Use another email.");
+          }
+        } else if (!res.ok) {
           throw new Error(data.error ?? "Sign up failed.");
-        }
-        const session = await signIn.email({ email, password });
-        if (session.error) {
-          throw new Error(
-            res.status === 409
-              ? (data.error ?? "User already exists. Use another email.")
-              : (session.error.message ?? "Sign up failed.")
-          );
         }
       } else {
         const res = await signIn.email({ email, password });
