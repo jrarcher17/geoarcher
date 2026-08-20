@@ -5,7 +5,7 @@ import { Suspense, useEffect, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { AuthSplitLayout } from "@/components/auth/AuthSplitLayout";
 import { pendingAnalyzeHint } from "@/components/ScanForm";
-import { signIn, signUp } from "@/lib/auth-client";
+import { signIn } from "@/lib/auth-client";
 import {
   getPendingAnalyzeUrl,
   resumePendingAnalyze,
@@ -83,16 +83,25 @@ function LoginPageInner({
         if (registrationsClosed) {
           throw new Error("New registrations are currently closed.");
         }
-        const res = await signUp.email({ name, email, password });
-        if (res.error) {
-          const existed = /already exists/i.test(res.error.message ?? "");
-          if (existed) {
+        const res = await fetch("/api/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, email, password }),
+        });
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        if (!res.ok) {
+          if (res.status === 409 || /already exists/i.test(data.error ?? "")) {
             const retry = await signIn.email({ email, password });
             if (retry.error) {
-              throw new Error(res.error.message ?? "Sign up failed.");
+              throw new Error(data.error ?? "User already exists. Use another email.");
             }
           } else {
-            throw new Error(res.error.message ?? "Sign up failed.");
+            const retry = await signIn.email({ email, password });
+            if (retry.error) {
+              throw new Error(data.error ?? "Sign up failed.");
+            }
           }
         }
       } else {

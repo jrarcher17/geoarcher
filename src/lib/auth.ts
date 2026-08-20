@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { createAuthMiddleware } from "better-auth/api";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import { nextCookies } from "better-auth/next-js";
 import { prisma } from "./db";
 import { signUpDisabled } from "./sign-up-config";
 
@@ -81,6 +82,7 @@ export const auth = betterAuth({
     },
   },
   trustedOrigins: authTrustedOrigins(),
+  plugins: [nextCookies()],
 });
 
 export type Session = typeof auth.$Infer.Session;
