@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server";
-import { headers } from "next/headers";
-import { hashPassword } from "better-auth/crypto";
 import { APIError } from "better-auth/api";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -51,23 +49,33 @@ export async function POST(request: Request) {
   }
 
   try {
+    const ctx = await auth.$context;
     const existing = await prisma.user.findUnique({
       where: { email },
       select: {
         id: true,
         accounts: {
           where: { providerId: "credential" },
-          select: { id: true },
-          take: 1,
+          select: { id: true, password: true },
         },
+        sessions: { select: { id: true }, take: 1 },
       },
     });
 
-    if (existing?.accounts.length) {
-      return NextResponse.json(
-        { error: "User already exists. Use another email." },
-        { status: 409 }
-      );
+    const credential = existing?.accounts[0];
+    if (credential?.password) {
+      const matches = await ctx.password
+        .verify({ hash: credential.password, password })
+        .catch(() => false);
+      if (matches) {
+        return NextResponse.json({ ok: true });
+      }
+      if (existing.sessions.length > 0) {
+        return NextResponse.json(
+          { error: "User already exists. Use another email." },
+          { status: 409 }
+        );
+      }
     }
 
     const userId = existing?.id ?? newId();
@@ -82,25 +90,25 @@ export async function POST(request: Request) {
       });
     }
 
-    await prisma.account.create({
-      data: {
-        id: newId(),
-        accountId: userId,
-        providerId: "credential",
-        userId,
-        password: await hashPassword(password),
-      },
-    });
+    const hash = await ctx.password.hash(password);
+    if (credential) {
+      await prisma.account.update({
+        where: { id: credential.id },
+        data: { password: hash },
+      });
+    } else {
+      await prisma.account.create({
+        data: {
+          id: newId(),
+          accountId: userId,
+          providerId: "credential",
+          userId,
+          password: hash,
+        },
+      });
+    }
 
-    const session = await auth.api.signInEmail({
-      body: { email, password },
-      headers: await headers(),
-    });
-
-    return NextResponse.json({
-      token: session.token,
-      user: session.user,
-    });
+    return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("[signup]", error);
     return NextResponse.json(

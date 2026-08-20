@@ -91,18 +91,16 @@ function LoginPageInner({
         const data = (await res.json().catch(() => ({}))) as {
           error?: string;
         };
-        if (!res.ok) {
-          if (res.status === 409 || /already exists/i.test(data.error ?? "")) {
-            const retry = await signIn.email({ email, password });
-            if (retry.error) {
-              throw new Error(data.error ?? "User already exists. Use another email.");
-            }
-          } else {
-            const retry = await signIn.email({ email, password });
-            if (retry.error) {
-              throw new Error(data.error ?? "Sign up failed.");
-            }
-          }
+        if (!res.ok && res.status !== 409) {
+          throw new Error(data.error ?? "Sign up failed.");
+        }
+        const session = await signIn.email({ email, password });
+        if (session.error) {
+          throw new Error(
+            res.status === 409
+              ? (data.error ?? "User already exists. Use another email.")
+              : (session.error.message ?? "Sign up failed.")
+          );
         }
       } else {
         const res = await signIn.email({ email, password });
