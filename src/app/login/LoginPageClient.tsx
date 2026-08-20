@@ -84,7 +84,17 @@ function LoginPageInner({
           throw new Error("New registrations are currently closed.");
         }
         const res = await signUp.email({ name, email, password });
-        if (res.error) throw new Error(res.error.message ?? "Sign up failed.");
+        if (res.error) {
+          const existed = /already exists/i.test(res.error.message ?? "");
+          if (existed) {
+            const retry = await signIn.email({ email, password });
+            if (retry.error) {
+              throw new Error(res.error.message ?? "Sign up failed.");
+            }
+          } else {
+            throw new Error(res.error.message ?? "Sign up failed.");
+          }
+        }
       } else {
         const res = await signIn.email({ email, password });
         if (res.error) throw new Error(res.error.message ?? "Sign in failed.");

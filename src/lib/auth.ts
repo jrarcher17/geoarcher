@@ -1,17 +1,46 @@
 import { betterAuth } from "better-auth";
+import { createAuthMiddleware } from "better-auth/api";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "./db";
 import { signUpDisabled } from "./sign-up-config";
+
+function signupEmailFromBody(body: unknown): string | null {
+  if (!body || typeof body !== "object") return null;
+  const email = "email" in body ? body.email : null;
+  return typeof email === "string" && email.includes("@")
+    ? email.trim().toLowerCase()
+    : null;
+}
 
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.BETTER_AUTH_URL,
   database: prismaAdapter(prisma, {
     provider: "postgresql",
+    transaction: true,
   }),
   emailAndPassword: {
     enabled: true,
     disableSignUp: signUpDisabled(),
+  },
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path !== "/sign-up/email") return;
+      const email = signupEmailFromBody(ctx.body);
+      if (!email) return;
+      const existing = await prisma.user.findUnique({
+        where: { email },
+        select: {
+          id: true,
+          accounts: { select: { id: true }, take: 1 },
+        },
+      });
+      // A previous attempt can persist the user row and then fail before the
+      // password account is written. Treat that as unfinished signup.
+      if (existing && existing.accounts.length === 0) {
+        await prisma.user.delete({ where: { id: existing.id } });
+      }
+    }),
   },
   user: {
     deleteUser: {
