@@ -12,12 +12,37 @@ function signupEmailFromBody(body: unknown): string | null {
     : null;
 }
 
+function authTrustedOrigins(): string[] {
+  const configured = [
+    process.env.BETTER_AUTH_URL,
+    "http://localhost:3000",
+    "https://geoarcher.com",
+    "https://www.geoarcher.com",
+  ].filter((value): value is string => Boolean(value?.trim()));
+
+  const origins = new Set<string>();
+  for (const value of configured) {
+    try {
+      const url = new URL(value);
+      const port = url.port ? `:${url.port}` : "";
+      origins.add(`${url.protocol}//${url.hostname}${port}`);
+      if (url.hostname.startsWith("www.")) {
+        origins.add(`${url.protocol}//${url.hostname.slice(4)}${port}`);
+      } else if (url.hostname !== "localhost" && !url.hostname.endsWith(".localhost")) {
+        origins.add(`${url.protocol}//www.${url.hostname}${port}`);
+      }
+    } catch {
+      origins.add(value.replace(/\/$/, ""));
+    }
+  }
+  return [...origins];
+}
+
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.BETTER_AUTH_URL,
   database: prismaAdapter(prisma, {
     provider: "postgresql",
-    transaction: true,
   }),
   emailAndPassword: {
     enabled: true,
@@ -55,9 +80,7 @@ export const auth = betterAuth({
       },
     },
   },
-  trustedOrigins: [
-    process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
-  ].filter(Boolean),
+  trustedOrigins: authTrustedOrigins(),
 });
 
 export type Session = typeof auth.$Infer.Session;
