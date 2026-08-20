@@ -70,7 +70,7 @@ export async function POST(request: Request) {
       if (matches) {
         return NextResponse.json({ ok: true });
       }
-      if (existing.sessions.length > 0) {
+      if (existing && existing.sessions.length > 0) {
         return NextResponse.json(
           { error: "User already exists. Use another email." },
           { status: 409 }
