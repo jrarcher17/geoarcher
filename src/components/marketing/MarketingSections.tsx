@@ -66,7 +66,7 @@ export function MarketingFooter() {
 }
 
 export function FinalCta({ signUpDisabled = false }: { signUpDisabled?: boolean }) {
-  const href = signUpDisabled ? "/login" : "/login?sign-up=1";
+  const href = signUpDisabled ? "/login" : "/signup";
   const label = signUpDisabled ? "Sign in" : "Get started for free";
 
   return (

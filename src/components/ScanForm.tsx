@@ -33,7 +33,7 @@ export function ScanForm({
 
     if (requireAuth && !session) {
       setPendingAnalyzeUrl(url.trim());
-      router.push("/login?from=analyze");
+      router.push("/signup");
       return;
     }
 
@@ -44,7 +44,7 @@ export function ScanForm({
       if (!result.ok) {
         if (result.status === 401) {
           setPendingAnalyzeUrl(url.trim());
-          router.push("/login?from=analyze");
+          router.push("/login");
           return;
         }
         throw new Error(result.error);

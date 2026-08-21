@@ -4,5 +4,5 @@ export function signUpDisabled(): boolean {
 }
 
 export function registrationLoginHref(): string {
-  return signUpDisabled() ? "/login" : "/login?sign-up=1";
+  return signUpDisabled() ? "/login" : "/signup";
 }

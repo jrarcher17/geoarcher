@@ -20,7 +20,7 @@ export function MarketingNav({
   signUpDisabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const signupHref = "/login?sign-up=1";
+  const signupHref = "/signup";
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/90 backdrop-blur-md">

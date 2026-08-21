@@ -1,24 +1,29 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { AuthSplitLayout } from "@/components/auth/AuthSplitLayout";
-import { LoginForm } from "@/components/auth/LoginForm";
+import { SignupForm } from "@/components/auth/SignupForm";
 import { signUpDisabled } from "@/lib/sign-up-config";
 
 export const metadata: Metadata = {
-  title: "Sign in — GEO Archer",
-  description: "Sign in to your GEO Archer account",
+  title: "Sign up — GEO Archer",
+  description: "Create your GEO Archer account",
 };
 
-export default function LoginPage() {
+export default function SignupPage() {
+  if (signUpDisabled()) {
+    redirect("/login");
+  }
+
   return (
     <AuthSplitLayout>
       <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-        Welcome back
+        Create your account
       </h1>
       <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
-        Sign in to manage your sites, scans, and Autopilot.
+        Start tracking how AI assistants see your sites.
       </p>
       <div className="mt-8">
-        <LoginForm signUpDisabled={signUpDisabled()} />
+        <SignupForm />
       </div>
     </AuthSplitLayout>
   );
