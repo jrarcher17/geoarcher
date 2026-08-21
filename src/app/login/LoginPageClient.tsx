@@ -5,7 +5,7 @@ import { Suspense, useEffect, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { AuthSplitLayout } from "@/components/auth/AuthSplitLayout";
 import { pendingAnalyzeHint } from "@/components/ScanForm";
-import { signIn } from "@/lib/auth-client";
+import { signIn, signUp } from "@/lib/auth-client";
 import {
   getPendingAnalyzeUrl,
   resumePendingAnalyze,
@@ -83,22 +83,9 @@ function LoginPageInner({
         if (registrationsClosed) {
           throw new Error("New registrations are currently closed.");
         }
-        const res = await fetch("/api/signup", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ name, email, password }),
-        });
-        const data = (await res.json().catch(() => ({}))) as {
-          error?: string;
-        };
-        if (res.status === 409) {
-          const session = await signIn.email({ email, password });
-          if (session.error) {
-            throw new Error(data.error ?? "User already exists. Use another email.");
-          }
-        } else if (!res.ok) {
-          throw new Error(data.error ?? "Sign up failed.");
+        const { error } = await signUp.email({ name, email, password });
+        if (error) {
+          throw new Error(error.message || "Could not create account");
         }
       } else {
         const res = await signIn.email({ email, password });
