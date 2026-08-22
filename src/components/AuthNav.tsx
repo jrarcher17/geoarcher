@@ -28,6 +28,7 @@ export function AuthNav() {
   if (
     pathname === "/" ||
     pathname === "/login" ||
+    pathname === "/signup" ||
     pathname === "/terms" ||
     pathname === "/privacy" ||
     pathname.startsWith("/guides") ||
