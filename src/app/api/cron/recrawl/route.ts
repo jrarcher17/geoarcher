@@ -4,6 +4,7 @@ import { findSitesDueForRecrawl } from "@/lib/site-history";
 import { latestAuditableScan } from "@/lib/seo/audit-runner";
 import { dataForSeoConfigured } from "@/lib/seo/dataforseo";
 import { lastRankCheckAt, runRankCheck } from "@/lib/seo/rank-tracker";
+import { resumeLeadCampaigns } from "@/lib/leads/campaign-runner";
 import { startScanPipeline, startSeoAuditJob } from "@/lib/temporal-start";
 
 export const maxDuration = 300;
@@ -105,11 +106,14 @@ export async function POST(request: Request) {
     }
   }
 
+  const leads = await resumeLeadCampaigns();
+
   return NextResponse.json({
     due: due.length,
     started: started.length,
     scanIds: started,
     seoAuditsStarted: seoAudits.length,
     rankChecksStarted: rankChecks.length,
+    leadCampaignsResumed: leads.resumed.length,
   });
 }

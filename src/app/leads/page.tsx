@@ -147,11 +147,9 @@ export default function LeadsDashboardPage() {
             </Card>
           </div>
 
-          {(!data.configured.temporal || !data.configured.apollo) && (
+          {!data.configured.apollo && (
             <p className="rounded-none border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              {!data.configured.temporal
-                ? "Temporal worker is not configured — campaigns cannot start until `temporal server start-dev` and `pnpm worker` are running."
-                : "APOLLO_API_KEY is not set — company search will fail until it is."}
+              APOLLO_API_KEY is not set — company search will fail until it is.
             </p>
           )}
 

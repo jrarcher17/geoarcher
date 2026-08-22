@@ -1,13 +1,15 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getQuotaState, requireLeadGenAccess } from "@/lib/leads/api-guard";
 import { apolloConfigured } from "@/lib/leads/apollo";
+import { resumeLeadCampaigns } from "@/lib/leads/campaign-runner";
 import { resendConfigured } from "@/lib/leads/email";
 import { serializeCampaign } from "@/lib/leads/serialize";
 import { startLeadGenCampaign } from "@/lib/temporal-start";
 import { temporalConfigured } from "@/temporal/client";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 const FUNNEL_STATUSES = [
   "FOUND",
@@ -46,6 +48,10 @@ export async function GET() {
     funnel[row.status] = row._count._all;
   }
 
+  if (campaigns.some((c) => c.status === "RUNNING")) {
+    after(() => resumeLeadCampaigns({ userId: access.userId }));
+  }
+
   return NextResponse.json({
     campaigns: campaigns.map(serializeCampaign),
     quota,
@@ -62,15 +68,6 @@ export async function POST(request: Request) {
   const access = await requireLeadGenAccess();
   if (access instanceof NextResponse) return access;
 
-  if (!temporalConfigured()) {
-    return NextResponse.json(
-      {
-        error:
-          "The Lead Generation Machine needs the Temporal worker running. Start `temporal server start-dev` and `pnpm worker`.",
-      },
-      { status: 503 }
-    );
-  }
   if (!apolloConfigured()) {
     return NextResponse.json(
       { error: "APOLLO_API_KEY is not configured on this server." },

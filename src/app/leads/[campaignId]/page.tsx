@@ -328,8 +328,8 @@ export default function CampaignDetailPage() {
                       {Math.floor(refreshIn / 60)}:
                       {String(refreshIn % 60).padStart(2, "0")}
                     </span>
-                    . You can leave this page — results will be here when you
-                    come back.
+                    . You can leave this page — the server keeps looking and
+                    results will be here when you come back.
                   </p>
                 </div>
               ) : (

@@ -2,9 +2,11 @@ import { after, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireLeadGenAccess } from "@/lib/leads/api-guard";
 import { serializeCampaign, serializeProspect } from "@/lib/leads/serialize";
-import { kickLeadDiscoverIfIdle } from "@/lib/temporal-start";
+import { kickLeadCampaignWork } from "@/lib/leads/campaign-runner";
 import { getTemporalClient, temporalConfigured } from "@/temporal/client";
 import { leadGenWorkflowId } from "@/temporal/shared";
+
+export const maxDuration = 300;
 
 async function loadOwnedCampaign(userId: string, id: string) {
   return prisma.leadCampaign.findFirst({
@@ -46,12 +48,15 @@ export async function GET(
     },
   });
 
+  const pending = prospects.filter(
+    (p) => p.status === "FOUND" || p.status === "ANALYZING"
+  ).length;
   if (
     campaign.status === "RUNNING" &&
-    prospects.length === 0 &&
-    Date.now() - campaign.createdAt.getTime() > 15_000
+    Date.now() - campaign.createdAt.getTime() > 10_000 &&
+    (prospects.length < campaign.targetCount || pending > 0)
   ) {
-    after(() => kickLeadDiscoverIfIdle(id, 0));
+    after(() => kickLeadCampaignWork(id, 0));
   }
 
   return NextResponse.json({
