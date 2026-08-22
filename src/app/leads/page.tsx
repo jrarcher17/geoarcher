@@ -124,7 +124,8 @@ export default function LeadsDashboardPage() {
                 toned={false}
               />
               <p className="mt-2 text-xs text-slate-500">
-                {data.quota.remaining} prospects remaining this month
+                {data.quota.remaining} outreach leads remaining this month.
+                Healthy sites we skip do not count.
               </p>
             </Card>
             <Card className="p-5 md:col-span-2">

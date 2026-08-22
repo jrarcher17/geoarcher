@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { qualifyThreshold } from "@/lib/leads/analyze";
 import { formatDate, type Tone } from "@/lib/utils";
 
 interface ProspectRow {
@@ -35,6 +36,8 @@ interface CampaignDetail {
   prospects: ProspectRow[];
 }
 
+const QUALIFY_SCORE = qualifyThreshold();
+
 function statusTone(status: string): Tone {
   if (status === "REPLIED" || status === "QUALIFIED") return "positive";
   if (status === "CONTACTED" || status === "ANALYZING" || status === "RUNNING")
@@ -43,6 +46,16 @@ function statusTone(status: string): Tone {
     return "critical";
   if (status === "DISQUALIFIED" || status === "CLOSED") return "neutral";
   return "warning";
+}
+
+function statusLabel(status: string): string {
+  if (status === "DISQUALIFIED") return "Site already healthy";
+  if (status === "QUALIFIED") return "Needs GEO help";
+  if (status === "FOUND") return "Found";
+  if (status === "ANALYZING") return "Analyzing site";
+  if (status === "CONTACTED") return "Contacted";
+  if (status === "CLOSED") return "Closed";
+  return status;
 }
 
 export default function CampaignDetailPage() {
@@ -257,6 +270,16 @@ export default function CampaignDetailPage() {
               {data.campaign.error}
             </p>
           )}
+          {data.prospects.length > 0 &&
+            data.prospects.every((p) => p.status === "DISQUALIFIED") && (
+              <p className="rounded-none border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                Apollo found these companies (search is free). We crawled each
+                site and none scored {QUALIFY_SCORE}+ on outreach need — their
+                GEO/SEO already looks healthy enough that we skip the paid
+                Apollo email reveal. Higher score = worse site = better lead.
+                Click a company to see why.
+              </p>
+            )}
 
           <div className="flex flex-wrap items-center justify-between gap-3">
             <select
@@ -322,7 +345,9 @@ export default function CampaignDetailPage() {
                       <span className="sr-only">Select</span>
                     </th>
                     <th className="px-3 py-3 font-medium">Company</th>
-                    <th className="px-3 py-3 font-medium">Score</th>
+                    <th className="px-3 py-3 font-medium">
+                      Outreach need
+                    </th>
                     <th className="px-3 py-3 font-medium">Status</th>
                     <th className="px-3 py-3 font-medium">Contact</th>
                   </tr>
@@ -348,13 +373,18 @@ export default function CampaignDetailPage() {
                         <p className="text-xs text-slate-400">{p.domain}</p>
                       </td>
                       <td className="px-3 py-3 font-semibold text-slate-800">
-                        {p.score ?? "—"}
+                        {p.score == null ? "—" : `${p.score}/${QUALIFY_SCORE}`}
                       </td>
                       <td className="px-3 py-3">
-                        <Badge tone={statusTone(p.status)}>{p.status}</Badge>
+                        <Badge tone={statusTone(p.status)}>
+                          {statusLabel(p.status)}
+                        </Badge>
                       </td>
                       <td className="px-3 py-3 text-slate-500">
-                        {p.contactEmail ?? "—"}
+                        {p.contactEmail ??
+                          (p.status === "DISQUALIFIED"
+                            ? "Skipped (no credit used)"
+                            : "—")}
                       </td>
                     </tr>
                   ))}

@@ -112,7 +112,8 @@ export default function NewCampaignPage() {
             </div>
             <div>
               <label className="text-sm font-medium text-slate-700">
-                How many companies ({remaining} remaining this month)
+                How many companies to find ({remaining} outreach leads left
+                this month)
               </label>
               <input
                 type="number"

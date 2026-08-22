@@ -121,6 +121,9 @@ export async function findCompanies(
     where: {
       createdAt: { gte: startOfUtcMonth() },
       campaign: { userId: campaign.userId },
+      status: {
+        in: ["QUALIFIED", "CONTACTED", "REPLIED", "BOUNCED", "CLOSED"],
+      },
     },
   });
   const existingInCampaign = await prisma.prospect.count({
