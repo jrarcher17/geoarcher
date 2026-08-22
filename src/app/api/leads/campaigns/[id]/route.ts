@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireLeadGenAccess } from "@/lib/leads/api-guard";
 import { serializeCampaign, serializeProspect } from "@/lib/leads/serialize";
+import { kickLeadDiscoverIfIdle } from "@/lib/temporal-start";
 import { getTemporalClient, temporalConfigured } from "@/temporal/client";
 import { leadGenWorkflowId } from "@/temporal/shared";
 
@@ -44,6 +45,14 @@ export async function GET(
       emails: { orderBy: { followUpIndex: "asc" } },
     },
   });
+
+  if (
+    campaign.status === "RUNNING" &&
+    prospects.length === 0 &&
+    Date.now() - campaign.createdAt.getTime() > 15_000
+  ) {
+    after(() => kickLeadDiscoverIfIdle(id, 0));
+  }
 
   return NextResponse.json({
     campaign: serializeCampaign(campaign),

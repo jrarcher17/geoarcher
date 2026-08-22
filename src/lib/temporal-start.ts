@@ -2,6 +2,7 @@ import { after } from "next/server";
 import { prisma } from "@/lib/db";
 import { runScan } from "@/lib/scan-runner";
 import { runSeoAudit } from "@/lib/seo/audit-runner";
+import { findCompanies } from "@/temporal/lead-activities";
 import { getTemporalClient, temporalConfigured } from "@/temporal/client";
 import { AUTOPILOT_TASK_QUEUE, leadGenWorkflowId } from "@/temporal/shared";
 
@@ -163,4 +164,44 @@ export async function startLeadGenCampaign(campaignId: string): Promise<void> {
     taskQueue: AUTOPILOT_TASK_QUEUE,
     args: [{ campaignId }],
   });
+  after(() => kickLeadDiscoverIfIdle(campaignId, WORKER_GRACE_MS));
+}
+
+/**
+ * If Temporal Cloud queued the campaign but no worker is polling, Apollo
+ * never runs and the UI sits on "finding companies." Run discover in-process.
+ */
+const leadDiscoverStarted = new Set<string>();
+
+export async function kickLeadDiscoverIfIdle(
+  campaignId: string,
+  graceMs = WORKER_GRACE_MS
+): Promise<void> {
+  if (leadDiscoverStarted.has(campaignId)) return;
+  leadDiscoverStarted.add(campaignId);
+  try {
+    if (graceMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, graceMs));
+    }
+    const campaign = await prisma.leadCampaign.findUnique({
+      where: { id: campaignId },
+      include: { _count: { select: { prospects: true } } },
+    });
+    if (!campaign || campaign.status !== "RUNNING") return;
+    if (campaign._count.prospects > 0) return;
+    console.warn(
+      `[temporal] lead campaign ${campaignId} still has 0 prospects — running Apollo search inline. Start \`pnpm worker\`.`
+    );
+    await findCompanies(campaignId);
+  } catch (err) {
+    console.error("[leads] inline discover failed:", err);
+    await prisma.leadCampaign
+      .update({
+        where: { id: campaignId },
+        data: {
+          error: err instanceof Error ? err.message : "Could not find companies.",
+        },
+      })
+      .catch(() => undefined);
+  }
 }

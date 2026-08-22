@@ -31,8 +31,16 @@ import { appBaseUrl } from "@/lib/stripe";
  * that scored above the qualification threshold.
  */
 
+function safeHeartbeat(details?: string): void {
+  try {
+    heartbeat(details);
+  } catch {
+    // Called from Next.js fallback, not a Temporal activity.
+  }
+}
+
 async function withHeartbeat<T>(work: Promise<T>): Promise<T> {
-  const timer = setInterval(() => heartbeat(), 15_000);
+  const timer = setInterval(() => safeHeartbeat(), 15_000);
   try {
     return await work;
   } finally {
@@ -147,7 +155,7 @@ export async function findCompanies(
   let page = 1;
   let totalPages = 1;
   while (created < target && page <= totalPages && page <= 20) {
-    heartbeat(`apollo page ${page}`);
+    safeHeartbeat(`apollo page ${page}`);
     const result = await searchCompanies({
       industry: campaign.industry,
       location: campaign.location,
@@ -174,6 +182,23 @@ export async function findCompanies(
       created += 1;
     }
     page += 1;
+  }
+
+  if (created === 0) {
+    const where = campaign.location
+      ? `“${campaign.industry}” in ${campaign.location}`
+      : `“${campaign.industry}”`;
+    await prisma.leadCampaign.update({
+      where: { id: campaignId },
+      data: {
+        error: `No companies found for ${where}. Try a broader industry or location.`,
+      },
+    });
+  } else if (campaign.error) {
+    await prisma.leadCampaign.update({
+      where: { id: campaignId },
+      data: { error: null },
+    });
   }
 
   return {
@@ -447,7 +472,7 @@ export async function processFollowUps(
       take: budget,
     });
     for (const email of queued) {
-      heartbeat("queued sends");
+      safeHeartbeat("queued sends");
       if (!email.prospect.contactEmail) continue;
       if (await isSuppressed(email.prospect.contactEmail)) continue;
       try {
@@ -481,7 +506,7 @@ export async function processFollowUps(
   });
 
   for (const prospect of contacted) {
-    heartbeat("follow-ups");
+    safeHeartbeat("follow-ups");
     const last = prospect.emails.find((e) => e.sentAt);
     if (!last?.sentAt || last.sentAt > dueBefore) continue;
     if (last.status === "REPLIED" || last.status === "BOUNCED") continue;
