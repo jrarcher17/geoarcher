@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { qualifyThreshold } from "@/lib/leads/analyze";
+import { qualifyThreshold } from "@/lib/leads/qualify";
 import { formatDate, type Tone } from "@/lib/utils";
 
 interface ProspectRow {

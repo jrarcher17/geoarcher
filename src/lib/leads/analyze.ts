@@ -3,6 +3,8 @@ import { crawlSite } from "@/lib/crawler";
 import { computeSeoAudit } from "@/lib/seo/checks";
 import type { PageExtraction } from "@/lib/types";
 
+export { qualifyThreshold } from "./qualify";
+
 /**
  * Prospect analysis: a lightweight, deterministic GEO/SEO health check over a
  * small crawl (~8 pages). No AI spend here — AI runs later, only for
@@ -43,12 +45,6 @@ export interface ProspectScoreResult {
   breakdown: ProspectScoreBreakdown;
   problems: ProspectProblem[];
   analysis: ProspectAnalysis;
-}
-
-/** Prospects scoring at or above this become QUALIFIED (email reveal + outreach). */
-export function qualifyThreshold(): number {
-  const n = Number(process.env["LEADGEN_QUALIFY_THRESHOLD"]);
-  return Number.isFinite(n) && n >= 0 && n <= 100 ? Math.floor(n) : 40;
 }
 
 const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
