@@ -127,7 +127,7 @@ export function ScanDashboard({ scanId }: { scanId: string }) {
             <p className="mx-auto mt-2 max-w-sm text-sm text-slate-500">
               {scan?.status === "CRAWLING" && scan.pagesCrawled === 0
                 ? "Starting the browser and loading the first page — up to a minute."
-                : "Usually one to three minutes. You'll be redirected automatically."}
+                : "Usually one to three minutes. You can close this tab — the scan keeps running. Check Scans when you come back."}
             </p>
 
             <ol className="mx-auto mt-8 flex max-w-md items-center justify-between gap-2">

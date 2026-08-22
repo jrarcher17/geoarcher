@@ -25,7 +25,7 @@ export async function failStaleScanIfNeeded(scan: {
   }
 
   const error =
-    "This scan was interrupted (often from restarting the dev server) or timed out connecting to the browser. Start a new scan.";
+    "This scan never started. The background worker did not pick it up in time (or the browser timed out). Start a new scan — you can close the tab; the crawl runs on the server.";
 
   await prisma.scan.update({
     where: { id: scan.id },

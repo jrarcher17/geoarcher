@@ -37,6 +37,24 @@ async function startWorkflow(
   }
 }
 
+const WORKER_GRACE_MS = Number(process.env.TEMPORAL_WORKER_GRACE_MS ?? 15_000);
+
+async function runScanPipelineInline(
+  scanId: string,
+  siteId: string,
+  withSeoAudit: boolean
+): Promise<void> {
+  await runScan(scanId);
+  if (!withSeoAudit) return;
+  const scan = await prisma.scan.findUnique({
+    where: { id: scanId },
+    select: { status: true, pagesCrawled: true },
+  });
+  if (scan?.status === "COMPLETE" && scan.pagesCrawled > 0) {
+    await runSeoAuditInline(siteId, scanId);
+  }
+}
+
 async function runSeoAuditInline(siteId: string, scanId: string): Promise<void> {
   try {
     await runSeoAudit(siteId, scanId);
@@ -63,19 +81,26 @@ export async function startScanPipeline(options: {
   const viaTemporal = await startWorkflow("scanPipelineWorkflow", `scan-${scanId}`, [
     { scanId, siteId, withSeoAudit },
   ]);
-  if (viaTemporal) return "temporal";
-
-  after(async () => {
-    await runScan(scanId);
-    if (!withSeoAudit) return;
-    const scan = await prisma.scan.findUnique({
-      where: { id: scanId },
-      select: { status: true, pagesCrawled: true },
+  if (viaTemporal) {
+    // Temporal Cloud only *queues* the job. If no worker is polling, the scan
+    // stays QUEUED until the 5-minute stale timer fails it. Run it here if
+    // the worker does not claim it quickly — closing the tab still works.
+    after(async () => {
+      await new Promise((resolve) => setTimeout(resolve, WORKER_GRACE_MS));
+      const scan = await prisma.scan.findUnique({
+        where: { id: scanId },
+        select: { status: true, pagesCrawled: true },
+      });
+      if (!scan || scan.status !== "QUEUED" || scan.pagesCrawled > 0) return;
+      console.warn(
+        `[temporal] scan ${scanId} still queued after ${WORKER_GRACE_MS}ms — running inline. Start \`pnpm worker\` for Temporal Cloud.`
+      );
+      await runScanPipelineInline(scanId, siteId, withSeoAudit);
     });
-    if (scan?.status === "COMPLETE" && scan.pagesCrawled > 0) {
-      await runSeoAuditInline(siteId, scanId);
-    }
-  });
+    return "temporal";
+  }
+
+  after(() => runScanPipelineInline(scanId, siteId, withSeoAudit));
   return "inline";
 }
 
