@@ -78,16 +78,43 @@ export default function CampaignDetailPage() {
     setData(json);
   }, [params.campaignId]);
 
+  const campaignStatus = data?.campaign.status ?? null;
+  const findingCompanies = Boolean(
+    data &&
+      data.prospects.length === 0 &&
+      !["COMPLETE", "FAILED", "CANCELLED"].includes(data.campaign.status)
+  );
+
+  const [refreshIn, setRefreshIn] = useState(60);
+
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), 0);
     return () => window.clearTimeout(timer);
   }, [load]);
 
   useEffect(() => {
-    if (data?.campaign.status !== "RUNNING") return;
+    if (campaignStatus !== "RUNNING" && !findingCompanies) return;
     const interval = window.setInterval(() => void load(), 5000);
     return () => window.clearInterval(interval);
-  }, [data?.campaign.status, load]);
+  }, [campaignStatus, findingCompanies, load]);
+
+  useEffect(() => {
+    if (!findingCompanies) {
+      setRefreshIn(60);
+      return;
+    }
+    setRefreshIn(60);
+    const tick = window.setInterval(() => {
+      setRefreshIn((left) => {
+        if (left <= 1) {
+          void load();
+          return 60;
+        }
+        return left - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(tick);
+  }, [findingCompanies, load]);
 
   const rows = useMemo(() => {
     if (!data) return [];
@@ -266,9 +293,25 @@ export default function CampaignDetailPage() {
 
           {rows.length === 0 ? (
             <Card className="p-8 text-center text-sm text-slate-500">
-              {data.prospects.length === 0
-                ? "Still finding companies — refresh in a minute."
-                : "No prospects match this filter."}
+              {data.prospects.length === 0 ? (
+                <div className="flex flex-col items-center gap-3">
+                  <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-slate-200 border-t-violet-500" />
+                  <p className="font-medium text-slate-700">
+                    Still finding companies…
+                  </p>
+                  <p>
+                    Checking again in{" "}
+                    <span className="font-semibold tabular-nums text-slate-700">
+                      {Math.floor(refreshIn / 60)}:
+                      {String(refreshIn % 60).padStart(2, "0")}
+                    </span>
+                    . You can leave this page — results will be here when you
+                    come back.
+                  </p>
+                </div>
+              ) : (
+                "No prospects match this filter."
+              )}
             </Card>
           ) : (
             <div className="overflow-hidden rounded-none border border-slate-200 bg-white">
