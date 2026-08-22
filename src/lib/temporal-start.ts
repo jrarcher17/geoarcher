@@ -110,10 +110,38 @@ export async function startSeoAuditJob(options: {
   scanId: string;
 }): Promise<StartedVia> {
   const { siteId, scanId } = options;
+
+  // Persist RUNNING immediately so the Autopilot UI has something to poll.
+  // runSeoAudit replaces this row once it actually starts computing.
+  await prisma.seoAudit.upsert({
+    where: { scanId },
+    create: { siteId, scanId, status: "RUNNING" },
+    update: { status: "RUNNING", error: null, finishedAt: null },
+  });
+
   const viaTemporal = await startWorkflow("seoAuditWorkflow", `seo-audit-${scanId}`, [
     { siteId, scanId },
   ]);
-  if (viaTemporal) return "temporal";
+  if (viaTemporal) {
+    after(async () => {
+      await new Promise((resolve) => setTimeout(resolve, WORKER_GRACE_MS));
+      const existing = await prisma.seoAudit.findUnique({
+        where: { scanId },
+        select: { status: true, overallScore: true },
+      });
+      if (
+        existing?.status === "COMPLETE" ||
+        (existing?.status === "RUNNING" && existing.overallScore != null)
+      ) {
+        return;
+      }
+      console.warn(
+        `[temporal] SEO audit for scan ${scanId} still idle after ${WORKER_GRACE_MS}ms — running inline. Start \`pnpm worker\` for Temporal Cloud.`
+      );
+      await runSeoAuditInline(siteId, scanId);
+    });
+    return "temporal";
+  }
 
   after(() => runSeoAuditInline(siteId, scanId));
   return "inline";

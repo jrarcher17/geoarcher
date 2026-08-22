@@ -25,7 +25,9 @@ export async function POST(
     );
   }
 
-  // Don't double-run while a recent audit is still in progress.
+  // Don't double-run while a recent audit is actually computing.
+  // A RUNNING row with no scores means Temporal queued it and nobody claimed it —
+  // kick it again so the UI doesn't spin forever.
   const running = await prisma.seoAudit.findFirst({
     where: {
       siteId,
@@ -33,7 +35,7 @@ export async function POST(
       createdAt: { gte: new Date(Date.now() - RUNNING_GRACE_MS) },
     },
   });
-  if (running) {
+  if (running && running.overallScore != null) {
     return NextResponse.json({ started: false, auditId: running.id, scanId: scan.id });
   }
 
