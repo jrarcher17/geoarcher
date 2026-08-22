@@ -98,8 +98,6 @@ export default function CampaignDetailPage() {
       !["COMPLETE", "FAILED", "CANCELLED"].includes(data.campaign.status)
   );
 
-  const [refreshIn, setRefreshIn] = useState(60);
-
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), 0);
     return () => window.clearTimeout(timer);
@@ -110,24 +108,6 @@ export default function CampaignDetailPage() {
     const interval = window.setInterval(() => void load(), 5000);
     return () => window.clearInterval(interval);
   }, [campaignStatus, findingCompanies, load]);
-
-  useEffect(() => {
-    if (!findingCompanies) {
-      setRefreshIn(60);
-      return;
-    }
-    setRefreshIn(60);
-    const tick = window.setInterval(() => {
-      setRefreshIn((left) => {
-        if (left <= 1) {
-          void load();
-          return 60;
-        }
-        return left - 1;
-      });
-    }, 1000);
-    return () => window.clearInterval(tick);
-  }, [findingCompanies, load]);
 
   const rows = useMemo(() => {
     if (!data) return [];
@@ -323,12 +303,7 @@ export default function CampaignDetailPage() {
                     Still finding companies…
                   </p>
                   <p>
-                    Checking again in{" "}
-                    <span className="font-semibold tabular-nums text-slate-700">
-                      {Math.floor(refreshIn / 60)}:
-                      {String(refreshIn % 60).padStart(2, "0")}
-                    </span>
-                    . You can leave this page — the server keeps looking and
+                    You can leave this page — the server keeps looking and
                     results will be here when you come back.
                   </p>
                 </div>
