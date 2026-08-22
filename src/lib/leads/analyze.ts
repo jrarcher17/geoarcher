@@ -29,8 +29,9 @@ export interface ProspectAnalysis {
   seoScore: number;
   /** Estimated GEO score 0-100 (higher = healthier) — same direction as a full scan. */
   geoScore: number;
+  /** Public emails found on the site (fallback when Apollo people search is blocked). */
+  contactEmails?: string[];
   /** Trimmed content digest reused by the AI report/outreach stages. */
-  digest: string;
 }
 
 export interface ProspectScoreBreakdown {
@@ -270,6 +271,11 @@ export async function analyzeProspectSite(
   const score = clamp(geoGap);
 
   const avgWordCount = Math.round(avgWords(pages));
+  const contactEmails = [
+    ...new Set(
+      pages.flatMap((p) => p.contact.emails.map((e) => e.trim().toLowerCase()))
+    ),
+  ].filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) && !e.includes("noreply"));
 
   return {
     score,
@@ -286,6 +292,7 @@ export async function analyzeProspectSite(
       avgWordCount,
       seoScore: seo.overallScore,
       geoScore,
+      contactEmails,
       digest: buildSiteDigest(websiteUrl, pages).slice(0, 6000),
     },
   };

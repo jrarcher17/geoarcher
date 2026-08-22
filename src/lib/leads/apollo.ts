@@ -19,6 +19,17 @@ function apiKey(): string {
   return key;
 }
 
+class ApolloHttpError extends Error {
+  constructor(
+    readonly status: number,
+    readonly path: string,
+    body: string
+  ) {
+    super(`Apollo request failed (${status}): ${body.slice(0, 500)}`);
+    this.name = "ApolloHttpError";
+  }
+}
+
 async function apolloPost<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${APOLLO_BASE}${path}`, {
     method: "POST",
@@ -31,9 +42,13 @@ async function apolloPost<T>(path: string, body: unknown): Promise<T> {
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`Apollo request failed (${res.status}): ${text.slice(0, 500)}`);
+    throw new ApolloHttpError(res.status, path, text);
   }
   return (await res.json()) as T;
+}
+
+function isPeopleSearchForbidden(err: unknown): boolean {
+  return err instanceof ApolloHttpError && err.status === 403;
 }
 
 export interface ApolloCompany {
@@ -148,6 +163,31 @@ function isUsableEmail(email: string | null | undefined): email is string {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+async function searchPeopleAtOrg(
+  apolloOrgId: string
+): Promise<ApolloPeopleSearchResponse> {
+  const body = {
+    organization_ids: [apolloOrgId],
+    person_titles: CONTACT_TITLES,
+    page: 1,
+    per_page: 5,
+  };
+  // Basic / scoped keys get 403 on the legacy `/search` path.
+  // `/api_search` is the current people-search endpoint.
+  try {
+    return await apolloPost<ApolloPeopleSearchResponse>(
+      "/mixed_people/api_search",
+      body
+    );
+  } catch (err) {
+    if (!isPeopleSearchForbidden(err)) throw err;
+    return await apolloPost<ApolloPeopleSearchResponse>(
+      "/people/api_search",
+      body
+    );
+  }
+}
+
 /**
  * Find a decision-maker and reveal their email. Costs 1 export credit on
  * success — only call for qualified prospects.
@@ -155,15 +195,18 @@ function isUsableEmail(email: string | null | undefined): email is string {
 export async function revealContact(
   apolloOrgId: string
 ): Promise<ApolloContact | null> {
-  const search = await apolloPost<ApolloPeopleSearchResponse>(
-    "/mixed_people/search",
-    {
-      organization_ids: [apolloOrgId],
-      person_titles: CONTACT_TITLES,
-      page: 1,
-      per_page: 5,
+  let search: ApolloPeopleSearchResponse;
+  try {
+    search = await searchPeopleAtOrg(apolloOrgId);
+  } catch (err) {
+    if (isPeopleSearchForbidden(err)) {
+      console.warn(
+        "[apollo] people search is not in this API key's scope — use a site email or a key that includes People API Search."
+      );
+      return null;
     }
-  );
+    throw err;
+  }
 
   const candidates = (search.people ?? []).filter((p) => p.id);
   for (const person of candidates.slice(0, 2)) {

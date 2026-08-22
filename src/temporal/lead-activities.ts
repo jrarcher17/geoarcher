@@ -406,6 +406,8 @@ export async function prepareOutreach(
   const problems = (prospect.problems ?? []) as unknown as ProspectProblem[];
 
   // 1 export credit — the only Apollo spend, and only for qualified prospects.
+  // If this API key cannot search people, use a public email from the crawl.
+  const siteEmail = analysis.contactEmails?.find((e) => e.includes("@"));
   const contact = prospect.contactEmail
     ? {
         name: prospect.contactName ?? "there",
@@ -415,14 +417,23 @@ export async function prepareOutreach(
     : prospect.apolloOrgId
       ? await withHeartbeat(revealContact(prospect.apolloOrgId))
       : null;
-  if (!contact) {
+  const resolved =
+    contact ??
+    (siteEmail
+      ? { name: "there", title: null, email: siteEmail }
+      : null);
+  if (!resolved) {
     await prisma.prospect.update({
       where: { id: prospectId },
-      data: { status: "CLOSED", error: "No contact email found via Apollo." },
+      data: {
+        status: "CLOSED",
+        error:
+          "No contact email found (Apollo people search unavailable or no public email on the site).",
+      },
     });
     return "no-contact";
   }
-  if (await isSuppressed(contact.email)) {
+  if (await isSuppressed(resolved.email)) {
     await prisma.prospect.update({
       where: { id: prospectId },
       data: { status: "CLOSED", error: "Contact email is on the suppression list." },
@@ -443,7 +454,7 @@ export async function prepareOutreach(
   const draft = await withHeartbeat(
     generateOutreachEmail({
       companyName: prospect.companyName,
-      contactName: contact.name,
+      contactName: resolved.name,
       senderName: prospect.campaign.user.name,
       analysis,
       problems,
@@ -456,9 +467,9 @@ export async function prepareOutreach(
   await prisma.prospect.update({
     where: { id: prospectId },
     data: {
-      contactName: contact.name,
-      contactTitle: contact.title,
-      contactEmail: contact.email,
+      contactName: resolved.name,
+      contactTitle: resolved.title,
+      contactEmail: resolved.email,
       report: report as unknown as Prisma.InputJsonValue,
       emails: {
         create: {
