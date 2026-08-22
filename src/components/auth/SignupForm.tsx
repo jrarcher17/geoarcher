@@ -28,9 +28,9 @@ export function SignupForm() {
     setLoading(true);
     setError(null);
     try {
-      const { error } = await signUp.email({ name, email, password });
-      if (error) {
-        setError(error.message || "Could not create account");
+      const { error: signUpError } = await signUp.email({ name, email, password });
+      if (signUpError) {
+        setError(signUpError.message || "Could not create account");
         return;
       }
       const resumed = await resumePendingAnalyze();

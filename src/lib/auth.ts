@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { createAuthMiddleware } from "better-auth/api";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 import { prisma } from "./db";
@@ -10,6 +11,35 @@ export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: "postgresql",
   }),
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path !== "/sign-up/email") return;
+      const email =
+        typeof ctx.body === "object" && ctx.body && "email" in ctx.body
+          ? String((ctx.body as { email?: unknown }).email ?? "")
+              .trim()
+              .toLowerCase()
+          : "";
+      if (!email) return;
+
+      const existing = await prisma.user.findUnique({
+        where: { email },
+        include: {
+          accounts: { select: { id: true } },
+          userSites: { select: { id: true } },
+          leadCampaigns: { select: { id: true } },
+        },
+      });
+      if (
+        existing &&
+        existing.accounts.length === 0 &&
+        existing.userSites.length === 0 &&
+        existing.leadCampaigns.length === 0
+      ) {
+        await prisma.user.delete({ where: { id: existing.id } });
+      }
+    }),
+  },
   emailAndPassword: {
     enabled: true,
     disableSignUp: signUpDisabled(),

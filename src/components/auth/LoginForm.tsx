@@ -28,9 +28,9 @@ function LoginFormInner({ signUpDisabled }: { signUpDisabled: boolean }) {
     setLoading(true);
     setError(null);
     try {
-      const { error } = await signIn.email({ email, password });
-      if (error) {
-        setError(error.message || "Invalid email or password");
+      const { error: signInError } = await signIn.email({ email, password });
+      if (signInError) {
+        setError(signInError.message || "Invalid email or password");
         return;
       }
       const resumed = await resumePendingAnalyze();
