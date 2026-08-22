@@ -5,12 +5,45 @@ import { nextCookies } from "better-auth/next-js";
 import { prisma } from "./db";
 import { signUpDisabled } from "./sign-up-config";
 
+function authBaseURL(): string {
+  return process.env.BETTER_AUTH_URL || "http://localhost:3000";
+}
+
+/** Share the session cookie across geoarcher.com and www.geoarcher.com. */
+function authCookieDomain(): string | undefined {
+  const explicit = process.env.BETTER_AUTH_COOKIE_DOMAIN?.trim();
+  if (explicit) return explicit.replace(/^\./, "");
+  try {
+    const { hostname } = new URL(authBaseURL());
+    if (hostname === "localhost" || hostname.endsWith(".localhost")) {
+      return undefined;
+    }
+    return hostname.startsWith("www.") ? hostname.slice(4) : hostname;
+  } catch {
+    return undefined;
+  }
+}
+
+const cookieDomain = authCookieDomain();
+const useSecureCookies = authBaseURL().startsWith("https://");
+
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
-  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
+  baseURL: authBaseURL(),
   database: prismaAdapter(prisma, {
     provider: "postgresql",
   }),
+  advanced: {
+    useSecureCookies,
+    ...(cookieDomain
+      ? {
+          crossSubDomainCookies: {
+            enabled: true,
+            domain: cookieDomain,
+          },
+        }
+      : {}),
+  },
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
       if (ctx.path !== "/sign-up/email") return;
@@ -49,7 +82,7 @@ export const auth = betterAuth({
     updateAge: 60 * 60 * 24,
   },
   trustedOrigins: [
-    process.env.BETTER_AUTH_URL || "http://localhost:3000",
+    authBaseURL(),
     "https://geoarcher.com",
     "https://www.geoarcher.com",
   ],

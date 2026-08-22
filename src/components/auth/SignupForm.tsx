@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { signUp } from "@/lib/auth-client";
 import { resumePendingAnalyze } from "@/lib/pending-analyze";
@@ -11,7 +10,6 @@ const inputCls =
   "w-full rounded-xl border border-slate-200 bg-[#eef4fb] px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-400/25";
 
 export function SignupForm() {
-  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,8 +32,9 @@ export function SignupForm() {
         return;
       }
       const resumed = await resumePendingAnalyze();
-      router.push(resumed.kind === "scan" ? `/scan/${resumed.scanId}` : "/dashboard");
-      router.refresh();
+      window.location.assign(
+        resumed.kind === "scan" ? `/scan/${resumed.scanId}` : "/dashboard"
+      );
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
