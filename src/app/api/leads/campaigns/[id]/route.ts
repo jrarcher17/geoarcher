@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { requireLeadGenAccess } from "@/lib/leads/api-guard";
 import { serializeCampaign, serializeProspect } from "@/lib/leads/serialize";
 import { kickLeadCampaignWork } from "@/lib/leads/campaign-runner";
+import { isUnreachableProspect } from "@/lib/leads/site-live";
+import { countLiveProspects } from "@/temporal/lead-activities";
 import { getTemporalClient, temporalConfigured } from "@/temporal/client";
 import { leadGenWorkflowId } from "@/temporal/shared";
 
@@ -48,20 +50,22 @@ export async function GET(
     },
   });
 
-  const pending = prospects.filter(
+  const visible = prospects.filter((p) => !isUnreachableProspect(p));
+  const pending = visible.filter(
     (p) => p.status === "FOUND" || p.status === "ANALYZING"
   ).length;
+  const live = await countLiveProspects(id);
   if (
     campaign.status === "RUNNING" &&
     Date.now() - campaign.createdAt.getTime() > 10_000 &&
-    (prospects.length < campaign.targetCount || pending > 0)
+    (live < campaign.targetCount || pending > 0)
   ) {
     after(() => kickLeadCampaignWork(id, 0));
   }
 
   return NextResponse.json({
     campaign: serializeCampaign(campaign),
-    prospects: prospects.map(serializeProspect),
+    prospects: visible.map(serializeProspect),
   });
 }
 

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { qualifyThreshold } from "@/lib/leads/qualify";
-import { formatDate, type Tone } from "@/lib/utils";
+import { formatDate, gradeFor, type Tone } from "@/lib/utils";
 
 interface ProspectRow {
   id: string;
@@ -18,6 +18,7 @@ interface ProspectRow {
   status: string;
   score: number | null;
   contactEmail: string | null;
+  analysis?: { geoScore?: number } | null;
   emails?: { status: string; followUpIndex: number }[];
 }
 
@@ -36,7 +37,15 @@ interface CampaignDetail {
   prospects: ProspectRow[];
 }
 
-const QUALIFY_SCORE = qualifyThreshold();
+const QUALIFY_NEED = qualifyThreshold();
+/** Qualify when estimated GEO is below this — same scale as a GEO Archer scan. */
+const GEO_HEALTHY_AT = 100 - QUALIFY_NEED;
+
+function geoScoreOf(p: ProspectRow): number | null {
+  if (typeof p.analysis?.geoScore === "number") return p.analysis.geoScore;
+  if (p.score == null) return null;
+  return Math.max(0, 100 - p.score);
+}
 
 function statusTone(status: string): Tone {
   if (status === "REPLIED" || status === "QUALIFIED") return "positive";
@@ -49,7 +58,7 @@ function statusTone(status: string): Tone {
 }
 
 function statusLabel(status: string): string {
-  if (status === "DISQUALIFIED") return "Site already healthy";
+  if (status === "DISQUALIFIED") return "GEO already healthy";
   if (status === "QUALIFIED") return "Needs GEO help";
   if (status === "FOUND") return "Found";
   if (status === "ANALYZING") return "Analyzing site";
@@ -253,11 +262,11 @@ export default function CampaignDetailPage() {
           {data.prospects.length > 0 &&
             data.prospects.every((p) => p.status === "DISQUALIFIED") && (
               <p className="rounded-none border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                Apollo found these companies (search is free). We crawled each
-                site and none scored {QUALIFY_SCORE}+ on outreach need — their
-                GEO/SEO already looks healthy enough that we skip the paid
-                Apollo email reveal. Higher score = worse site = better lead.
-                Click a company to see why.
+                Apollo found these companies (search is free). Each site’s GEO
+                score is on the same 0–100 scale as a GEO Archer scan. None
+                scored below {GEO_HEALTHY_AT}, so we skip the paid email reveal.
+                Down or missing websites are dropped, not listed. Click a
+                company to see why.
               </p>
             )}
 
@@ -320,9 +329,7 @@ export default function CampaignDetailPage() {
                       <span className="sr-only">Select</span>
                     </th>
                     <th className="px-3 py-3 font-medium">Company</th>
-                    <th className="px-3 py-3 font-medium">
-                      Outreach need
-                    </th>
+                    <th className="px-3 py-3 font-medium">GEO score</th>
                     <th className="px-3 py-3 font-medium">Status</th>
                     <th className="px-3 py-3 font-medium">Contact</th>
                   </tr>
@@ -348,7 +355,12 @@ export default function CampaignDetailPage() {
                         <p className="text-xs text-slate-400">{p.domain}</p>
                       </td>
                       <td className="px-3 py-3 font-semibold text-slate-800">
-                        {p.score == null ? "—" : `${p.score}/${QUALIFY_SCORE}`}
+                        {(() => {
+                          const geo = geoScoreOf(p);
+                          return geo == null
+                            ? "—"
+                            : `${geo} ${gradeFor(geo)}`;
+                        })()}
                       </td>
                       <td className="px-3 py-3">
                         <Badge tone={statusTone(p.status)}>

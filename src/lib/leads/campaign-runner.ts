@@ -4,6 +4,7 @@ import { appBaseUrl } from "@/lib/stripe";
 import {
   analyzeProspect,
   checkLeadGenAccess,
+  countLiveProspects,
   findCompanies,
   listPendingProspects,
   markCampaignStatus,
@@ -31,9 +32,7 @@ function sleep(ms: number): Promise<void> {
 async function campaignNeedsWork(campaignId: string): Promise<boolean> {
   const campaign = await prisma.leadCampaign.findUnique({
     where: { id: campaignId },
-    include: {
-      _count: { select: { prospects: true } },
-    },
+    select: { status: true, targetCount: true },
   });
   if (!campaign || campaign.status !== "RUNNING") return false;
 
@@ -43,7 +42,8 @@ async function campaignNeedsWork(campaignId: string): Promise<boolean> {
       status: { in: ["FOUND", "ANALYZING"] },
     },
   });
-  return pending > 0 || campaign._count.prospects < campaign.targetCount;
+  const live = await countLiveProspects(campaignId);
+  return pending > 0 || live < campaign.targetCount;
 }
 
 async function resetStuckAnalyzing(campaignId: string): Promise<void> {
@@ -79,11 +79,12 @@ export async function runLeadCampaignProgress(
 ): Promise<LeadProgressResult> {
   const campaign = await prisma.leadCampaign.findUnique({
     where: { id: campaignId },
-    include: { _count: { select: { prospects: true } } },
+    select: { id: true, status: true, targetCount: true },
   });
   if (!campaign || campaign.status !== "RUNNING") {
     return { done: true, busy: false, found: 0, analyzed: 0 };
   }
+  const liveCount = await countLiveProspects(campaignId);
 
   await resetStuckAnalyzing(campaignId);
 
@@ -101,17 +102,18 @@ export async function runLeadCampaignProgress(
   const recentFind = await prisma.prospect.findFirst({
     where: {
       campaignId,
+      status: "FOUND",
       createdAt: { gte: new Date(Date.now() - OTHER_WORKER_MS) },
     },
     select: { id: true },
   });
   const findInProgress =
-    Boolean(recentFind) && campaign._count.prospects < campaign.targetCount;
+    Boolean(recentFind) && liveCount < campaign.targetCount;
 
-  if (campaign._count.prospects < campaign.targetCount && !findInProgress) {
+  if (liveCount < campaign.targetCount && !findInProgress) {
     const result = await findCompanies(campaignId);
     found = result.created;
-    if (found === 0 && campaign._count.prospects === 0) {
+    if (found === 0 && (await countLiveProspects(campaignId)) === 0) {
       await markCampaignStatus(
         campaignId,
         "FAILED",
@@ -143,8 +145,8 @@ export async function runLeadCampaignProgress(
   const pending = await prisma.prospect.count({
     where: { campaignId, status: { in: ["FOUND", "ANALYZING"] } },
   });
-  const total = await prisma.prospect.count({ where: { campaignId } });
-  const stillFinding = total < campaign.targetCount && found > 0;
+  const live = await countLiveProspects(campaignId);
+  const stillFinding = live < campaign.targetCount && found > 0;
   if (pending === 0 && !stillFinding) {
     await markCampaignStatus(campaignId, "COMPLETE");
     return { done: true, busy: false, found, analyzed };

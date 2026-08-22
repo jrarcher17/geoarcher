@@ -191,16 +191,16 @@ export default function ProspectDetailPage() {
           <div className="space-y-6 lg:col-span-2">
             <div className="flex flex-wrap items-center gap-3">
               <Badge tone={statusTone(prospect.status)}>{prospect.status}</Badge>
-              {prospect.score != null && (
+              {prospect.analysis && (
                 <span className="text-sm font-semibold text-slate-800">
-                  Score {prospect.score}/100
+                  GEO {prospect.analysis.geoScore ?? "—"}/100
                 </span>
               )}
               {prospect.analysis && (
                 <span className="text-sm text-slate-500">
-                  SEO {prospect.analysis.seoScore ?? "—"} · GEO{" "}
-                  {prospect.analysis.geoScore ?? "—"} ·{" "}
-                  {prospect.analysis.pagesCrawled ?? 0} pages
+                  SEO {prospect.analysis.seoScore ?? "—"} · outreach need{" "}
+                  {prospect.score ?? "—"} · {prospect.analysis.pagesCrawled ?? 0}{" "}
+                  pages
                 </span>
               )}
             </div>

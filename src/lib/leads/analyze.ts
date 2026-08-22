@@ -1,17 +1,18 @@
 import { buildSiteDigest } from "@/lib/analysis";
 import { crawlSite } from "@/lib/crawler";
 import { computeSeoAudit } from "@/lib/seo/checks";
-import type { PageExtraction } from "@/lib/types";
+import { GEO_COMPONENT_NAMES, type PageExtraction } from "@/lib/types";
+import { gradeFor } from "@/lib/utils";
 
 export { qualifyThreshold } from "./qualify";
 
 /**
- * Prospect analysis: a lightweight, deterministic GEO/SEO health check over a
- * small crawl (~8 pages). No AI spend here — AI runs later, only for
- * qualified prospects (report + outreach generation).
+ * Prospect analysis: deterministic GEO estimate on the same 0-100 scale as a
+ * GEO Archer scan (higher = healthier). No AI spend here — AI runs later,
+ * only for qualified prospects (report + outreach generation).
  */
 
-export const PROSPECT_MAX_PAGES = 8;
+export const PROSPECT_MAX_PAGES = 20;
 
 export interface ProspectProblem {
   id: string;
@@ -26,7 +27,7 @@ export interface ProspectAnalysis {
   avgWordCount: number;
   /** Their SEO health 0-100 (higher = healthier). */
   seoScore: number;
-  /** Their GEO readiness 0-100 (higher = more AI-visible). */
+  /** Estimated GEO score 0-100 (higher = healthier) — same direction as a full scan. */
   geoScore: number;
   /** Trimmed content digest reused by the AI report/outreach stages. */
   digest: string;
@@ -40,7 +41,7 @@ export interface ProspectScoreBreakdown {
 }
 
 export interface ProspectScoreResult {
-  /** 0-100; higher = worse GEO/SEO = hotter lead. */
+  /** 0-100; higher = worse GEO = hotter lead. Equal to 100 − geoScore. */
   score: number;
   breakdown: ProspectScoreBreakdown;
   problems: ProspectProblem[];
@@ -49,12 +50,101 @@ export interface ProspectScoreResult {
 
 const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
 
-const GEO_DEDUCTION = { critical: 25, warning: 12, info: 5 } as const;
+const PLACEHOLDER_RE =
+  /pictures coming soon|photos? coming soon|coming soon!?|lorem ipsum|under construction|website parked|domain is for sale|this site (?:is )?for sale|pardon our dust/i;
 
-/** Deterministic GEO signal check — mirrors what the full product audits with AI. */
-function geoProblems(pages: PageExtraction[]): ProspectProblem[] {
+function avgWords(pages: PageExtraction[]): number {
+  if (pages.length === 0) return 0;
+  return pages.reduce((sum, p) => sum + p.wordCount, 0) / pages.length;
+}
+
+function share(pages: PageExtraction[], pred: (p: PageExtraction) => boolean): number {
+  if (pages.length === 0) return 0;
+  return pages.filter(pred).length / pages.length;
+}
+
+function placeholderShare(pages: PageExtraction[]): number {
+  return share(
+    pages,
+    (p) => PLACEHOLDER_RE.test(p.mainContent) || p.wordCount < 40
+  );
+}
+
+/**
+ * Deterministic stand-in for the 13-component GEO audit. Same average-of-
+ * components math as a full scan, without the AI call.
+ */
+export function estimateGeoScore(pages: PageExtraction[]): number {
+  if (pages.length === 0) return 0;
+  const placeholders = placeholderShare(pages);
+  const words = avgWords(pages);
+  const jsonLd = share(pages, (p) => p.jsonLdTypes.length > 0);
+  const faqs = pages.reduce((n, p) => n + p.faqs.length, 0);
+  const faqPages = share(pages, (p) => p.faqs.length > 0);
+  const meta = share(pages, (p) => (p.metaDescription ?? "").length > 40);
+  const h1 = share(pages, (p) => p.headings.h1.length > 0);
+  const contact = pages.some(
+    (p) => p.contact.phones.length > 0 || p.contact.emails.length > 0
+  );
+  const reviews = pages.some((p) => p.hasReviewMarkup);
+  const authors = share(pages, (p) => Boolean(p.author));
+  const dates = share(pages, (p) => Boolean(p.publishedAt || p.modifiedAt));
+  const external = pages.reduce((n, p) => n + p.externalLinks.length, 0);
+  const tables = pages.reduce((n, p) => n + p.tableCount, 0);
+  const uniqueH2 = new Set(pages.flatMap((p) => p.headings.h2)).size;
+  const altOk =
+    pages.reduce((n, p) => n + p.images.length, 0) === 0
+      ? 0.4
+      : 1 -
+        pages.reduce((n, p) => n + p.imagesMissingAlt, 0) /
+          Math.max(
+            1,
+            pages.reduce((n, p) => n + p.images.length, 0)
+          );
+
+  const byName: Record<(typeof GEO_COMPONENT_NAMES)[number], number> = {
+    Authority: clamp(words / 6 - placeholders * 50),
+    "Topic Coverage": clamp(uniqueH2 * 4 + Math.min(words / 8, 30) - placeholders * 40),
+    "Entity Coverage": clamp(
+      jsonLd * 40 +
+        (contact ? 20 : 0) +
+        Math.min(uniqueH2 * 2, 25) -
+        placeholders * 25
+    ),
+    "Structured Data": clamp(jsonLd * 90 + (reviews ? 10 : 0)),
+    "FAQ Quality": clamp(faqPages * 50 + Math.min(faqs * 8, 40)),
+    Citations: clamp(Math.min(external * 3, 70) + jsonLd * 15),
+    "Trust Signals": clamp(
+      (contact ? 35 : 0) + (reviews ? 30 : 0) + meta * 20 + (authors > 0 ? 10 : 0)
+    ),
+    "Author Signals": clamp(authors * 80 + (reviews ? 10 : 0)),
+    "Original Research": clamp(Math.min(tables * 12, 50) + Math.min(words / 20, 25)),
+    Freshness: clamp(dates * 85),
+    "Machine Readability": clamp(h1 * 35 + meta * 25 + altOk * 30 + jsonLd * 10),
+    "Semantic Depth": clamp(words / 7 + Math.min(uniqueH2 * 2, 20) - placeholders * 45),
+    "Conversation Readiness": clamp(
+      faqPages * 55 + Math.min(faqs * 6, 25) + meta * 15 - placeholders * 30
+    ),
+  };
+
+  const values = GEO_COMPONENT_NAMES.map((name) => byName[name]);
+  return clamp(values.reduce((sum, n) => sum + n, 0) / values.length);
+}
+
+function geoProblems(pages: PageExtraction[], geoScore: number): ProspectProblem[] {
   const problems: ProspectProblem[] = [];
   const total = pages.length;
+  const placeholders = placeholderShare(pages);
+
+  if (placeholders >= 0.25) {
+    problems.push({
+      id: "geo-placeholder-pages",
+      severity: "critical",
+      title: `${Math.round(placeholders * 100)}% of checked pages are placeholders or nearly empty`,
+      detail:
+        "AI assistants skip or misrepresent sites full of “coming soon” copy. Those pages drag the GEO score down the same way a full GEO Archer scan does.",
+    });
+  }
 
   const withJsonLd = pages.filter((p) => p.jsonLdTypes.length > 0).length;
   if (withJsonLd === 0) {
@@ -89,15 +179,12 @@ function geoProblems(pages: PageExtraction[]): ProspectProblem[] {
     });
   }
 
-  const avgWords =
-    total > 0
-      ? Math.round(pages.reduce((s, p) => s + p.wordCount, 0) / total)
-      : 0;
-  if (avgWords < 300) {
+  const words = Math.round(avgWords(pages));
+  if (words < 300) {
     problems.push({
       id: "geo-thin-content",
       severity: "warning",
-      title: `Thin content: pages average only ${avgWords} words`,
+      title: `Thin content: pages average only ${words} words`,
       detail:
         "AI assistants can't confidently describe or recommend a business from a few sentences per page. Thin content means low citation likelihood.",
     });
@@ -138,6 +225,16 @@ function geoProblems(pages: PageExtraction[]): ProspectProblem[] {
     });
   }
 
+  if (geoScore < 60) {
+    problems.push({
+      id: "geo-failing-score",
+      severity: geoScore < 40 ? "critical" : "warning",
+      title: `Estimated GEO score is ${geoScore} (grade ${gradeFor(geoScore)})`,
+      detail:
+        "This is the same 0–100 GEO scale as a GEO Archer scan. Below 60 is not a healthy site — it is a lead.",
+    });
+  }
+
   return problems;
 }
 
@@ -153,12 +250,9 @@ export async function analyzeProspectSite(
     0
   );
 
-  const geo = geoProblems(pages);
-  const geoScore = clamp(
-    100 - geo.reduce((sum, p) => sum + GEO_DEDUCTION[p.severity], 0)
-  );
+  const geoScore = estimateGeoScore(pages);
+  const geo = geoProblems(pages, geoScore);
 
-  // Fold in the worst deterministic SEO site checks as named problems.
   const seoProblems: ProspectProblem[] = seo.siteChecks
     .filter((c) => c.status !== "pass")
     .slice(0, 6)
@@ -172,12 +266,10 @@ export async function analyzeProspectSite(
   const problems = [...geo, ...seoProblems];
   const seoGap = 100 - seo.overallScore;
   const geoGap = 100 - geoScore;
-  const score = clamp(0.5 * seoGap + 0.5 * geoGap);
+  // Outreach need matches the product: a GEO 36 (F) is a 64 need, not “healthy”.
+  const score = clamp(geoGap);
 
-  const avgWordCount =
-    pages.length > 0
-      ? Math.round(pages.reduce((s, p) => s + p.wordCount, 0) / pages.length)
-      : 0;
+  const avgWordCount = Math.round(avgWords(pages));
 
   return {
     score,

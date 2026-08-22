@@ -23,6 +23,11 @@ import {
 } from "@/lib/leads/email";
 import { leadGenMonthlyQuota } from "@/lib/plans";
 import { appBaseUrl } from "@/lib/stripe";
+import {
+  isUnreachableError,
+  isWebsiteReachable,
+  unreachableErrorMessage,
+} from "@/lib/leads/site-live";
 
 /**
  * Activities for the AI Lead Generation Machine campaign workflow.
@@ -126,9 +131,7 @@ export async function findCompanies(
       },
     },
   });
-  const existingInCampaign = await prisma.prospect.count({
-    where: { campaignId },
-  });
+  const existingInCampaign = await countLiveProspects(campaignId);
   const target = Math.min(
     campaign.targetCount - existingInCampaign,
     quota - usedThisMonth
@@ -173,13 +176,29 @@ export async function findCompanies(
       if (created >= target) break;
       if (knownDomains.has(company.domain)) continue;
       knownDomains.add(company.domain);
+      const siteUrl = company.websiteUrl || `https://${company.domain}`;
+      const live = await isWebsiteReachable(siteUrl, company.domain);
+      if (!live) {
+        await prisma.prospect.create({
+          data: {
+            campaignId,
+            companyName: company.name,
+            domain: company.domain,
+            apolloOrgId: company.apolloOrgId,
+            status: "CLOSED",
+            error: unreachableErrorMessage(),
+            analysis: { siteUrl } as unknown as Prisma.InputJsonValue,
+          },
+        });
+        continue;
+      }
       await prisma.prospect.create({
         data: {
           campaignId,
           companyName: company.name,
           domain: company.domain,
           apolloOrgId: company.apolloOrgId,
-          analysis: { siteUrl: company.websiteUrl } as unknown as Prisma.InputJsonValue,
+          analysis: { siteUrl } as unknown as Prisma.InputJsonValue,
         },
       });
       created += 1;
@@ -226,7 +245,31 @@ export async function listPendingProspects(
 
 // ---- Stage: analyze + score (own crawler — no credits, no AI) ----
 
-export type AnalyzeOutcome = "QUALIFIED" | "DISQUALIFIED" | "FAILED";
+/** Live sites we keep toward the campaign target. Down domains do not count. */
+const LIVE_PROSPECT_STATUSES = [
+  "FOUND",
+  "ANALYZING",
+  "QUALIFIED",
+  "DISQUALIFIED",
+  "CONTACTED",
+  "REPLIED",
+  "BOUNCED",
+] as const;
+
+export async function countLiveProspects(campaignId: string): Promise<number> {
+  return prisma.prospect.count({
+    where: {
+      campaignId,
+      status: { in: [...LIVE_PROSPECT_STATUSES] },
+    },
+  });
+}
+
+export type AnalyzeOutcome =
+  | "QUALIFIED"
+  | "DISQUALIFIED"
+  | "FAILED"
+  | "UNREACHABLE";
 
 export async function analyzeProspect(
   prospectId: string
@@ -258,9 +301,20 @@ export async function analyzeProspect(
     });
     return qualified ? "QUALIFIED" : "DISQUALIFIED";
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (isUnreachableError(message)) {
+      await prisma.prospect.update({
+        where: { id: prospectId },
+        data: {
+          status: "CLOSED",
+          error: unreachableErrorMessage(),
+        },
+      });
+      return "UNREACHABLE";
+    }
     await prisma.prospect.update({
       where: { id: prospectId },
-      data: { status: "FAILED", error: String(err).slice(0, 500) },
+      data: { status: "FAILED", error: message.slice(0, 500) },
     });
     return "FAILED";
   }
