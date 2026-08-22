@@ -48,6 +48,8 @@ export interface CompanySearchParams {
   industry: string;
   /** Free-text location, e.g. "Texas, US" or "Austin, Texas" */
   location?: string | null;
+  /** Extra free-text query when the location filter is too tight. */
+  keywords?: string | null;
   employeeMin?: number | null;
   employeeMax?: number | null;
   page?: number;
@@ -75,6 +77,9 @@ export async function searchCompanies(
   };
   if (params.location?.trim()) {
     body.organization_locations = [params.location.trim()];
+  }
+  if (params.keywords?.trim()) {
+    body.q_keywords = params.keywords.trim();
   }
   if (params.employeeMin != null || params.employeeMax != null) {
     const min = params.employeeMin ?? 1;

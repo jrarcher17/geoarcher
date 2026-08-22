@@ -57,33 +57,39 @@ function candidateUrls(websiteUrl: string, domain?: string): string[] {
   return [...new Set(urls)];
 }
 
+function hostnameOf(websiteUrl: string, domain?: string): string | null {
+  if (domain?.trim()) return domain.trim().toLowerCase().replace(/^www\./, "");
+  for (const url of candidateUrls(websiteUrl, domain)) {
+    try {
+      return new URL(url).hostname.replace(/^www\./, "");
+    } catch {
+      // try next
+    }
+  }
+  return null;
+}
+
 /**
- * Cheap liveness check — any HTTP response means the host is still there.
- * DNS / connection failures mean it is not a usable prospect.
+ * Only skip domains that do not exist (NXDOMAIN). A slow, bot-blocked, or
+ * TLS-odd host is still a prospect — the crawler decides if pages load.
  */
 export async function isWebsiteReachable(
   websiteUrl: string,
   domain?: string
 ): Promise<boolean> {
-  for (const url of candidateUrls(websiteUrl, domain)) {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 8_000);
+  const host = hostnameOf(websiteUrl, domain);
+  if (!host) return false;
+  const { resolve4, resolve6 } = await import("node:dns/promises");
+  try {
+    await Promise.any([resolve4(host), resolve6(host)]);
+    return true;
+  } catch {
+    if (host.startsWith("www.")) return false;
     try {
-      const res = await fetch(url, {
-        method: "GET",
-        redirect: "follow",
-        signal: ctrl.signal,
-        headers: {
-          "user-agent":
-            "Mozilla/5.0 (compatible; GEOArcherLeadBot/1.0; +https://geoarcher.com)",
-        },
-      });
-      if (res.status > 0) return true;
+      await Promise.any([resolve4(`www.${host}`), resolve6(`www.${host}`)]);
+      return true;
     } catch {
-      // try the next candidate
-    } finally {
-      clearTimeout(timer);
+      return false;
     }
   }
-  return false;
 }

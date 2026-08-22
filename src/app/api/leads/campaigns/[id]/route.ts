@@ -37,7 +37,7 @@ export async function GET(
   if (access instanceof NextResponse) return access;
 
   const { id } = await params;
-  const campaign = await loadOwnedCampaign(access.userId, id);
+  let campaign = await loadOwnedCampaign(access.userId, id);
   if (!campaign) {
     return NextResponse.json({ error: "Campaign not found." }, { status: 404 });
   }
@@ -55,11 +55,18 @@ export async function GET(
     (p) => p.status === "FOUND" || p.status === "ANALYZING"
   ).length;
   const live = await countLiveProspects(id);
+  const underTarget = live < campaign.targetCount || pending > 0;
   if (
-    campaign.status === "RUNNING" &&
+    underTarget &&
     Date.now() - campaign.createdAt.getTime() > 10_000 &&
-    (live < campaign.targetCount || pending > 0)
+    (campaign.status === "RUNNING" || campaign.status === "COMPLETE")
   ) {
+    if (campaign.status === "COMPLETE") {
+      campaign = await prisma.leadCampaign.update({
+        where: { id },
+        data: { status: "RUNNING", error: null },
+      });
+    }
     after(() => kickLeadCampaignWork(id, 0));
   }
 

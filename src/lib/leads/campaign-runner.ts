@@ -9,6 +9,7 @@ import {
   listPendingProspects,
   markCampaignStatus,
   prepareOutreach,
+  reclassifyUnhealthySkips,
   sendOutreach,
 } from "@/temporal/lead-activities";
 
@@ -98,7 +99,16 @@ export async function runLeadCampaignProgress(
     return { done: true, busy: false, found: 0, analyzed: 0 };
   }
 
+  const flipped = await reclassifyUnhealthySkips(campaignId);
+  for (const id of flipped) {
+    const prep = await prepareOutreach(id);
+    if (prep === "ready" && access.mode === "AUTO_SEND") {
+      await sendOutreach(id);
+    }
+  }
+
   let found = 0;
+  let searchExhausted = false;
   const recentFind = await prisma.prospect.findFirst({
     where: {
       campaignId,
@@ -113,6 +123,7 @@ export async function runLeadCampaignProgress(
   if (liveCount < campaign.targetCount && !findInProgress) {
     const result = await findCompanies(campaignId);
     found = result.created;
+    searchExhausted = result.exhausted;
     if (found === 0 && (await countLiveProspects(campaignId)) === 0) {
       await markCampaignStatus(
         campaignId,
@@ -146,10 +157,21 @@ export async function runLeadCampaignProgress(
     where: { campaignId, status: { in: ["FOUND", "ANALYZING"] } },
   });
   const live = await countLiveProspects(campaignId);
-  const stillFinding = live < campaign.targetCount && found > 0;
-  if (pending === 0 && !stillFinding) {
+  if (pending === 0 && live >= campaign.targetCount) {
     await markCampaignStatus(campaignId, "COMPLETE");
     return { done: true, busy: false, found, analyzed };
+  }
+  if (pending === 0 && live < campaign.targetCount && searchExhausted) {
+    await markCampaignStatus(
+      campaignId,
+      "COMPLETE",
+      `Found ${live} live websites (asked for ${campaign.targetCount}). Apollo has no more companies for this search. Try a broader location.`
+    );
+    return { done: true, busy: false, found, analyzed };
+  }
+  if (pending === 0 && live < campaign.targetCount && found === 0 && !findInProgress) {
+    // Find was skipped this slice (recent batch still settling) — keep going.
+    return { done: false, busy: false, found, analyzed };
   }
 
   return { done: false, busy: false, found, analyzed };

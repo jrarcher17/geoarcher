@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { UNREACHABLE_PREFIX } from "@/lib/leads/site-live";
 import { leadGenMonthlyQuota } from "@/lib/plans";
 import { getServerSession } from "@/lib/session";
 import { getPlanForUser } from "@/lib/user-plan";
@@ -55,6 +56,7 @@ export async function countProspectsThisMonth(userId: string): Promise<number> {
       createdAt: { gte: startOfUtcMonth() },
       campaign: { userId },
       status: { in: [...QUOTA_STATUSES] },
+      NOT: { error: { startsWith: UNREACHABLE_PREFIX } },
     },
   });
 }

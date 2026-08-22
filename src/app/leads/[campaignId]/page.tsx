@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { qualifyThreshold } from "@/lib/leads/qualify";
+import { geoHealthyAt } from "@/lib/leads/qualify";
 import { formatDate, gradeFor, type Tone } from "@/lib/utils";
 
 interface ProspectRow {
@@ -37,9 +37,7 @@ interface CampaignDetail {
   prospects: ProspectRow[];
 }
 
-const QUALIFY_NEED = qualifyThreshold();
-/** Qualify when estimated GEO is below this — same scale as a GEO Archer scan. */
-const GEO_HEALTHY_AT = 100 - QUALIFY_NEED;
+const GEO_HEALTHY_AT = geoHealthyAt();
 
 function geoScoreOf(p: ProspectRow): number | null {
   if (typeof p.analysis?.geoScore === "number") return p.analysis.geoScore;

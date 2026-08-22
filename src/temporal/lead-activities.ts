@@ -8,10 +8,10 @@ import {
 } from "@/lib/leads/ai";
 import {
   analyzeProspectSite,
-  qualifyThreshold,
   type ProspectAnalysis,
   type ProspectProblem,
 } from "@/lib/leads/analyze";
+import { needsGeoHelp } from "@/lib/leads/qualify";
 import { apolloConfigured, revealContact, searchCompanies } from "@/lib/leads/apollo";
 import {
   countSentTodayForUser,
@@ -24,6 +24,7 @@ import {
 import { leadGenMonthlyQuota } from "@/lib/plans";
 import { appBaseUrl } from "@/lib/stripe";
 import {
+  UNREACHABLE_PREFIX,
   isUnreachableError,
   isWebsiteReachable,
   unreachableErrorMessage,
@@ -109,6 +110,31 @@ export interface FindCompaniesResult {
   created: number;
   quotaRemaining: number;
   detail: string;
+  exhausted: boolean;
+}
+
+function searchVariants(
+  industry: string,
+  location: string | null
+): Array<{ location: string | null; keywords?: string }> {
+  const variants: Array<{ location: string | null; keywords?: string }> = [
+    { location },
+  ];
+  if (location) {
+    const parts = location.split(",").map((p) => p.trim()).filter(Boolean);
+    if (parts.length > 1) {
+      variants.push({ location: parts.slice(1).join(", ") });
+      variants.push({ location: parts[parts.length - 1] });
+    }
+    variants.push({ location: null, keywords: `${industry} ${location}` });
+  }
+  const seen = new Set<string>();
+  return variants.filter((v) => {
+    const key = `${v.location ?? ""}|${v.keywords ?? ""}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export async function findCompanies(
@@ -129,6 +155,7 @@ export async function findCompanies(
       status: {
         in: ["QUALIFIED", "CONTACTED", "REPLIED", "BOUNCED", "CLOSED"],
       },
+      NOT: { error: { startsWith: UNREACHABLE_PREFIX } },
     },
   });
   const existingInCampaign = await countLiveProspects(campaignId);
@@ -140,6 +167,7 @@ export async function findCompanies(
     return {
       created: 0,
       quotaRemaining: Math.max(0, quota - usedThisMonth),
+      exhausted: campaign.targetCount - existingInCampaign <= 0,
       detail:
         campaign.targetCount - existingInCampaign <= 0
           ? "Campaign target already reached."
@@ -158,55 +186,61 @@ export async function findCompanies(
   );
 
   let created = 0;
-  let page = 1;
-  let totalPages = 1;
-  while (created < target && page <= totalPages && page <= 20) {
-    safeHeartbeat(`apollo page ${page}`);
-    const result = await searchCompanies({
-      industry: campaign.industry,
-      location: campaign.location,
-      employeeMin: campaign.employeeMin,
-      employeeMax: campaign.employeeMax,
-      page,
-      perPage: 50,
-    });
-    totalPages = result.totalPages;
+  const variants = searchVariants(campaign.industry, campaign.location);
+  for (const variant of variants) {
+    if (created >= target) break;
+    let page = 1;
+    let totalPages = 1;
+    while (created < target && page <= totalPages && page <= 40) {
+      safeHeartbeat(`apollo ${variant.location ?? variant.keywords ?? "all"} p${page}`);
+      const result = await searchCompanies({
+        industry: campaign.industry,
+        location: variant.location,
+        keywords: variant.keywords,
+        employeeMin: campaign.employeeMin,
+        employeeMax: campaign.employeeMax,
+        page,
+        perPage: 50,
+      });
+      totalPages = result.totalPages;
 
-    for (const company of result.companies) {
-      if (created >= target) break;
-      if (knownDomains.has(company.domain)) continue;
-      knownDomains.add(company.domain);
-      const siteUrl = company.websiteUrl || `https://${company.domain}`;
-      const live = await isWebsiteReachable(siteUrl, company.domain);
-      if (!live) {
+      for (const company of result.companies) {
+        if (created >= target) break;
+        if (knownDomains.has(company.domain)) continue;
+        knownDomains.add(company.domain);
+        const siteUrl = company.websiteUrl || `https://${company.domain}`;
+        const live = await isWebsiteReachable(siteUrl, company.domain);
+        if (!live) {
+          await prisma.prospect.create({
+            data: {
+              campaignId,
+              companyName: company.name,
+              domain: company.domain,
+              apolloOrgId: company.apolloOrgId,
+              status: "CLOSED",
+              error: unreachableErrorMessage(),
+              analysis: { siteUrl } as unknown as Prisma.InputJsonValue,
+            },
+          });
+          continue;
+        }
         await prisma.prospect.create({
           data: {
             campaignId,
             companyName: company.name,
             domain: company.domain,
             apolloOrgId: company.apolloOrgId,
-            status: "CLOSED",
-            error: unreachableErrorMessage(),
             analysis: { siteUrl } as unknown as Prisma.InputJsonValue,
           },
         });
-        continue;
+        created += 1;
       }
-      await prisma.prospect.create({
-        data: {
-          campaignId,
-          companyName: company.name,
-          domain: company.domain,
-          apolloOrgId: company.apolloOrgId,
-          analysis: { siteUrl } as unknown as Prisma.InputJsonValue,
-        },
-      });
-      created += 1;
+      page += 1;
     }
-    page += 1;
   }
 
-  if (created === 0) {
+  const liveAfter = await countLiveProspects(campaignId);
+  if (created === 0 && liveAfter === 0) {
     const where = campaign.location
       ? `“${campaign.industry}” in ${campaign.location}`
       : `“${campaign.industry}”`;
@@ -223,9 +257,11 @@ export async function findCompanies(
     });
   }
 
+  const exhausted = liveAfter < campaign.targetCount && created === 0;
   return {
     created,
     quotaRemaining: Math.max(0, quota - usedThisMonth - created),
+    exhausted,
     detail: `Found ${created} new companies (target ${target}).`,
   };
 }
@@ -255,6 +291,33 @@ const LIVE_PROSPECT_STATUSES = [
   "REPLIED",
   "BOUNCED",
 ] as const;
+
+/** Flip DISQUALIFIED rows whose GEO is actually below the healthy bar (e.g. 59 F). */
+export async function reclassifyUnhealthySkips(
+  campaignId: string
+): Promise<string[]> {
+  const rows = await prisma.prospect.findMany({
+    where: { campaignId, status: "DISQUALIFIED" },
+    select: { id: true, score: true, analysis: true },
+  });
+  const flipped: string[] = [];
+  for (const row of rows) {
+    const stored = (row.analysis as { geoScore?: number } | null)?.geoScore;
+    const geoScore =
+      typeof stored === "number"
+        ? stored
+        : row.score != null
+          ? 100 - row.score
+          : null;
+    if (geoScore == null || !needsGeoHelp(geoScore)) continue;
+    await prisma.prospect.update({
+      where: { id: row.id },
+      data: { status: "QUALIFIED" },
+    });
+    flipped.push(row.id);
+  }
+  return flipped;
+}
 
 export async function countLiveProspects(campaignId: string): Promise<number> {
   return prisma.prospect.count({
@@ -287,7 +350,7 @@ export async function analyzeProspect(
 
   try {
     const result = await withHeartbeat(analyzeProspectSite(siteUrl));
-    const qualified = result.score >= qualifyThreshold();
+    const qualified = needsGeoHelp(result.analysis.geoScore);
     await prisma.prospect.update({
       where: { id: prospectId },
       data: {
