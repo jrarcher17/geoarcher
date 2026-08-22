@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FadeIn } from "@/components/cards/FadeIn";
 import { ScanForm } from "@/components/ScanForm";
+import { getPlanLimits } from "@/lib/plans";
 import { useInsights } from "@/lib/useInsights";
 import { formatDate, gradeFor, hostOf, scoreTone } from "@/lib/utils";
 
@@ -20,6 +21,14 @@ export default function SitesPage() {
   const router = useRouter();
   const { data, error, loading } = useInsights();
   const [addOpen, setAddOpen] = useState(false);
+  const siteLimit = data ? getPlanLimits(data.plan).sites : null;
+  const atSiteLimit =
+    siteLimit != null && (data?.sites.length ?? 0) >= siteLimit;
+  const addSiteTitle = atSiteLimit
+    ? data?.plan === "free"
+      ? "Free includes 1 site. Upgrade to Pro to add more."
+      : `Your plan includes ${siteLimit} sites.`
+    : "Add a site";
 
   async function removeSite(siteId: string, url: string) {
     if (!confirm(`Remove ${url} and all its scans?`)) return;
@@ -39,10 +48,24 @@ export default function SitesPage() {
         title="Sites"
         subtitle="Every site you track, with its current AI readiness."
         actions={
-          <Button onClick={() => setAddOpen(true)}>
-            <Plus className="h-4 w-4" />
-            Add a site
-          </Button>
+          atSiteLimit ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button disabled title={addSiteTitle}>
+                <Plus className="h-4 w-4" />
+                Add a site
+              </Button>
+              {data?.plan === "free" && (
+                <Link href="/settings?tab=billing">
+                  <Button variant="secondary">Upgrade to Pro</Button>
+                </Link>
+              )}
+            </div>
+          ) : (
+            <Button onClick={() => setAddOpen(true)} disabled={!data}>
+              <Plus className="h-4 w-4" />
+              Add a site
+            </Button>
+          )
         }
       >
         {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
