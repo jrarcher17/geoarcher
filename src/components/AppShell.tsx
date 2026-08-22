@@ -204,7 +204,7 @@ export function AppShell({
         </Link>
       </div>
 
-      <nav className="flex-1 space-y-6 overflow-y-auto px-3 pb-6">
+      <nav className="sidebar-scroll flex-1 space-y-6 overflow-y-auto px-3 pb-6">
         {NAV.map((group) => (
           <div key={group.label}>
             <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
