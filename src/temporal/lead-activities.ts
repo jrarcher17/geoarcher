@@ -282,7 +282,7 @@ export async function listPendingProspects(
 // ---- Stage: analyze + score (own crawler — no credits, no AI) ----
 
 /** Live sites we keep toward the campaign target. Down domains do not count. */
-const LIVE_PROSPECT_STATUSES = [
+export const LIVE_PROSPECT_STATUSES = [
   "FOUND",
   "ANALYZING",
   "QUALIFIED",
@@ -326,6 +326,25 @@ export async function countLiveProspects(campaignId: string): Promise<number> {
       status: { in: [...LIVE_PROSPECT_STATUSES] },
     },
   });
+}
+
+/** QUALIFIED rows that never got a draft (Apollo people search failed, etc.). */
+export async function prepareMissingOutreach(campaignId: string): Promise<number> {
+  const rows = await prisma.prospect.findMany({
+    where: {
+      campaignId,
+      status: "QUALIFIED",
+      emails: { none: { followUpIndex: 0 } },
+    },
+    select: { id: true },
+    take: 5,
+  });
+  let n = 0;
+  for (const row of rows) {
+    const outcome = await prepareOutreach(row.id);
+    if (outcome === "ready") n += 1;
+  }
+  return n;
 }
 
 export type AnalyzeOutcome =
@@ -441,28 +460,45 @@ export async function prepareOutreach(
     return "suppressed";
   }
 
-  const report = (prospect.report as ProspectReport | null) ??
-    (await withHeartbeat(
-      generateProspectReport({
-        companyName: prospect.companyName,
-        analysis,
-        problems,
-      })
-    ));
+  let report = prospect.report as ProspectReport | null;
+  if (!report) {
+    try {
+      report = await withHeartbeat(
+        generateProspectReport({
+          companyName: prospect.companyName,
+          analysis,
+          problems,
+        })
+      );
+    } catch (err) {
+      console.error("[leads] report generation failed, using a simple draft:", err);
+    }
+  }
   const reportUrl = `${appBaseUrl()}/r/${prospect.reportToken}`;
+  const first = resolved.name.split(" ")[0] || "there";
 
-  const draft = await withHeartbeat(
-    generateOutreachEmail({
-      companyName: prospect.companyName,
-      contactName: resolved.name,
-      senderName: prospect.campaign.user.name,
-      analysis,
-      problems,
-      report,
-      reportUrl,
-      followUpIndex: 0,
-    })
-  );
+  let draft = {
+    subject: `Quick note on ${prospect.companyName}'s AI search visibility`,
+    body: `Hi ${first},\n\nI reviewed ${prospect.companyName} (${analysis.siteUrl ?? prospect.domain}) and wanted to share a few notes on how AI assistants see the site.\n\nHappy to send the full write-up if useful.\n\n`,
+  };
+  if (report) {
+    try {
+      draft = await withHeartbeat(
+        generateOutreachEmail({
+          companyName: prospect.companyName,
+          contactName: resolved.name,
+          senderName: prospect.campaign.user.name,
+          analysis,
+          problems,
+          report,
+          reportUrl,
+          followUpIndex: 0,
+        })
+      );
+    } catch (err) {
+      console.error("[leads] outreach generation failed, using a simple draft:", err);
+    }
+  }
 
   await prisma.prospect.update({
     where: { id: prospectId },
@@ -470,15 +506,19 @@ export async function prepareOutreach(
       contactName: resolved.name,
       contactTitle: resolved.title,
       contactEmail: resolved.email,
-      report: report as unknown as Prisma.InputJsonValue,
-      emails: {
-        create: {
-          subject: draft.subject,
-          body: draft.body,
-          status: "DRAFT",
-          followUpIndex: 0,
-        },
-      },
+      ...(report
+        ? { report: report as unknown as Prisma.InputJsonValue }
+        : {}),
+      emails: prospect.emails.length
+        ? undefined
+        : {
+            create: {
+              subject: draft.subject,
+              body: draft.body,
+              status: "DRAFT",
+              followUpIndex: 0,
+            },
+          },
     },
   });
   return "ready";

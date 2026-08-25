@@ -4,7 +4,10 @@ import { requireLeadGenAccess } from "@/lib/leads/api-guard";
 import { serializeCampaign, serializeProspect } from "@/lib/leads/serialize";
 import { kickLeadCampaignWork } from "@/lib/leads/campaign-runner";
 import { isUnreachableProspect } from "@/lib/leads/site-live";
-import { countLiveProspects } from "@/temporal/lead-activities";
+import {
+  countLiveProspects,
+  prepareMissingOutreach,
+} from "@/temporal/lead-activities";
 import { getTemporalClient, temporalConfigured } from "@/temporal/client";
 import { leadGenWorkflowId } from "@/temporal/shared";
 
@@ -51,23 +54,29 @@ export async function GET(
   });
 
   const visible = prospects.filter((p) => !isUnreachableProspect(p));
-  const pending = visible.filter(
-    (p) => p.status === "FOUND" || p.status === "ANALYZING"
-  ).length;
   const live = await countLiveProspects(id);
-  const underTarget = live < campaign.targetCount || pending > 0;
+  const underTarget = live < campaign.targetCount;
   if (
-    underTarget &&
     Date.now() - campaign.createdAt.getTime() > 10_000 &&
-    (campaign.status === "RUNNING" || campaign.status === "COMPLETE")
+    (campaign.status === "RUNNING" || (campaign.status === "COMPLETE" && underTarget))
   ) {
-    if (campaign.status === "COMPLETE") {
+    if (campaign.status === "COMPLETE" && underTarget) {
       campaign = await prisma.leadCampaign.update({
         where: { id },
         data: { status: "RUNNING", error: null },
       });
     }
-    after(() => kickLeadCampaignWork(id, 0));
+    if (campaign.status === "RUNNING") {
+      after(() => kickLeadCampaignWork(id, 0));
+    }
+  }
+
+  if (visible.some((p) => p.status === "QUALIFIED" && !p.contactEmail)) {
+    after(() =>
+      prepareMissingOutreach(id).catch((err) =>
+        console.error("[leads] prepare missing outreach failed:", err)
+      )
+    );
   }
 
   return NextResponse.json({

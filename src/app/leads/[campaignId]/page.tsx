@@ -22,6 +22,16 @@ interface ProspectRow {
   emails?: { status: string; followUpIndex: number }[];
 }
 
+function hasDraft(p: ProspectRow): boolean {
+  return Boolean(
+    p.emails?.some(
+      (e) =>
+        e.followUpIndex === 0 &&
+        (e.status === "DRAFT" || e.status === "QUEUED")
+    )
+  );
+}
+
 interface CampaignDetail {
   campaign: {
     id: string;
@@ -257,6 +267,13 @@ export default function CampaignDetailPage() {
               {data.campaign.error}
             </p>
           )}
+          {data.campaign.mode !== "AUTO_SEND" && (
+            <p className="rounded-none border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+              Click a company name. On that page you add an email, edit the
+              draft, and send. The table checkboxes only send rows that already
+              have a draft.
+            </p>
+          )}
           {data.prospects.length > 0 &&
             data.prospects.every((p) => p.status === "DISQUALIFIED") && (
               <p className="rounded-none border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
@@ -340,7 +357,7 @@ export default function CampaignDetailPage() {
                           type="checkbox"
                           checked={selected.has(p.id)}
                           onChange={() => toggle(p.id)}
-                          disabled={p.status !== "QUALIFIED"}
+                          disabled={!hasDraft(p)}
                         />
                       </td>
                       <td className="px-3 py-3">
@@ -366,10 +383,13 @@ export default function CampaignDetailPage() {
                         </Badge>
                       </td>
                       <td className="px-3 py-3 text-slate-500">
-                        {p.contactEmail ??
-                          (p.status === "DISQUALIFIED"
-                            ? "Skipped (no credit used)"
-                            : "—")}
+                        {p.status === "DISQUALIFIED"
+                          ? "Skipped (no credit used)"
+                          : p.contactEmail
+                            ? p.contactEmail
+                            : p.status === "QUALIFIED"
+                              ? "No email — open to add one"
+                              : "—"}
                       </td>
                     </tr>
                   ))}

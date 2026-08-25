@@ -75,6 +75,8 @@ export default function ProspectDetailPage() {
   const [busy, setBusy] = useState(false);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  const [emailInput, setEmailInput] = useState("");
+  const [nameInput, setNameInput] = useState("");
 
   const load = useCallback(async () => {
     const accessRes = await fetch("/api/leads/access", { cache: "no-store" });
@@ -105,6 +107,8 @@ export default function ProspectDetailPage() {
       setSubject(draft.subject);
       setBody(draft.body);
     }
+    if (json.prospect.contactEmail) setEmailInput(json.prospect.contactEmail);
+    if (json.prospect.contactName) setNameInput(json.prospect.contactName);
   }, [params.id]);
 
   useEffect(() => {
@@ -198,9 +202,8 @@ export default function ProspectDetailPage() {
               )}
               {prospect.analysis && (
                 <span className="text-sm text-slate-500">
-                  SEO {prospect.analysis.seoScore ?? "—"} · outreach need{" "}
-                  {prospect.score ?? "—"} · {prospect.analysis.pagesCrawled ?? 0}{" "}
-                  pages
+                  SEO {prospect.analysis.seoScore ?? "—"} ·{" "}
+                  {prospect.analysis.pagesCrawled ?? 0} pages
                 </span>
               )}
             </div>
@@ -209,6 +212,109 @@ export default function ProspectDetailPage() {
                 {prospect.error}
               </p>
             )}
+
+            <Card className="p-6">
+              <h2 className="text-base font-semibold text-slate-900">
+                Write and send outreach
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Add who to email, edit the draft, then send. Nothing goes out
+                until you click Approve &amp; send.
+              </p>
+
+              <div className="mt-5 space-y-5">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    1. Contact
+                  </p>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    <input
+                      className="input-field"
+                      placeholder="Contact name"
+                      value={nameInput}
+                      onChange={(e) => setNameInput(e.target.value)}
+                    />
+                    <input
+                      className="input-field"
+                      type="email"
+                      placeholder="name@company.com"
+                      value={emailInput}
+                      onChange={(e) => setEmailInput(e.target.value)}
+                    />
+                  </div>
+                  <Button
+                    className="mt-2"
+                    variant="secondary"
+                    disabled={busy || !emailInput.includes("@")}
+                    onClick={() =>
+                      void patch({
+                        contactEmail: emailInput,
+                        contactName: nameInput,
+                      })
+                    }
+                  >
+                    Save contact &amp; draft email
+                  </Button>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    2. Edit the email
+                  </p>
+                  {draft || subject || body ? (
+                    <div className="mt-2 flex flex-col gap-2">
+                      <input
+                        className="input-field"
+                        placeholder="Subject"
+                        value={subject}
+                        onChange={(e) => setSubject(e.target.value)}
+                      />
+                      <textarea
+                        className="input-field min-h-[14rem]"
+                        placeholder="Email body"
+                        value={body}
+                        onChange={(e) => setBody(e.target.value)}
+                      />
+                      <Button
+                        variant="secondary"
+                        disabled={busy || !draft}
+                        onClick={() => void patch({ subject, body })}
+                      >
+                        Save draft
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-sm text-slate-500">
+                      Save a contact first. We will write a draft you can edit
+                      here.
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    3. Approve &amp; send
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Button
+                      disabled={busy || !draft || !emailInput.includes("@")}
+                      onClick={() => void send()}
+                    >
+                      Approve &amp; send
+                    </Button>
+                    {prospect.status === "QUALIFIED" && (
+                      <Button
+                        variant="danger"
+                        disabled={busy}
+                        onClick={() => void patch({ action: "disqualify" })}
+                      >
+                        Skip this company
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </Card>
 
             <Card className="p-5">
               <h2 className="text-sm font-semibold text-slate-900">Problems</h2>
@@ -253,48 +359,6 @@ export default function ProspectDetailPage() {
               </Card>
             )}
 
-            <Card className="p-5">
-              <h2 className="text-sm font-semibold text-slate-900">Outreach</h2>
-              {draft ? (
-                <div className="mt-3 flex flex-col gap-3">
-                  <input
-                    className="input-field"
-                    value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
-                  />
-                  <textarea
-                    className="input-field min-h-[12rem]"
-                    value={body}
-                    onChange={(e) => setBody(e.target.value)}
-                  />
-                  <div className="flex flex-wrap gap-2">
-                    <Button disabled={busy} onClick={() => void send()}>
-                      Approve & send
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      disabled={busy}
-                      onClick={() => void patch({ subject, body })}
-                    >
-                      Save draft
-                    </Button>
-                    <Button
-                      variant="danger"
-                      disabled={busy}
-                      onClick={() => void patch({ action: "disqualify" })}
-                    >
-                      Disqualify
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <p className="mt-2 text-sm text-slate-500">
-                  {prospect.contactEmail
-                    ? `Contact: ${prospect.contactName ?? "—"} <${prospect.contactEmail}>`
-                    : "No outreach draft yet."}
-                </p>
-              )}
-            </Card>
           </div>
 
           <div className="space-y-4">
@@ -307,7 +371,7 @@ export default function ProspectDetailPage() {
                 {prospect.contactTitle ?? ""}
               </p>
               <p className="mt-1 text-sm text-slate-600">
-                {prospect.contactEmail ?? "Email not revealed yet"}
+                {prospect.contactEmail ?? "No email yet — add one to draft outreach"}
               </p>
               {["CONTACTED", "REPLIED"].includes(prospect.status) &&
                 prospect.status !== "REPLIED" && (

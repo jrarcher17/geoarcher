@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireLeadGenAccess } from "@/lib/leads/api-guard";
 import { serializeProspect } from "@/lib/leads/serialize";
+import { prepareOutreach } from "@/temporal/lead-activities";
 
 async function loadOwnedProspect(userId: string, id: string) {
   return prisma.prospect.findFirst({
@@ -69,6 +70,55 @@ export async function PATCH(
       include: { emails: { orderBy: { followUpIndex: "asc" } } },
     });
     return NextResponse.json({ prospect: serializeProspect(updated) });
+  }
+
+  const contactEmail =
+    typeof body?.contactEmail === "string" ? body.contactEmail.trim() : null;
+  if (contactEmail) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
+      return NextResponse.json({ error: "Enter a valid email." }, { status: 400 });
+    }
+    await prisma.prospect.update({
+      where: { id },
+      data: {
+        contactEmail: contactEmail.toLowerCase(),
+        contactName:
+          typeof body?.contactName === "string" && body.contactName.trim()
+            ? body.contactName.trim()
+            : prospect.contactName,
+        status:
+          prospect.status === "CLOSED" || prospect.status === "FAILED"
+            ? "QUALIFIED"
+            : prospect.status,
+        error: null,
+      },
+    });
+    await prepareOutreach(id).catch((err) =>
+      console.error("[leads] prepare after contact save failed:", err)
+    );
+    const hasDraft = await prisma.outreachEmail.findFirst({
+      where: { prospectId: id, followUpIndex: 0 },
+      select: { id: true },
+    });
+    if (!hasDraft) {
+      const name =
+        typeof body?.contactName === "string" && body.contactName.trim()
+          ? body.contactName.trim()
+          : prospect.contactName ?? "there";
+      await prisma.outreachEmail.create({
+        data: {
+          prospectId: id,
+          subject: `Quick note on ${prospect.companyName}'s AI search visibility`,
+          body: `Hi ${name.split(" ")[0] || "there"},\n\nI reviewed ${prospect.companyName} and wanted to share a few notes on how AI assistants see the site.\n\n`,
+          status: "DRAFT",
+          followUpIndex: 0,
+        },
+      });
+    }
+    const updated = await loadOwnedProspect(access.userId, id);
+    return NextResponse.json({
+      prospect: updated ? serializeProspect(updated) : null,
+    });
   }
 
   const subject =

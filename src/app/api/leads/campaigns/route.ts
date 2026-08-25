@@ -6,6 +6,7 @@ import { resumeLeadCampaigns } from "@/lib/leads/campaign-runner";
 import { resendConfigured } from "@/lib/leads/email";
 import { serializeCampaign } from "@/lib/leads/serialize";
 import { startLeadGenCampaign } from "@/lib/temporal-start";
+import { LIVE_PROSPECT_STATUSES } from "@/temporal/lead-activities";
 import { temporalConfigured } from "@/temporal/client";
 
 export const dynamic = "force-dynamic";
@@ -27,11 +28,10 @@ export async function GET() {
   const access = await requireLeadGenAccess();
   if (access instanceof NextResponse) return access;
 
-  const [campaigns, quota, grouped] = await Promise.all([
+  const [campaigns, quota, grouped, liveGrouped] = await Promise.all([
     prisma.leadCampaign.findMany({
       where: { userId: access.userId },
       orderBy: { createdAt: "desc" },
-      include: { _count: { select: { prospects: true } } },
     }),
     getQuotaState(access.userId),
     prisma.prospect.groupBy({
@@ -39,7 +39,18 @@ export async function GET() {
       where: { campaign: { userId: access.userId } },
       _count: { _all: true },
     }),
+    prisma.prospect.groupBy({
+      by: ["campaignId"],
+      where: {
+        campaign: { userId: access.userId },
+        status: { in: [...LIVE_PROSPECT_STATUSES] },
+      },
+      _count: { _all: true },
+    }),
   ]);
+  const liveByCampaign = new Map(
+    liveGrouped.map((row) => [row.campaignId, row._count._all])
+  );
 
   const funnel = Object.fromEntries(
     FUNNEL_STATUSES.map((status) => [status, 0])
@@ -53,7 +64,12 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    campaigns: campaigns.map(serializeCampaign),
+    campaigns: campaigns.map((c) =>
+      serializeCampaign({
+        ...c,
+        _count: { prospects: liveByCampaign.get(c.id) ?? 0 },
+      })
+    ),
     quota,
     funnel,
     configured: {
