@@ -220,6 +220,7 @@ export async function findCompanies(
               apolloOrgId: company.apolloOrgId,
               status: "CLOSED",
               error: unreachableErrorMessage(),
+              reportToken: crypto.randomUUID(),
               analysis: { siteUrl } as unknown as Prisma.InputJsonValue,
             },
           });
@@ -231,6 +232,7 @@ export async function findCompanies(
             companyName: company.name,
             domain: company.domain,
             apolloOrgId: company.apolloOrgId,
+            reportToken: crypto.randomUUID(),
             analysis: { siteUrl } as unknown as Prisma.InputJsonValue,
           },
         });
