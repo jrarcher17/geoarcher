@@ -6,6 +6,7 @@ import {
   generateProspectReport,
   type ProspectReport,
 } from "@/lib/leads/ai";
+import { buildOutreachDraft } from "@/lib/leads/outreach-copy";
 import {
   analyzeProspectSite,
   type ProspectAnalysis,
@@ -475,30 +476,16 @@ export async function prepareOutreach(
     }
   }
   const reportUrl = `${appBaseUrl()}/r/${prospect.reportToken}`;
-  const first = resolved.name.split(" ")[0] || "there";
-
-  let draft = {
-    subject: `Quick note on ${prospect.companyName}'s AI search visibility`,
-    body: `Hi ${first},\n\nI reviewed ${prospect.companyName} (${analysis.siteUrl ?? prospect.domain}) and wanted to share a few notes on how AI assistants see the site.\n\nHappy to send the full write-up if useful.\n\n`,
-  };
-  if (report) {
-    try {
-      draft = await withHeartbeat(
-        generateOutreachEmail({
-          companyName: prospect.companyName,
-          contactName: resolved.name,
-          senderName: prospect.campaign.user.name,
-          analysis,
-          problems,
-          report,
-          reportUrl,
-          followUpIndex: 0,
-        })
-      );
-    } catch (err) {
-      console.error("[leads] outreach generation failed, using a simple draft:", err);
-    }
-  }
+  const draft = buildOutreachDraft({
+    companyName: prospect.companyName,
+    domain: prospect.domain,
+    siteUrl: analysis?.siteUrl,
+    senderName: prospect.campaign.user.name,
+    pagesCrawled: analysis?.pagesCrawled,
+    problems,
+    reportUrl,
+    followUpIndex: 0,
+  });
 
   await prisma.prospect.update({
     where: { id: prospectId },

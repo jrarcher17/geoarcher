@@ -373,6 +373,15 @@ export default function ProspectDetailPage() {
               <p className="mt-1 text-sm text-slate-600">
                 {prospect.contactEmail ?? "No email yet — add one to draft outreach"}
               </p>
+              {prospect.report?.interest?.email && (
+                <p className="mt-3 rounded-none border border-violet-200 bg-violet-50 px-3 py-2 text-sm text-violet-900">
+                  Requested the fix plan
+                  {prospect.report.interest.name
+                    ? ` — ${prospect.report.interest.name}`
+                    : ""}{" "}
+                  ({prospect.report.interest.email})
+                </p>
+              )}
               {["CONTACTED", "REPLIED"].includes(prospect.status) &&
                 prospect.status !== "REPLIED" && (
                   <Button

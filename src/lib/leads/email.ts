@@ -112,6 +112,37 @@ function buildFooter(to: string, senderName: string): string {
     .join("\n");
 }
 
+/** Internal notice (no unsubscribe footer) — e.g. a prospect requested help. */
+export async function sendInternalEmail(input: {
+  to: string;
+  subject: string;
+  body: string;
+  replyTo?: string;
+}): Promise<void> {
+  const apiKey = process.env["RESEND_API_KEY"]?.trim();
+  const from = process.env["LEADGEN_FROM_EMAIL"]?.trim();
+  if (!apiKey || !from) return;
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to: [input.to],
+      subject: input.subject,
+      text: input.body,
+      ...(input.replyTo ? { reply_to: [input.replyTo] } : {}),
+    }),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Resend notify failed (${res.status}): ${text.slice(0, 500)}`);
+  }
+}
+
 /** Send one outreach email through Resend. Returns the Resend email id. */
 export async function sendViaResend(input: SendOutreachInput): Promise<string> {
   const apiKey = process.env["RESEND_API_KEY"]?.trim();

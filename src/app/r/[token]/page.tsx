@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BrandWordmark } from "@/components/BrandWordmark";
+import { ReportInterestForm } from "@/components/leads/ReportInterestForm";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { prisma } from "@/lib/db";
@@ -111,26 +112,9 @@ export default async function PublicReportPage({
               <p className="mt-2 text-sm leading-relaxed text-slate-600">
                 {finding.explanation}
               </p>
-              <p className="mt-2 text-sm text-slate-800">
-                <span className="font-medium">Fix: </span>
-                {finding.fix}
-              </p>
             </Card>
           ))}
         </div>
-
-        {report.quickWins.length > 0 && (
-          <>
-            <h2 className="mt-10 text-lg font-semibold text-slate-900">
-              Quick wins this week
-            </h2>
-            <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-slate-700">
-              {report.quickWins.map((win) => (
-                <li key={win}>{win}</li>
-              ))}
-            </ol>
-          </>
-        )}
 
         <Card className="mt-12 border-violet-200 bg-violet-50/50 p-6 text-center">
           <p className="text-sm font-semibold text-slate-900">
@@ -140,12 +124,10 @@ export default async function PublicReportPage({
             GEO Archer crawls your site, scores how AI assistants see you, and
             tells you exactly what to change.
           </p>
-          <Link
-            href="/"
-            className="mt-4 inline-flex rounded-full bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-violet-700"
-          >
-            Try GEO Archer
-          </Link>
+          <ReportInterestForm
+            token={token}
+            alreadyRequested={Boolean(report.interest?.email)}
+          />
         </Card>
       </main>
     </div>

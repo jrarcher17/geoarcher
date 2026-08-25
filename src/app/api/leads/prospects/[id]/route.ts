@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireLeadGenAccess } from "@/lib/leads/api-guard";
+import type { ProspectAnalysis, ProspectProblem } from "@/lib/leads/analyze";
+import { buildOutreachDraft } from "@/lib/leads/outreach-copy";
 import { serializeProspect } from "@/lib/leads/serialize";
+import { appBaseUrl } from "@/lib/stripe";
 import { prepareOutreach } from "@/temporal/lead-activities";
 
 async function loadOwnedProspect(userId: string, id: string) {
@@ -101,15 +104,25 @@ export async function PATCH(
       select: { id: true },
     });
     if (!hasDraft) {
-      const name =
-        typeof body?.contactName === "string" && body.contactName.trim()
-          ? body.contactName.trim()
-          : prospect.contactName ?? "there";
+      const sender = await prisma.user.findUnique({
+        where: { id: access.userId },
+        select: { name: true },
+      });
+      const analysis = prospect.analysis as ProspectAnalysis | null;
+      const draft = buildOutreachDraft({
+        companyName: prospect.companyName,
+        domain: prospect.domain,
+        siteUrl: analysis?.siteUrl,
+        senderName: sender?.name ?? "John",
+        pagesCrawled: analysis?.pagesCrawled,
+        problems: (prospect.problems ?? []) as unknown as ProspectProblem[],
+        reportUrl: `${appBaseUrl()}/r/${prospect.reportToken}`,
+      });
       await prisma.outreachEmail.create({
         data: {
           prospectId: id,
-          subject: `Quick note on ${prospect.companyName}'s AI search visibility`,
-          body: `Hi ${name.split(" ")[0] || "there"},\n\nI reviewed ${prospect.companyName} and wanted to share a few notes on how AI assistants see the site.\n\n`,
+          subject: draft.subject,
+          body: draft.body,
           status: "DRAFT",
           followUpIndex: 0,
         },
