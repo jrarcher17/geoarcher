@@ -19,7 +19,7 @@ export function ReportInterestForm({
   if (done) {
     return (
       <p className="mt-4 text-sm font-medium text-violet-800">
-        Thanks — we&apos;ll be in touch shortly about a Pro Plus plan.
+        Thanks — we&apos;ll be in touch shortly.
       </p>
     );
   }
@@ -52,8 +52,9 @@ export function ReportInterestForm({
   return (
     <form onSubmit={(e) => void submit(e)} className="mx-auto mt-5 max-w-md text-left">
       <p className="text-sm text-slate-600">
-        Leave your email and we&apos;ll reach out about a Pro Plus plan to fix
-        these issues and track them over time.
+        Leave your email and we&apos;ll show you where your site is falling
+        short—and what you can do to get more visibility, traffic, and leads
+        from ChatGPT, Google AI, and other AI search engines.
       </p>
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         <input
@@ -75,8 +76,12 @@ export function ReportInterestForm({
       </div>
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
       <div className="mt-3 text-center">
-        <Button type="submit" disabled={busy || !email.includes("@")}>
-          {busy ? "Sending…" : "Contact me about Pro Plus"}
+        <Button
+          type="submit"
+          className="h-auto whitespace-normal px-5 py-2.5"
+          disabled={busy || !email.includes("@")}
+        >
+          {busy ? "Sending…" : "Let’s see how visible your business really is."}
         </Button>
       </div>
     </form>

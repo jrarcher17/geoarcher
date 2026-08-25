@@ -132,11 +132,20 @@ function examplesSentence(examples: string[]): string {
   return `For example, ${examples[0]}, and ${examples[1]}.`;
 }
 
+export function greetingName(contactName?: string | null): string {
+  const first = contactName?.trim().split(/\s+/)[0] ?? "";
+  if (!first || first.length < 2 || first.includes("@") || /^there$/i.test(first)) {
+    return "there";
+  }
+  return first.charAt(0).toUpperCase() + first.slice(1);
+}
+
 export interface OutreachDraftInput {
   companyName: string;
   domain: string;
   siteUrl?: string | null;
   senderName: string;
+  contactName?: string | null;
   pagesCrawled?: number;
   problems?: ProspectProblem[];
   reportUrl: string;
@@ -150,6 +159,7 @@ export function buildOutreachDraft(input: OutreachDraftInput): {
   const company = input.companyName.trim() || "your company";
   const domain = displayDomain(input.siteUrl || input.domain);
   const sender = input.senderName.trim() || "John";
+  const hi = `Hi ${greetingName(input.contactName)},`;
   const subject = pickOutreachSubject(company);
   const followUp = input.followUpIndex ?? 0;
 
@@ -157,7 +167,7 @@ export function buildOutreachDraft(input: OutreachDraftInput): {
     return {
       subject,
       body: [
-        "Hi there,",
+        hi,
         "",
         `I sent a short note about how Google and AI assistants see ${company}. The free report is still here:`,
         "",
@@ -174,7 +184,7 @@ export function buildOutreachDraft(input: OutreachDraftInput): {
     return {
       subject,
       body: [
-        "Hi there,",
+        hi,
         "",
         `Last note from me — I crawled ${domain} and put the findings in this report:`,
         "",
@@ -195,7 +205,7 @@ export function buildOutreachDraft(input: OutreachDraftInput): {
   return {
     subject,
     body: [
-      "Hi there,",
+      hi,
       "",
       `I crawled ${domain} and found a few issues that could be limiting how easily Google and AI assistants understand and surface ${company}.`,
       "",

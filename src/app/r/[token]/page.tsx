@@ -118,11 +118,7 @@ export default async function PublicReportPage({
 
         <Card className="mt-12 border-violet-200 bg-violet-50/50 p-6 text-center">
           <p className="text-sm font-semibold text-slate-900">
-            Want this fixed — and tracked over time?
-          </p>
-          <p className="mt-1 text-sm text-slate-600">
-            GEO Archer crawls your site, scores how AI assistants see you, and
-            tells you exactly what to change.
+            Want to get found more often in AI search?
           </p>
           <ReportInterestForm
             token={token}

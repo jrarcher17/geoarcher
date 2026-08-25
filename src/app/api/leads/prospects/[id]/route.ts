@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireLeadGenAccess } from "@/lib/leads/api-guard";
 import type { ProspectAnalysis, ProspectProblem } from "@/lib/leads/analyze";
-import { buildOutreachDraft } from "@/lib/leads/outreach-copy";
+import { buildOutreachDraft, greetingName } from "@/lib/leads/outreach-copy";
 import { serializeProspect } from "@/lib/leads/serialize";
 import { appBaseUrl } from "@/lib/stripe";
 import { prepareOutreach } from "@/temporal/lead-activities";
@@ -101,8 +101,11 @@ export async function PATCH(
     );
     const hasDraft = await prisma.outreachEmail.findFirst({
       where: { prospectId: id, followUpIndex: 0 },
-      select: { id: true },
     });
+    const savedName =
+      typeof body?.contactName === "string" && body.contactName.trim()
+        ? body.contactName.trim()
+        : prospect.contactName;
     if (!hasDraft) {
       const sender = await prisma.user.findUnique({
         where: { id: access.userId },
@@ -114,6 +117,7 @@ export async function PATCH(
         domain: prospect.domain,
         siteUrl: analysis?.siteUrl,
         senderName: sender?.name ?? "John",
+        contactName: savedName,
         pagesCrawled: analysis?.pagesCrawled,
         problems: (prospect.problems ?? []) as unknown as ProspectProblem[],
         reportUrl: `${appBaseUrl()}/r/${prospect.reportToken}`,
@@ -127,6 +131,17 @@ export async function PATCH(
           followUpIndex: 0,
         },
       });
+    } else if (
+      ["DRAFT", "QUEUED"].includes(hasDraft.status) &&
+      /^Hi there,/i.test(hasDraft.body)
+    ) {
+      const first = greetingName(savedName);
+      if (first !== "there") {
+        await prisma.outreachEmail.update({
+          where: { id: hasDraft.id },
+          data: { body: hasDraft.body.replace(/^Hi there,/i, `Hi ${first},`) },
+        });
+      }
     }
     const updated = await loadOwnedProspect(access.userId, id);
     return NextResponse.json({

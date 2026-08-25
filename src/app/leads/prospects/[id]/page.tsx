@@ -375,7 +375,7 @@ export default function ProspectDetailPage() {
               </p>
               {prospect.report?.interest?.email && (
                 <p className="mt-3 rounded-none border border-violet-200 bg-violet-50 px-3 py-2 text-sm text-violet-900">
-                  Requested the fix plan
+                  Asked to hear more
                   {prospect.report.interest.name
                     ? ` — ${prospect.report.interest.name}`
                     : ""}{" "}

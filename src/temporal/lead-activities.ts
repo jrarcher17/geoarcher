@@ -481,6 +481,7 @@ export async function prepareOutreach(
     domain: prospect.domain,
     siteUrl: analysis?.siteUrl,
     senderName: prospect.campaign.user.name,
+    contactName: resolved.name,
     pagesCrawled: analysis?.pagesCrawled,
     problems,
     reportUrl,

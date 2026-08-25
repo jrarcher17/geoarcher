@@ -128,6 +128,7 @@ export async function generateOutreachEmail(input: {
     domain: input.analysis.siteUrl,
     siteUrl: input.analysis.siteUrl,
     senderName: input.senderName,
+    contactName: input.contactName,
     pagesCrawled: input.analysis.pagesCrawled,
     problems: input.problems,
     reportUrl: input.reportUrl,

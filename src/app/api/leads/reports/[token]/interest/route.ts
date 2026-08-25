@@ -55,11 +55,11 @@ export async function POST(
     await sendInternalEmail({
       to: prospect.campaign.user.email,
       replyTo: email,
-      subject: `${prospect.companyName} requested the GEO fix plan`,
+      subject: `${prospect.companyName} asked to hear more about AI visibility`,
       body: [
         `${name || "Someone"} (${email}) asked to be contacted from the public report for ${prospect.companyName} (${prospect.domain}).`,
         "",
-        "They want the issues fixed and tracked — follow up with the Pro Plus plan and the 3 highest-impact fixes.",
+        "They want to get found more often in AI search. Follow up with where the site is falling short and what you'd fix first.",
         "",
         `Report: /r/${prospect.reportToken}`,
       ].join("\n"),
