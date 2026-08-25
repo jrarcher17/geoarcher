@@ -34,6 +34,7 @@ export const auth = betterAuth({
     provider: "postgresql",
   }),
   advanced: {
+    generateId: () => crypto.randomUUID(),
     useSecureCookies,
     ...(cookieDomain
       ? {

@@ -10,7 +10,7 @@ datasource db {
 model Site {
   id               String           @id @default(uuid())
   url              String           @unique
-  geoKey           String           @unique @default(cuid())
+  geoKey           String           @unique @default(uuid())
   createdAt        DateTime         @default(now())
   scans            Scan[]
   geoConfig        GeoConfig?
@@ -26,7 +26,7 @@ model Site {
 }
 
 model UserSite {
-  id        String   @id @default(cuid())
+  id        String   @id @default(uuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   siteId    String
@@ -44,7 +44,7 @@ enum PlanTier {
 }
 
 model User {
-  id            String     @id
+  id            String     @id @default(uuid())
   name          String
   email         String
   emailVerified Boolean    @default(false)
@@ -64,7 +64,7 @@ model User {
 }
 
 model Session {
-  id        String   @id
+  id        String   @id @default(uuid())
   expiresAt DateTime
   token     String
   createdAt DateTime @default(now())
@@ -79,7 +79,7 @@ model Session {
 }
 
 model Account {
-  id                    String    @id
+  id                    String    @id @default(uuid())
   accountId             String
   providerId            String
   userId                String
@@ -98,7 +98,7 @@ model Account {
 }
 
 model Verification {
-  id         String    @id
+  id         String    @id @default(uuid())
   identifier String
   value      String
   expiresAt  DateTime
@@ -109,7 +109,7 @@ model Verification {
 }
 
 model GeoConfig {
-  id           String   @id @default(cuid())
+  id           String   @id @default(uuid())
   site         Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
   siteId       String   @unique
   enabled      Boolean  @default(false)
@@ -121,7 +121,7 @@ model GeoConfig {
 }
 
 model GeoHit {
-  id        String   @id @default(cuid())
+  id        String   @id @default(uuid())
   site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
   siteId    String
   pageUrl   String
@@ -161,7 +161,7 @@ model Scan {
 }
 
 model VisibilityReport {
-  id         String           @id @default(cuid())
+  id         String           @id @default(uuid())
   scan       Scan             @relation(fields: [scanId], references: [id], onDelete: Cascade)
   scanId     String           @unique
   status     SimulationStatus @default(RUNNING)
@@ -178,7 +178,7 @@ enum SimulationStatus {
 }
 
 model Simulation {
-  id         String           @id @default(cuid())
+  id         String           @id @default(uuid())
   scan       Scan             @relation(fields: [scanId], references: [id], onDelete: Cascade)
   scanId     String           @unique
   status     SimulationStatus @default(RUNNING)
@@ -189,7 +189,7 @@ model Simulation {
 }
 
 model Page {
-  id              String  @id @default(cuid())
+  id              String  @id @default(uuid())
   scan            Scan    @relation(fields: [scanId], references: [id], onDelete: Cascade)
   scanId          String
   url             String
@@ -205,7 +205,7 @@ model Page {
 }
 
 model Analysis {
-  id              String   @id @default(cuid())
+  id              String   @id @default(uuid())
   scan            Scan     @relation(fields: [scanId], references: [id], onDelete: Cascade)
   scanId          String   @unique
   semanticMap     Json
@@ -226,7 +226,7 @@ enum SeoAuditStatus {
 }
 
 model SeoAudit {
-  id             String         @id @default(cuid())
+  id             String         @id @default(uuid())
   site           Site           @relation(fields: [siteId], references: [id], onDelete: Cascade)
   siteId         String
   scan           Scan           @relation(fields: [scanId], references: [id], onDelete: Cascade)
@@ -245,7 +245,7 @@ model SeoAudit {
 }
 
 model SeoPageAudit {
-  id      String   @id @default(cuid())
+  id      String   @id @default(uuid())
   audit   SeoAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
   auditId String
   pageId  String?
@@ -268,7 +268,7 @@ enum SeoOpportunityStatus {
 }
 
 model SeoOpportunity {
-  id               String               @id @default(cuid())
+  id               String               @id @default(uuid())
   site             Site                 @relation(fields: [siteId], references: [id], onDelete: Cascade)
   siteId           String
   auditId          String?
@@ -292,7 +292,7 @@ model SeoOpportunity {
 }
 
 model SeoLinkSuggestion {
-  id        String               @id @default(cuid())
+  id        String               @id @default(uuid())
   site      Site                 @relation(fields: [siteId], references: [id], onDelete: Cascade)
   siteId    String
   auditId   String?
@@ -317,7 +317,7 @@ enum AutopilotRunStatus {
 }
 
 model AutopilotRun {
-  id            String             @id @default(cuid())
+  id            String             @id @default(uuid())
   site          Site               @relation(fields: [siteId], references: [id], onDelete: Cascade)
   siteId        String
   workflowRunId String?
@@ -334,7 +334,7 @@ model AutopilotRun {
 }
 
 model SeoKeyword {
-  id           String         @id @default(cuid())
+  id           String         @id @default(uuid())
   site         Site           @relation(fields: [siteId], references: [id], onDelete: Cascade)
   siteId       String
   keyword      String
@@ -347,7 +347,7 @@ model SeoKeyword {
 }
 
 model SeoRankCheck {
-  id         String     @id @default(cuid())
+  id         String     @id @default(uuid())
   keyword    SeoKeyword @relation(fields: [keywordId], references: [id], onDelete: Cascade)
   keywordId  String
   /// 1-based organic position; null = not found within checked depth
@@ -397,7 +397,7 @@ enum OutreachEmailStatus {
 }
 
 model LeadCampaign {
-  id          String             @id @default(cuid())
+  id          String             @id @default(uuid())
   user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId      String
   name        String
@@ -419,7 +419,7 @@ model LeadCampaign {
 }
 
 model Prospect {
-  id             String          @id @default(cuid())
+  id             String          @id @default(uuid())
   campaign       LeadCampaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   campaignId     String
   companyName    String
@@ -438,7 +438,7 @@ model Prospect {
   contactEmail   String?
   /// Generated personalized report content (rendered at /r/[reportToken])
   report         Json?
-  reportToken    String          @unique @default(cuid())
+  reportToken    String          @unique @default(uuid())
   error          String?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
@@ -450,7 +450,7 @@ model Prospect {
 }
 
 model OutreachEmail {
-  id            String              @id @default(cuid())
+  id            String              @id @default(uuid())
   prospect      Prospect            @relation(fields: [prospectId], references: [id], onDelete: Cascade)
   prospectId    String
   subject       String
@@ -472,14 +472,14 @@ model OutreachEmail {
 
 /// Never email these addresses again (bounces, complaints, unsubscribes).
 model EmailSuppression {
-  id        String   @id @default(cuid())
+  id        String   @id @default(uuid())
   email     String   @unique
   reason    String
   createdAt DateTime @default(now())
 }
 
 model SeoSearchOpportunity {
-  id               String               @id @default(cuid())
+  id               String               @id @default(uuid())
   site             Site                 @relation(fields: [siteId], references: [id], onDelete: Cascade)
   siteId           String
   auditId          String?
