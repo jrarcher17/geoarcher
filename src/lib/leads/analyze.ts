@@ -32,6 +32,7 @@ export interface ProspectAnalysis {
   /** Public emails found on the site (fallback when Apollo people search is blocked). */
   contactEmails?: string[];
   /** Trimmed content digest reused by the AI report/outreach stages. */
+  digest: string;
 }
 
 export interface ProspectScoreBreakdown {
