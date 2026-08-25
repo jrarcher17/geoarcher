@@ -42,11 +42,17 @@ function sameSite(url: string, origin: string): boolean {
   }
 }
 
-/** Rewrite host/protocol to the crawl start origin so www/non-www don't duplicate. */
+/** Rewrite host to the crawl start origin so www/non-www don't duplicate. */
 function toStartOrigin(url: string, startOrigin: string): string {
   const u = new URL(url);
   const s = new URL(startOrigin);
-  u.protocol = s.protocol;
+  // Never stamp http:// onto a URL that is already https://. Apollo often
+  // hands us http://example.com even when the site 308s to HTTPS.
+  if (u.protocol === "https:" || s.protocol === "https:") {
+    u.protocol = "https:";
+  } else {
+    u.protocol = s.protocol;
+  }
   u.host = s.host;
   return u.toString();
 }
@@ -311,7 +317,12 @@ function looksLikeChallengeOrEmpty(html: string): boolean {
 
 async function fetchHtmlHttp(
   url: string
-): Promise<{ html: string; statusCode: number; loadTimeMs: number } | null> {
+): Promise<{
+  html: string;
+  statusCode: number;
+  loadTimeMs: number;
+  finalUrl: string;
+} | null> {
   const t0 = Date.now();
   try {
     const ctrl = new AbortController();
@@ -338,7 +349,12 @@ async function fetchHtmlHttp(
     }
     const html = await res.text();
     if (looksLikeChallengeOrEmpty(html)) return null;
-    return { html, statusCode, loadTimeMs: Date.now() - t0 };
+    return {
+      html,
+      statusCode,
+      loadTimeMs: Date.now() - t0,
+      finalUrl: normalizeUrl(res.url) ?? url,
+    };
   } catch {
     return null;
   }
@@ -347,7 +363,12 @@ async function fetchHtmlHttp(
 async function fetchHtmlBrowser(
   page: Page,
   url: string
-): Promise<{ html: string; statusCode: number; loadTimeMs: number } | null> {
+): Promise<{
+  html: string;
+  statusCode: number;
+  loadTimeMs: number;
+  finalUrl: string;
+} | null> {
   const t0 = Date.now();
   try {
     const response = await page.goto(url, {
@@ -363,6 +384,7 @@ async function fetchHtmlBrowser(
       html,
       statusCode: statusCode ?? 200,
       loadTimeMs: Date.now() - t0,
+      finalUrl: normalizeUrl(page.url()) ?? url,
     };
   } catch (err) {
     console.warn(`[crawler] browser failed ${url}:`, err);
@@ -463,7 +485,7 @@ export async function crawlSite(
 
       const extraction = extractPage(
         loaded.html,
-        url,
+        loaded.finalUrl,
         loaded.statusCode,
         loaded.loadTimeMs
       );

@@ -380,7 +380,8 @@ function buildSiteChecks(
     });
   };
 
-  // HTTPS
+  // HTTPS — uses the URL we actually landed on after redirects, not the
+  // http:// seed Apollo/sitemap may have given us.
   const insecure = pages.filter((p) => p.url.startsWith("http://")).map((p) => p.url);
   push(
     "https",
