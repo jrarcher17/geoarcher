@@ -1,3 +1,4 @@
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import type {
   ContentGap,
@@ -117,10 +118,12 @@ export async function runSeoAudit(
   // ---- Stage 1: deterministic checks + scores ----
   const computation = computeSeoAudit(site.url, pages, contentGaps.length);
 
-  // Replace any previous audit for this scan (cascades page audits).
-  await prisma.seoAudit.deleteMany({ where: { scanId } });
-  const audit = await prisma.seoAudit.create({
-    data: {
+  // One row per scan (`scanId` is unique). Never delete+recreate mid-run —
+  // Autopilot, a manual re-audit, or an Inngest retry would otherwise change
+  // the id and make later `update({ id })` throw "record not found".
+  const audit = await prisma.seoAudit.upsert({
+    where: { scanId },
+    create: {
       siteId,
       scanId,
       status: "RUNNING",
@@ -130,8 +133,20 @@ export async function runSeoAudit(
       ),
       siteChecks: JSON.parse(JSON.stringify(computation.siteChecks)),
     },
+    update: {
+      status: "RUNNING",
+      error: null,
+      finishedAt: null,
+      contentPlan: Prisma.DbNull,
+      overallScore: computation.overallScore,
+      categoryScores: JSON.parse(
+        JSON.stringify({ categories: computation.categories, totals: computation.totals })
+      ),
+      siteChecks: JSON.parse(JSON.stringify(computation.siteChecks)),
+    },
   });
 
+  await prisma.seoPageAudit.deleteMany({ where: { auditId: audit.id } });
   await prisma.seoPageAudit.createMany({
     data: computation.pages.map((p) => ({
       auditId: audit.id,
@@ -144,10 +159,7 @@ export async function runSeoAudit(
   });
 
   if (!withAi) {
-    await prisma.seoAudit.update({
-      where: { id: audit.id },
-      data: { status: "COMPLETE", finishedAt: new Date() },
-    });
+    await persistAudit(audit.id, { status: "COMPLETE", finishedAt: new Date() });
     return audit.id;
   }
 
@@ -188,9 +200,8 @@ export async function runSeoAudit(
   }
 
   if (contentResult.status === "fulfilled") {
-    await prisma.seoAudit.update({
-      where: { id: audit.id },
-      data: { contentPlan: JSON.parse(JSON.stringify(contentResult.value)) },
+    await persistAudit(audit.id, {
+      contentPlan: JSON.parse(JSON.stringify(contentResult.value)),
     });
   } else {
     console.error("[seo-audit] content plan stage failed:", contentResult.reason);
@@ -241,17 +252,28 @@ export async function runSeoAudit(
     failures.push("search opportunities");
   }
 
-  await prisma.seoAudit.update({
-    where: { id: audit.id },
-    data: {
-      status: "COMPLETE",
-      finishedAt: new Date(),
-      error:
-        failures.length > 0
-          ? `Some AI stages failed (${failures.join(", ")}) — deterministic audit results are complete.`
-          : null,
-    },
+  await persistAudit(audit.id, {
+    status: "COMPLETE",
+    finishedAt: new Date(),
+    error:
+      failures.length > 0
+        ? `Some AI stages failed (${failures.join(", ")}) — deterministic audit results are complete.`
+        : null,
   });
 
   return audit.id;
+}
+
+/** Persist audit fields; no-op if a concurrent run already replaced the row. */
+async function persistAudit(
+  auditId: string,
+  data: Prisma.SeoAuditUpdateManyMutationInput
+): Promise<void> {
+  const result = await prisma.seoAudit.updateMany({
+    where: { id: auditId },
+    data,
+  });
+  if (result.count === 0) {
+    console.warn(`[seo-audit] skipped persist — audit ${auditId} is gone`);
+  }
 }
