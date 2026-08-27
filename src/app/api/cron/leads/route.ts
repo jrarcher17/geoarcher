@@ -8,8 +8,8 @@ export const maxDuration = 300;
  * Continue Lead Machine campaigns on the server.
  * Authorization: Bearer CRON_SECRET
  *
- * Hit every 5–15 minutes (or after each campaign slice self-chains here)
- * so a 25-prospect overnight job keeps running after the browser closes.
+ * Optional backup if Inngest is down. Hit every 5–15 minutes so a
+ * 25-prospect overnight job can resume after the instance sleeps.
  */
 export async function POST(request: Request) {
   const secret = process.env.CRON_SECRET;

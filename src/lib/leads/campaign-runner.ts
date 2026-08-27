@@ -1,6 +1,5 @@
-import { after } from "next/server";
 import { prisma } from "@/lib/db";
-import { appBaseUrl } from "@/lib/stripe";
+import { inngest } from "@/inngest/client";
 import {
   analyzeProspect,
   checkLeadGenAccess,
@@ -11,7 +10,7 @@ import {
   prepareOutreach,
   reclassifyUnhealthySkips,
   sendOutreach,
-} from "@/temporal/lead-activities";
+} from "@/lib/leads/pipeline";
 
 const ANALYZE_BATCH = 3;
 const STUCK_ANALYZING_MS = 3 * 60_000;
@@ -25,10 +24,6 @@ export type LeadProgressResult = {
   found: number;
   analyzed: number;
 };
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 async function campaignNeedsWork(campaignId: string): Promise<boolean> {
   const campaign = await prisma.leadCampaign.findUnique({
@@ -177,69 +172,23 @@ export async function runLeadCampaignProgress(
   return { done: false, busy: false, found, analyzed };
 }
 
-async function scheduleNextSlice(campaignId: string): Promise<void> {
-  const secret = process.env.CRON_SECRET?.trim();
-  const base = appBaseUrl().replace(/\/$/, "");
-  if (secret) {
-    after(async () => {
-      try {
-        const res = await fetch(`${base}/api/cron/leads`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${secret}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ campaignId }),
-        });
-        if (!res.ok) {
-          console.error(
-            `[leads] continue tick failed: ${res.status} ${await res.text()}`
-          );
-          await kickLeadCampaignWork(campaignId, 1_000);
-        }
-      } catch (err) {
-        console.error("[leads] continue tick failed:", err);
-        await kickLeadCampaignWork(campaignId, 1_000);
-      }
-    });
-    return;
-  }
-
-  after(() => kickLeadCampaignWork(campaignId, 1_000));
-}
-
 /**
- * Run one slice, then enqueue the next so a 25-prospect overnight job
- * survives request timeouts and a closed browser.
+ * Ask Inngest to run (or continue) a campaign. Safe to call from a page load —
+ * concurrency is limited to one run per campaign.
  */
 export async function kickLeadCampaignWork(
   campaignId: string,
-  graceMs = 0
+  _graceMs = 0
 ): Promise<void> {
   if (inFlight.has(campaignId)) return;
   inFlight.add(campaignId);
   try {
-    if (graceMs > 0) await sleep(graceMs);
-    const result = await runLeadCampaignProgress(campaignId);
-    if (result.done) return;
-    if (result.busy) {
-      after(() => kickLeadCampaignWork(campaignId, OTHER_WORKER_MS));
-      return;
-    }
-    await scheduleNextSlice(campaignId);
+    await inngest.send({
+      name: "leads/campaign.requested",
+      data: { campaignId },
+    });
   } catch (err) {
-    console.error("[leads] campaign progress failed:", err);
-    await prisma.leadCampaign
-      .update({
-        where: { id: campaignId },
-        data: {
-          error: err instanceof Error ? err.message : "Campaign step failed.",
-        },
-      })
-      .catch(() => undefined);
-    if (await campaignNeedsWork(campaignId)) {
-      await scheduleNextSlice(campaignId);
-    }
+    console.error("[leads] could not enqueue campaign:", err);
   } finally {
     inFlight.delete(campaignId);
   }
@@ -269,7 +218,7 @@ export async function resumeLeadCampaigns(options?: {
       continue;
     }
     resumed.push(campaign.id);
-    after(() => kickLeadCampaignWork(campaign.id, 0));
+    await kickLeadCampaignWork(campaign.id, 0);
   }
   return { resumed };
 }

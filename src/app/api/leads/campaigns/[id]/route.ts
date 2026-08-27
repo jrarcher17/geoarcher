@@ -1,5 +1,6 @@
 import { after, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { startLeadGenCampaign } from "@/lib/jobs/start";
 import { requireLeadGenAccess } from "@/lib/leads/api-guard";
 import { serializeCampaign, serializeProspect } from "@/lib/leads/serialize";
 import { kickLeadCampaignWork } from "@/lib/leads/campaign-runner";
@@ -7,9 +8,7 @@ import { isUnreachableProspect } from "@/lib/leads/site-live";
 import {
   countLiveProspects,
   prepareMissingOutreach,
-} from "@/temporal/lead-activities";
-import { getTemporalClient, temporalConfigured } from "@/temporal/client";
-import { leadGenWorkflowId } from "@/temporal/shared";
+} from "@/lib/leads/pipeline";
 
 export const maxDuration = 300;
 
@@ -17,19 +16,6 @@ async function loadOwnedCampaign(userId: string, id: string) {
   return prisma.leadCampaign.findFirst({
     where: { id, userId },
   });
-}
-
-async function signalCampaign(
-  campaignId: string,
-  signal: "leadPause" | "leadResume" | "leadCancel"
-): Promise<void> {
-  if (!temporalConfigured()) return;
-  try {
-    const client = await getTemporalClient();
-    await client.workflow.getHandle(leadGenWorkflowId(campaignId)).signal(signal);
-  } catch {
-    // Workflow may have already finished.
-  }
 }
 
 export async function GET(
@@ -108,7 +94,6 @@ export async function PATCH(
   }
 
   if (action === "cancel") {
-    await signalCampaign(id, "leadCancel");
     const updated = await prisma.leadCampaign.update({
       where: { id },
       data: { status: "CANCELLED" },
@@ -123,7 +108,6 @@ export async function PATCH(
         { status: 400 }
       );
     }
-    await signalCampaign(id, "leadPause");
     const updated = await prisma.leadCampaign.update({
       where: { id },
       data: { status: "PAUSED" },
@@ -137,10 +121,10 @@ export async function PATCH(
       { status: 400 }
     );
   }
-  await signalCampaign(id, "leadResume");
   const updated = await prisma.leadCampaign.update({
     where: { id },
     data: { status: "RUNNING", error: null },
   });
+  await startLeadGenCampaign(id);
   return NextResponse.json(serializeCampaign(updated));
 }

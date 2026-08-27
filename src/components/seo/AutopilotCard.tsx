@@ -195,8 +195,8 @@ export function AutopilotCard({ siteId }: { siteId: string }) {
 
       {!state.configured && (
         <p className="mt-3 border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          Temporal isn&apos;t connected — set TEMPORAL_ADDRESS, TEMPORAL_NAMESPACE
-          and TEMPORAL_API_KEY (or run a local dev server) to enable Autopilot.
+          Inngest isn&apos;t connected — set INNGEST_EVENT_KEY and
+          INNGEST_SIGNING_KEY, then sync /api/inngest in the Inngest dashboard.
         </p>
       )}
 
@@ -216,9 +216,7 @@ export function AutopilotCard({ siteId }: { siteId: string }) {
           ) : state.workflow.running ? (
             <span>Waiting for the next cycle</span>
           ) : (
-            <span className="text-amber-600">
-              Enabled, but no workflow is running — is the worker up?
-            </span>
+            <span>Waiting for the next Inngest cycle</span>
           )}
         </div>
       )}

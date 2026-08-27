@@ -27,7 +27,7 @@ interface DashboardPayload {
   campaigns: CampaignRow[];
   quota: { used: number; limit: number; remaining: number };
   funnel: Record<string, number>;
-  configured: { temporal: boolean; apollo: boolean; resend: boolean };
+  configured: { inngest: boolean; apollo: boolean; resend: boolean };
 }
 
 function statusTone(status: string): Tone {

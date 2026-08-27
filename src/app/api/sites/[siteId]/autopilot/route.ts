@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { inngestConfigured } from "@/inngest/client";
+import { startAutopilot } from "@/lib/jobs/start";
 import { requireSeoAccess } from "@/lib/seo/api-guard";
-import { getTemporalClient, temporalConfigured } from "@/temporal/client";
-import { AUTOPILOT_TASK_QUEUE, autopilotWorkflowId } from "@/temporal/shared";
 
 interface WorkflowStatus {
   running: boolean;
@@ -11,36 +11,46 @@ interface WorkflowStatus {
   nextRunAt: string | null;
 }
 
-async function describeWorkflow(siteId: string): Promise<WorkflowStatus> {
-  const fallback: WorkflowStatus = {
-    running: false,
-    paused: false,
-    currentStep: null,
-    nextRunAt: null,
-  };
-  if (!temporalConfigured()) return fallback;
-  try {
-    const client = await getTemporalClient();
-    const handle = client.workflow.getHandle(autopilotWorkflowId(siteId));
-    const description = await handle.describe();
-    if (description.status.name !== "RUNNING") return fallback;
-    const status = await handle.query<{
-      paused: boolean;
-      currentStep: string;
-      nextRunAt: string | null;
-    }>("status");
+function describeFromRuns(
+  enabled: boolean,
+  runs: {
+    status: string;
+    finishedAt: Date | null;
+    steps: unknown;
+  }[]
+): WorkflowStatus {
+  if (!enabled) {
+    return { running: false, paused: false, currentStep: null, nextRunAt: null };
+  }
+
+  const intervalDays = Number(process.env.AUTOPILOT_INTERVAL_DAYS ?? 7);
+  const intervalMs = Math.max(1, intervalDays) * 24 * 60 * 60 * 1000;
+  const latest = runs[0];
+
+  if (latest?.status === "RUNNING") {
+    const steps = Array.isArray(latest.steps) ? latest.steps : [];
+    const last = steps[steps.length - 1] as { step?: string } | undefined;
     return {
       running: true,
-      paused: status.paused,
-      currentStep: status.currentStep,
-      nextRunAt: status.nextRunAt,
+      paused: false,
+      currentStep: last?.step ?? "running",
+      nextRunAt: null,
     };
-  } catch {
-    return fallback;
   }
+
+  const lastFinished =
+    runs.find((r) => r.finishedAt)?.finishedAt ?? latest?.finishedAt ?? null;
+  return {
+    running: true,
+    paused: false,
+    currentStep: "sleeping",
+    nextRunAt: lastFinished
+      ? new Date(lastFinished.getTime() + intervalMs).toISOString()
+      : new Date().toISOString(),
+  };
 }
 
-/** Autopilot state: toggle, live workflow status, recent run history. */
+/** Autopilot state: toggle, latest run status, recent history. */
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ siteId: string }> }
@@ -64,9 +74,9 @@ export async function GET(
   });
 
   return NextResponse.json({
-    configured: temporalConfigured(),
+    configured: inngestConfigured(),
     enabled: site.autopilotEnabled,
-    workflow: await describeWorkflow(siteId),
+    workflow: describeFromRuns(site.autopilotEnabled, runs),
     runs: runs.map((r) => ({
       id: r.id,
       status: r.status,
@@ -79,7 +89,7 @@ export async function GET(
   });
 }
 
-/** Turn Autopilot on (starts the workflow) or off (cancels it). */
+/** Turn Autopilot on (queues the first cycle) or off (stops after the current one). */
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ siteId: string }> }
@@ -96,11 +106,11 @@ export async function POST(
     );
   }
 
-  if (body.enabled && !temporalConfigured()) {
+  if (body.enabled && !inngestConfigured()) {
     return NextResponse.json(
       {
         error:
-          "Autopilot needs Temporal configured. Set TEMPORAL_ADDRESS, TEMPORAL_NAMESPACE and TEMPORAL_API_KEY (or run a local dev server).",
+          "Autopilot needs Inngest. Set INNGEST_EVENT_KEY and INNGEST_SIGNING_KEY, then sync https://your-host/api/inngest in the Inngest dashboard.",
       },
       { status: 503 }
     );
@@ -111,47 +121,19 @@ export async function POST(
     data: { autopilotEnabled: body.enabled },
   });
 
-  const client = await getTemporalClient().catch(() => null);
-  const workflowId = autopilotWorkflowId(siteId);
-
   if (body.enabled) {
-    if (!client) {
+    try {
+      await startAutopilot(siteId, { force: true });
+    } catch (err) {
       await prisma.site.update({
         where: { id: siteId },
         data: { autopilotEnabled: false },
       });
+      console.error("[autopilot] start failed:", err);
       return NextResponse.json(
-        { error: "Could not reach the Temporal service." },
+        { error: "Could not queue the Autopilot job." },
         { status: 502 }
       );
-    }
-    try {
-      await client.workflow.start("siteAutopilotWorkflow", {
-        workflowId,
-        taskQueue: AUTOPILOT_TASK_QUEUE,
-        args: [{ siteId }],
-      });
-    } catch (err) {
-      // Already running: fine, the loop picks up the enabled flag.
-      const alreadyStarted =
-        err instanceof Error && err.name === "WorkflowExecutionAlreadyStartedError";
-      if (!alreadyStarted) {
-        await prisma.site.update({
-          where: { id: siteId },
-          data: { autopilotEnabled: false },
-        });
-        console.error("[autopilot] start failed:", err);
-        return NextResponse.json(
-          { error: "Could not start the Autopilot workflow." },
-          { status: 502 }
-        );
-      }
-    }
-  } else if (client) {
-    try {
-      await client.workflow.getHandle(workflowId).cancel();
-    } catch {
-      // Not running — nothing to cancel.
     }
   }
 

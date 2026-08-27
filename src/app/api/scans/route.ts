@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getServerSession } from "@/lib/session";
-import { startScanPipeline } from "@/lib/temporal-start";
+import { startScanPipeline } from "@/lib/jobs/start";
 import {
   assertCanAddSite,
   assertCanStartScan,

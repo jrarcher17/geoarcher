@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireLeadGenAccess } from "@/lib/leads/api-guard";
-import { sendOutreach } from "@/temporal/lead-activities";
+import { sendOutreach } from "@/lib/leads/pipeline";
 
 /** Bulk-approve and send draft outreach for a campaign. */
 export async function POST(

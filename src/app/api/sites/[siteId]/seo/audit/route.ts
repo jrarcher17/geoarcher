@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireSeoAccess } from "@/lib/seo/api-guard";
 import { latestAuditableScan } from "@/lib/seo/audit-runner";
-import { startSeoAuditJob } from "@/lib/temporal-start";
+import { startSeoAuditJob } from "@/lib/jobs/start";
 
 export const maxDuration = 300;
 
@@ -26,8 +26,7 @@ export async function POST(
   }
 
   // Don't double-run while a recent audit is actually computing.
-  // A RUNNING row with no scores means Temporal queued it and nobody claimed it —
-  // kick it again so the UI doesn't spin forever.
+  // A RUNNING row with no scores may be stuck — kick it again so the UI doesn't spin.
   const running = await prisma.seoAudit.findFirst({
     where: {
       siteId,

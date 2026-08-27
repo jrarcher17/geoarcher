@@ -5,9 +5,9 @@ import { apolloConfigured } from "@/lib/leads/apollo";
 import { resumeLeadCampaigns } from "@/lib/leads/campaign-runner";
 import { resendConfigured } from "@/lib/leads/email";
 import { serializeCampaign } from "@/lib/leads/serialize";
-import { startLeadGenCampaign } from "@/lib/temporal-start";
-import { LIVE_PROSPECT_STATUSES } from "@/temporal/lead-activities";
-import { temporalConfigured } from "@/temporal/client";
+import { startLeadGenCampaign } from "@/lib/jobs/start";
+import { LIVE_PROSPECT_STATUSES } from "@/lib/leads/pipeline";
+import { inngestConfigured } from "@/inngest/client";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -73,7 +73,7 @@ export async function GET() {
     quota,
     funnel,
     configured: {
-      temporal: temporalConfigured(),
+      inngest: inngestConfigured(),
       apollo: apolloConfigured(),
       resend: resendConfigured(),
     },
@@ -178,7 +178,7 @@ export async function POST(request: Request) {
       where: { id: campaign.id },
       data: {
         status: "FAILED",
-        error: err instanceof Error ? err.message : "Could not start workflow.",
+        error: err instanceof Error ? err.message : "Could not start the campaign.",
       },
     });
     return NextResponse.json(
@@ -186,7 +186,7 @@ export async function POST(request: Request) {
         error:
           err instanceof Error
             ? err.message
-            : "Could not start the campaign workflow.",
+            : "Could not start the campaign.",
       },
       { status: 502 }
     );

@@ -4,7 +4,7 @@ import { getQuotaState } from "@/lib/leads/api-guard";
 import { resendConfigured } from "@/lib/leads/email";
 import { getServerSession } from "@/lib/session";
 import { getPlanForUser } from "@/lib/user-plan";
-import { temporalConfigured } from "@/temporal/client";
+import { inngestConfigured } from "@/inngest/client";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +24,7 @@ export async function GET() {
     allowed,
     quota,
     configured: {
-      temporal: temporalConfigured(),
+      inngest: inngestConfigured(),
       apollo: apolloConfigured(),
       resend: resendConfigured(),
     },

@@ -200,7 +200,7 @@ function SeoOverviewInner() {
             ))}
           </div>
 
-          {/* Continuous Autopilot (Temporal) */}
+          {/* Continuous Autopilot */}
           {overview && <AutopilotCard siteId={overview.siteId} />}
 
           {/* Unified SEO + GEO strengths and opportunities */}

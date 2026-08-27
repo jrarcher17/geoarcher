@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireLeadGenAccess } from "@/lib/leads/api-guard";
 import { serializeProspect } from "@/lib/leads/serialize";
-import { sendOutreach } from "@/temporal/lead-activities";
+import { sendOutreach } from "@/lib/leads/pipeline";
 
 export async function POST(
   _request: Request,

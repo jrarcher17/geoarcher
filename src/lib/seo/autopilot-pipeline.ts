@@ -1,4 +1,3 @@
-import { heartbeat } from "@temporalio/activity";
 import { prisma } from "@/lib/db";
 import { runScan } from "@/lib/scan-runner";
 import { runSeoAudit } from "@/lib/seo/audit-runner";
@@ -6,19 +5,12 @@ import { dataForSeoConfigured } from "@/lib/seo/dataforseo";
 import { runRankCheck } from "@/lib/seo/rank-tracker";
 
 /**
- * Activities for the continuous SEO Autopilot workflow. Thin wrappers around
- * the existing pipeline functions — Temporal supplies retries, timeouts and
- * durability; the underlying logic is unchanged from the manual flows.
+ * SEO Autopilot pipeline. Thin wrappers around the same scan/audit functions
+ * used by manual runs.
  */
 
-/** Keeps the activity alive in Temporal's eyes while a long promise runs. */
 async function withHeartbeat<T>(work: Promise<T>): Promise<T> {
-  const timer = setInterval(() => heartbeat(), 15_000);
-  try {
-    return await work;
-  } finally {
-    clearInterval(timer);
-  }
+  return work;
 }
 
 export interface AccessCheck {
@@ -285,4 +277,87 @@ export async function detectChanges(
     changedPages: changedPages.slice(0, 50),
     comparedToScanId: previous.id,
   };
+}
+
+/** One Autopilot cycle. Returns whether to schedule another after intervalMs. */
+export async function runAutopilotCycle(siteId: string): Promise<{
+  continue: boolean;
+  intervalMs: number;
+  ok: boolean;
+}> {
+  const access = await checkAccess(siteId);
+  if (!access.ok) {
+    await disableAutopilot(siteId, access.reason ?? "Access revoked.");
+    return { continue: false, intervalMs: access.intervalMs, ok: false };
+  }
+
+  const runId = await startRun(siteId, crypto.randomUUID());
+  const steps: StepResult[] = [];
+  let changes: ScanChanges | null = null;
+  let fatal: string | null = null;
+
+  const record = async (step: string, work: () => Promise<string>) => {
+    try {
+      const detail = await work();
+      steps.push({
+        step,
+        status: detail.startsWith("skipped") ? "skipped" : "ok",
+        detail,
+      });
+    } catch (err) {
+      steps.push({
+        step,
+        status: "failed",
+        detail: String(err).slice(0, 300),
+      });
+      throw err;
+    } finally {
+      await updateRunSteps(runId, steps);
+    }
+  };
+
+  try {
+    let scanId = "";
+    await record("Scan & GEO analysis", async () => {
+      scanId = await runFullScan(siteId);
+      return `Scan ${scanId} complete.`;
+    });
+    await record("SEO audit", async () => {
+      await runSeoAuditStage(siteId, scanId);
+      return "Audit, opportunities, content plan, links and search topics refreshed.";
+    });
+    try {
+      await record("Competitors", () => syncCompetitors(siteId, scanId));
+    } catch {
+      /* recorded as failed step */
+    }
+    try {
+      await record("Rankings", () => runRankCheckStage(siteId));
+    } catch {
+      /* recorded as failed step */
+    }
+    await record("Change detection", async () => {
+      changes = await detectChanges(siteId, scanId);
+      const parts = [
+        `${changes.newPages.length} new`,
+        `${changes.changedPages.length} changed`,
+        `${changes.removedPages.length} removed`,
+      ];
+      return changes.comparedToScanId
+        ? `Pages vs previous scan: ${parts.join(", ")}.`
+        : "First cycle — nothing to compare against yet.";
+    });
+  } catch (err) {
+    fatal = String(err).slice(0, 500);
+  }
+
+  await finishRun(runId, {
+    status: fatal ? "FAILED" : "COMPLETE",
+    steps,
+    changes,
+    error: fatal,
+  });
+
+  const still = await checkAccess(siteId);
+  return { continue: still.ok, intervalMs: still.intervalMs, ok: !fatal };
 }

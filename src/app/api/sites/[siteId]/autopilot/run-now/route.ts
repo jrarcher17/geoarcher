@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { inngestConfigured } from "@/inngest/client";
+import { startAutopilot } from "@/lib/jobs/start";
 import { requireSeoAccess } from "@/lib/seo/api-guard";
-import { getTemporalClient, temporalConfigured } from "@/temporal/client";
-import { autopilotWorkflowId } from "@/temporal/shared";
 
-/** Wake the Autopilot loop immediately (also resumes if paused). */
+/** Queue an Autopilot cycle immediately. */
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ siteId: string }> }
@@ -23,22 +23,20 @@ export async function POST(
       { status: 409 }
     );
   }
-  if (!temporalConfigured()) {
+  if (!inngestConfigured()) {
     return NextResponse.json(
-      { error: "Temporal is not configured." },
+      { error: "Inngest is not configured." },
       { status: 503 }
     );
   }
 
   try {
-    const client = await getTemporalClient();
-    const handle = client.workflow.getHandle(autopilotWorkflowId(siteId));
-    await handle.signal("resume"); // clears pause and sets runNow
+    await startAutopilot(siteId, { force: true });
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[autopilot] run-now failed:", err);
     return NextResponse.json(
-      { error: "Could not reach the Autopilot workflow." },
+      { error: "Could not queue the Autopilot job." },
       { status: 502 }
     );
   }

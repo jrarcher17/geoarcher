@@ -1,4 +1,3 @@
-import { heartbeat } from "@temporalio/activity";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import {
@@ -32,27 +31,15 @@ import {
 } from "@/lib/leads/site-live";
 
 /**
- * Activities for the AI Lead Generation Machine campaign workflow.
- * Ordering of spend: Apollo search is free, crawling is cheap, and the paid
- * steps (Apollo email reveal, OpenAI report/outreach) only run for prospects
- * that scored above the qualification threshold.
+ * Lead Machine pipeline steps. Ordering of spend: Apollo search is free,
+ * crawling is cheap, and paid steps (email reveal, OpenAI) only run for
+ * qualified prospects.
  */
 
-function safeHeartbeat(details?: string): void {
-  try {
-    heartbeat(details);
-  } catch {
-    // Called from Next.js fallback, not a Temporal activity.
-  }
-}
+function safeHeartbeat(_details?: string): void {}
 
 async function withHeartbeat<T>(work: Promise<T>): Promise<T> {
-  const timer = setInterval(() => safeHeartbeat(), 15_000);
-  try {
-    return await work;
-  } finally {
-    clearInterval(timer);
-  }
+  return work;
 }
 
 function startOfUtcMonth(): Date {

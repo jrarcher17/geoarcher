@@ -5,7 +5,7 @@ import { latestAuditableScan } from "@/lib/seo/audit-runner";
 import { dataForSeoConfigured } from "@/lib/seo/dataforseo";
 import { lastRankCheckAt, runRankCheck } from "@/lib/seo/rank-tracker";
 import { resumeLeadCampaigns } from "@/lib/leads/campaign-runner";
-import { startScanPipeline, startSeoAuditJob } from "@/lib/temporal-start";
+import { startScanPipeline, startSeoAuditJob } from "@/lib/jobs/start";
 
 export const maxDuration = 300;
 
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   const intervalDays = Number(process.env.RECRAWL_INTERVAL_DAYS ?? 7);
   const dueAll = await findSitesDueForRecrawl(intervalDays);
 
-  // Autopilot-enabled sites are managed by their Temporal workflow — the cron
+  // Autopilot-enabled sites are managed by the Inngest Autopilot job — the cron
   // must not double-crawl or double-audit them.
   const autopilotSites = await prisma.site.findMany({
     where: { autopilotEnabled: true },
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
     });
   }
 
-  // ---- SEO Autopilot upkeep (Pro sites only, not managed by Temporal) ----
+  // ---- SEO Autopilot upkeep (Pro sites only, not on Autopilot) ----
   const proSites = await prisma.site.findMany({
     where: {
       userSites: { some: { user: { plan: { in: ["PRO", "PRO_PLUS"] } } } },

@@ -1,0 +1,116 @@
+import { after } from "next/server";
+import { prisma } from "@/lib/db";
+import { inngest, inngestConfigured } from "@/inngest/client";
+import { runLeadCampaignProgress } from "@/lib/leads/campaign-runner";
+import { runScan } from "@/lib/scan-runner";
+import { runSeoAudit } from "@/lib/seo/audit-runner";
+
+async function runScanPipelineInline(
+  scanId: string,
+  siteId: string,
+  withSeoAudit: boolean
+): Promise<void> {
+  await runScan(scanId);
+  if (!withSeoAudit) return;
+  const scan = await prisma.scan.findUnique({
+    where: { id: scanId },
+    select: { status: true, pagesCrawled: true },
+  });
+  if (scan?.status === "COMPLETE" && scan.pagesCrawled > 0) {
+    await runSeoAuditInline(siteId, scanId);
+  }
+}
+
+async function runSeoAuditInline(siteId: string, scanId: string): Promise<void> {
+  try {
+    await runSeoAudit(siteId, scanId);
+  } catch (err) {
+    console.error("[seo-audit] failed:", err);
+    await prisma.seoAudit.updateMany({
+      where: { scanId, status: "RUNNING" },
+      data: {
+        status: "FAILED",
+        error: err instanceof Error ? err.message : "SEO audit failed.",
+        finishedAt: new Date(),
+      },
+    });
+  }
+}
+
+async function sendOrInline(
+  event: { name: string; data: Record<string, unknown> },
+  fallback: () => Promise<void>
+): Promise<void> {
+  try {
+    await inngest.send({ name: event.name, data: event.data });
+  } catch (err) {
+    console.error(`[inngest] ${event.name} send failed — running inline:`, err);
+    after(() => fallback());
+  }
+}
+
+export async function startScanPipeline(options: {
+  scanId: string;
+  siteId: string;
+  withSeoAudit: boolean;
+}): Promise<"inngest" | "inline"> {
+  const { scanId, siteId, withSeoAudit } = options;
+  try {
+    await inngest.send({
+      name: "scan/requested",
+      data: { scanId, siteId, withSeoAudit },
+    });
+    return "inngest";
+  } catch (err) {
+    console.error("[inngest] scan send failed — running inline:", err);
+    after(() => runScanPipelineInline(scanId, siteId, withSeoAudit));
+    return "inline";
+  }
+}
+
+export async function startSeoAuditJob(options: {
+  siteId: string;
+  scanId: string;
+}): Promise<"inngest" | "inline"> {
+  const { siteId, scanId } = options;
+  await prisma.seoAudit.upsert({
+    where: { scanId },
+    create: { siteId, scanId, status: "RUNNING" },
+    update: { status: "RUNNING", error: null, finishedAt: null },
+  });
+  try {
+    await inngest.send({
+      name: "seo/audit.requested",
+      data: { siteId, scanId },
+    });
+    return "inngest";
+  } catch (err) {
+    console.error("[inngest] SEO audit send failed — running inline:", err);
+    after(() => runSeoAuditInline(siteId, scanId));
+    return "inline";
+  }
+}
+
+export async function startLeadGenCampaign(campaignId: string): Promise<void> {
+  await sendOrInline({ name: "leads/campaign.requested", data: { campaignId } }, async () => {
+    let done = false;
+    let slices = 0;
+    while (!done && slices < 80) {
+      const result = await runLeadCampaignProgress(campaignId);
+      done = result.done;
+      slices += 1;
+    }
+  });
+}
+
+export async function startAutopilot(
+  siteId: string,
+  options?: { force?: boolean }
+): Promise<void> {
+  await inngest.send({
+    name: "autopilot/run",
+    data: { siteId, force: Boolean(options?.force) },
+  });
+}
+
+export { inngestConfigured };

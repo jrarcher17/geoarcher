@@ -5,7 +5,7 @@ import type { ProspectAnalysis, ProspectProblem } from "@/lib/leads/analyze";
 import { buildOutreachDraft, greetingName } from "@/lib/leads/outreach-copy";
 import { serializeProspect } from "@/lib/leads/serialize";
 import { appBaseUrl } from "@/lib/stripe";
-import { prepareOutreach } from "@/temporal/lead-activities";
+import { prepareOutreach } from "@/lib/leads/pipeline";
 
 async function loadOwnedProspect(userId: string, id: string) {
   return prisma.prospect.findFirst({
