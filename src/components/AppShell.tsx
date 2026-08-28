@@ -271,7 +271,7 @@ export function AppShell({
               </button>
               <div className="hidden min-w-0 items-center gap-2 text-sm text-slate-500 sm:flex">
                 <span className="truncate font-medium text-slate-700">{title}</span>
-                {breadcrumb && (
+                {breadcrumb && breadcrumb !== title && (
                   <>
                     <span className="text-slate-300">/</span>
                     <span className="shrink-0 text-slate-500">{breadcrumb}</span>

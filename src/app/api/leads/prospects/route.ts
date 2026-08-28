@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireLeadGenAccess } from "@/lib/leads/api-guard";
-import { serializeProspect } from "@/lib/leads/serialize";
+import { serializeProspectRow } from "@/lib/leads/serialize";
 import { isUnreachableProspect } from "@/lib/leads/site-live";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +24,7 @@ export async function GET() {
     prospects: prospects
       .filter((p) => !isUnreachableProspect(p))
       .map((p) => ({
-        ...serializeProspect(p),
+        ...serializeProspectRow(p),
         campaignName: p.campaign.name,
       })),
   });

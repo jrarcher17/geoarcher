@@ -2,7 +2,7 @@ import { after, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { startLeadGenCampaign } from "@/lib/jobs/start";
 import { requireLeadGenAccess } from "@/lib/leads/api-guard";
-import { serializeCampaign, serializeProspect } from "@/lib/leads/serialize";
+import { serializeCampaign, serializeProspectRow } from "@/lib/leads/serialize";
 import { kickLeadCampaignWork } from "@/lib/leads/campaign-runner";
 import { isUnreachableProspect } from "@/lib/leads/site-live";
 import {
@@ -67,7 +67,7 @@ export async function GET(
 
   return NextResponse.json({
     campaign: serializeCampaign(campaign),
-    prospects: visible.map(serializeProspect),
+    prospects: visible.map(serializeProspectRow),
   });
 }
 

@@ -239,7 +239,7 @@ function geoProblems(pages: PageExtraction[], geoScore: number): ProspectProblem
       severity: geoScore < 40 ? "critical" : "warning",
       title: `Estimated GEO score is ${geoScore} (grade ${gradeFor(geoScore)})`,
       detail:
-        "This is the same 0–100 GEO scale as a GEO Archer scan. Below 60 is not a healthy site — it is a lead.",
+        "Search and AI visibility is limited. Paid campaigns can put this business in front of people who are already looking.",
     });
   }
 

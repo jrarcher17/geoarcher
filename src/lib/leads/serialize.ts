@@ -72,3 +72,42 @@ export function serializeProspect(
     emails: prospect.emails?.map(serializeEmail),
   };
 }
+
+/**
+ * List/table payload: same identity and scores, without crawl digests,
+ * reports, or problem write-ups (those belong on the prospect detail).
+ */
+export function serializeProspectRow(
+  prospect: Prospect & { emails?: OutreachEmail[] }
+) {
+  const analysis = prospect.analysis as SiteCheckFacts | null;
+  return {
+    id: prospect.id,
+    campaignId: prospect.campaignId,
+    companyName: prospect.companyName,
+    domain: prospect.domain,
+    status: prospect.status,
+    score: prospect.score,
+    adOpportunityScore: analysis
+      ? assessAdvertisingOpportunity(analysis).score
+      : null,
+    analysis: analysis
+      ? {
+          pagesCrawled: analysis.pagesCrawled,
+          avgWordCount: analysis.avgWordCount,
+          seoScore: analysis.seoScore,
+          geoScore: analysis.geoScore,
+          imageCount: analysis.imageCount,
+          phoneCount: analysis.phoneCount,
+        }
+      : null,
+    contactName: prospect.contactName,
+    contactEmail: prospect.contactEmail,
+    error: prospect.error,
+    createdAt: prospect.createdAt.toISOString(),
+    emails: prospect.emails?.map((e) => ({
+      status: e.status,
+      followUpIndex: e.followUpIndex,
+    })),
+  };
+}
