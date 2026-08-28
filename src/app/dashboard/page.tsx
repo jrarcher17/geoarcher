@@ -177,6 +177,12 @@ export default function DashboardPage() {
                   <article key={a.id} className="border border-slate-200 bg-white p-5">
                     <h3 className="text-sm font-semibold text-slate-900">{a.title}</h3>
                     <p className="mt-1 text-sm text-slate-600">{a.detail}</p>
+                    <Link
+                      href="/assistant"
+                      className="mt-2 inline-block text-xs font-medium text-slate-900 underline underline-offset-2"
+                    >
+                      Review in Assistant
+                    </Link>
                   </article>
                 ))}
               </div>
