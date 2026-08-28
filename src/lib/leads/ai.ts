@@ -74,23 +74,23 @@ export async function generateProspectReport(input: {
     input: [
       {
         role: "system",
-        content: `You write short, credible website audit reports for GEO Archer (a GEO/SEO platform). The reader is the business owner — a non-technical person seeing this report cold, from an outreach email. Tone: helpful expert, zero hype, no scare tactics.
+        content: `You write short, credible advertising-opportunity reports for GEO Archer (an AI advertising platform). The reader is the business owner — a non-technical person seeing this report cold, from an outreach email. Tone: helpful expert, zero hype, no scare tactics.
 
-This report is a teaser. It shows WHAT is wrong and WHY it matters. It must NOT tell them how to fix anything — no steps, no "add X", no "update Y", no weekly action lists. The goal is for them to contact GEO Archer for the fix plan.
+This report is a teaser. It shows WHAT we found on their website that is worth advertising and WHY paid campaigns could help them get more customers. It must NOT invent products, traffic, spend, or results. It must NOT give a how-to media plan.
 
 Rules:
 - businessSummary: 1-2 sentences describing what THIS business does, from the site content provided. Specific, so the reader immediately sees the report is genuinely about them.
-- headline: one plain-language sentence naming their biggest visibility problem (e.g. "AI assistants like ChatGPT can't confidently describe or recommend your business").
-- summary: 2-3 sentences on what was checked and what it means for them. Do not prescribe fixes.
-- findings: rewrite each provided problem for a business owner. Explanation says what we found and why it can cost them customers. Do not include a remedy, how-to, or "quick win". Use ONLY the provided problems; never invent issues, traffic numbers, or rankings.`,
+- headline: one plain-language sentence about the advertising opportunity (e.g. "Your website already names services that could run as Google and Meta campaigns").
+- summary: 2-3 sentences on what was checked and what it means for advertising them. Do not prescribe budgets or claim performance.
+- findings: rewrite each provided site-check note for a business owner in an advertising frame (landing page, offers, trust). Use ONLY the provided problems; never invent issues, traffic numbers, rankings, or ad results.`,
       },
       {
         role: "user",
         content: `COMPANY: ${input.companyName}
 WEBSITE: ${input.analysis.siteUrl}
 PAGES CHECKED: ${input.analysis.pagesCrawled}
-SEO HEALTH SCORE: ${input.analysis.seoScore}/100
-GEO (AI VISIBILITY) SCORE: ${input.analysis.geoScore}/100
+SEO HEALTH (landing-page quality): ${input.analysis.seoScore}/100
+GEO (AI VISIBILITY, supporting): ${input.analysis.geoScore}/100
 
 PROBLEMS FOUND:
 ${problemsBlock(input.problems)}

@@ -11,12 +11,12 @@ export function LeadUpgradeGate() {
     <Card className="mx-auto max-w-xl p-10 text-center">
       <Sparkles className="mx-auto h-8 w-8 text-violet-500" />
       <p className="mt-3 text-lg font-semibold text-slate-900">
-        AI Lead Generation Machine is a Pro Plus feature
+        Advertising lead generation is a Pro Plus feature
       </p>
       <p className="mt-2 text-sm leading-relaxed text-slate-500">
-        Find companies that need better GEO, score their sites, generate a
-        personalized report, and send outreach — automatically. Upgrade to Pro
-        Plus to turn GEO Archer into a customer-finding engine.
+        Find businesses that need better advertising, score the opportunity,
+        scan their site, and create campaigns in Ad Studio. Upgrade to Pro Plus
+        to turn GEO Archer into a customer-finding engine.
       </p>
       <div className="mt-5">
         <Link href="/settings?tab=billing">
@@ -39,7 +39,7 @@ export function LeadShell({
   children: React.ReactNode;
 }) {
   return (
-    <AppShell title={title} subtitle={subtitle} actions={actions} breadcrumb="Lead Machine">
+    <AppShell title={title} subtitle={subtitle} actions={actions} breadcrumb="Lead Generation">
       {children}
     </AppShell>
   );

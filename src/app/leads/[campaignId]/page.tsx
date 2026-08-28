@@ -8,8 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { geoHealthyAt } from "@/lib/leads/qualify";
-import { formatDate, gradeFor, type Tone } from "@/lib/utils";
+import { formatDate, type Tone } from "@/lib/utils";
 
 interface ProspectRow {
   id: string;
@@ -17,6 +16,7 @@ interface ProspectRow {
   domain: string;
   status: string;
   score: number | null;
+  adOpportunityScore?: number | null;
   contactEmail: string | null;
   analysis?: { geoScore?: number } | null;
   emails?: { status: string; followUpIndex: number }[];
@@ -47,14 +47,6 @@ interface CampaignDetail {
   prospects: ProspectRow[];
 }
 
-const GEO_HEALTHY_AT = geoHealthyAt();
-
-function geoScoreOf(p: ProspectRow): number | null {
-  if (typeof p.analysis?.geoScore === "number") return p.analysis.geoScore;
-  if (p.score == null) return null;
-  return Math.max(0, 100 - p.score);
-}
-
 function statusTone(status: string): Tone {
   if (status === "REPLIED" || status === "QUALIFIED") return "positive";
   if (status === "CONTACTED" || status === "ANALYZING" || status === "RUNNING")
@@ -66,8 +58,8 @@ function statusTone(status: string): Tone {
 }
 
 function statusLabel(status: string): string {
-  if (status === "DISQUALIFIED") return "GEO already healthy";
-  if (status === "QUALIFIED") return "Needs GEO help";
+  if (status === "DISQUALIFIED") return "Weak ad opportunity";
+  if (status === "QUALIFIED") return "Can advertise";
   if (status === "FOUND") return "Found";
   if (status === "ANALYZING") return "Analyzing site";
   if (status === "CONTACTED") return "Contacted";
@@ -205,7 +197,7 @@ export default function CampaignDetailPage() {
       subtitle={
         data
           ? `${data.campaign.industry}${data.campaign.location ? ` · ${data.campaign.location}` : ""} · ${data.campaign.mode === "AUTO_SEND" ? "Auto-send" : "Approve first"}`
-          : "Prospects found, scored, and queued for outreach."
+          : "Prospects found, scored for advertising, and queued for outreach."
       }
       actions={
         data ? (
@@ -269,19 +261,18 @@ export default function CampaignDetailPage() {
           )}
           {data.campaign.mode !== "AUTO_SEND" && (
             <p className="rounded-none border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-              Click a company name. On that page you add an email, edit the
-              draft, and send. The table checkboxes only send rows that already
+              Click a company name to scan the site, create ads in Ad Studio,
+              or send outreach. Table checkboxes only send rows that already
               have a draft.
             </p>
           )}
           {data.prospects.length > 0 &&
             data.prospects.every((p) => p.status === "DISQUALIFIED") && (
               <p className="rounded-none border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                Apollo found these companies (search is free). Each site’s GEO
-                score is on the same 0–100 scale as a GEO Archer scan. None
-                scored below {GEO_HEALTHY_AT}, so we skip the paid email reveal.
-                Down or missing websites are dropped, not listed. Click a
-                company to see why.
+                Apollo found these companies (search is free). None had a live
+                site with enough content to advertise from, so we skip the paid
+                email reveal. Down or missing websites are dropped, not listed.
+                Click a company to scan it anyway.
               </p>
             )}
 
@@ -344,7 +335,7 @@ export default function CampaignDetailPage() {
                       <span className="sr-only">Select</span>
                     </th>
                     <th className="px-3 py-3 font-medium">Company</th>
-                    <th className="px-3 py-3 font-medium">GEO score</th>
+                    <th className="px-3 py-3 font-medium">Ad opportunity</th>
                     <th className="px-3 py-3 font-medium">Status</th>
                     <th className="px-3 py-3 font-medium">Contact</th>
                   </tr>
@@ -370,12 +361,9 @@ export default function CampaignDetailPage() {
                         <p className="text-xs text-slate-400">{p.domain}</p>
                       </td>
                       <td className="px-3 py-3 font-semibold text-slate-800">
-                        {(() => {
-                          const geo = geoScoreOf(p);
-                          return geo == null
-                            ? "—"
-                            : `${geo} ${gradeFor(geo)}`;
-                        })()}
+                        {p.adOpportunityScore != null
+                          ? p.adOpportunityScore
+                          : "—"}
                       </td>
                       <td className="px-3 py-3">
                         <Badge tone={statusTone(p.status)}>

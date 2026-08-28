@@ -12,6 +12,7 @@ interface ProspectRow {
   domain: string;
   status: string;
   score: number | null;
+  adOpportunityScore: number | null;
   campaignId: string;
   campaignName: string;
 }
@@ -52,7 +53,7 @@ export default function ProspectsPage() {
 
   if (allowed === false) {
     return (
-      <LeadShell title="Prospects" subtitle="Find companies that need GEO Archer.">
+      <LeadShell title="Prospects" subtitle="Find businesses that need better advertising.">
         <LeadUpgradeGate />
       </LeadShell>
     );
@@ -61,7 +62,7 @@ export default function ProspectsPage() {
   return (
     <LeadShell
       title="Prospects"
-      subtitle="Companies GEO Archer found that need better AI visibility — not a generic CRM."
+      subtitle="Businesses found for advertising — scan a site, then create campaigns in Ad Studio."
     >
       {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
       {allowed === null || rows === null ? (
@@ -69,7 +70,7 @@ export default function ProspectsPage() {
       ) : rows.length === 0 ? (
         <EmptyState
           title="No prospects yet"
-          body="Start a campaign to find companies with strong sites and weak AI visibility."
+          body="Start a campaign to find businesses you can advertise."
           actionHref="/leads/new"
           actionLabel="Find Prospects"
         />
@@ -97,7 +98,7 @@ export default function ProspectsPage() {
                     <p className="text-xs text-slate-400">{p.domain}</p>
                   </td>
                   <td className="px-4 py-3 tabular-nums text-slate-700">
-                    {p.score ?? "—"}
+                    {p.adOpportunityScore ?? "—"}
                   </td>
                   <td className="px-4 py-3 text-slate-600">{p.status}</td>
                   <td className="px-4 py-3">

@@ -81,8 +81,8 @@ export default function LeadsDashboardPage() {
 
   return (
     <LeadShell
-      title="Lead Machine"
-      subtitle="Find companies that need GEO Archer — score the opportunity, then add them to a campaign."
+      title="Lead Generation"
+      subtitle="Find businesses that need better advertising — score the opportunity, then create campaigns in Ad Studio."
       actions={
         allowed ? (
           <Link href="/leads/new">
@@ -125,7 +125,7 @@ export default function LeadsDashboardPage() {
               />
               <p className="mt-2 text-xs text-slate-500">
                 {data.quota.remaining} outreach leads remaining this month.
-                Healthy sites we skip do not count.
+                Unreachable or empty sites we skip do not count.
               </p>
             </Card>
             <Card className="p-5 md:col-span-2">
@@ -158,8 +158,8 @@ export default function LeadsDashboardPage() {
               <Target className="mx-auto h-8 w-8 text-slate-300" />
               <p className="mt-3 font-medium text-slate-700">No campaigns yet</p>
               <p className="mt-1 text-sm text-slate-400">
-                Pick an industry and location. The machine finds companies,
-                scores their GEO, and drafts outreach.
+                Pick an industry and location. We find companies, score their
+                advertising opportunity, and draft outreach.
               </p>
               <Link href="/leads/new">
                 <Button className="mt-6">

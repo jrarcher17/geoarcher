@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireLeadGenAccess } from "@/lib/leads/api-guard";
 import type { ProspectAnalysis, ProspectProblem } from "@/lib/leads/analyze";
+import { loadProspectAdvertising } from "@/lib/leads/import-site";
 import { buildOutreachDraft, greetingName } from "@/lib/leads/outreach-copy";
 import { serializeProspect } from "@/lib/leads/serialize";
 import { appBaseUrl } from "@/lib/stripe";
@@ -33,6 +34,7 @@ export async function GET(
   return NextResponse.json({
     prospect: serializeProspect(prospect),
     campaign: prospect.campaign,
+    advertising: await loadProspectAdvertising(access.userId, prospect),
   });
 }
 

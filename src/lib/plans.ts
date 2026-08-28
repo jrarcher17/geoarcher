@@ -66,7 +66,7 @@ const PRO_PLUS_PLAN_BASE: Omit<PlanLimits, "priceLabel" | "prospectsPerMonth"> =
     competitorMaxPages: 200,
     scansPerMonth: 400,
     visibilityFeatures:
-      "Everything in Pro + AI Lead Generation Machine: find, score, and reach companies that need better GEO",
+      "Everything in Pro + advertising lead generation: find businesses that need ads, score the opportunity, and create campaigns",
   };
 
 export function getPlans(): Record<PlanId, PlanLimits> {

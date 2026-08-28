@@ -103,7 +103,7 @@ export default async function Home() {
       proPlus: "Continuous audits + rankings",
     },
     {
-      label: "AI Lead Generation Machine",
+      label: "Advertising lead generation",
       free: "—",
       pro: "—",
       proPlus: `${proPlus.prospectsPerMonth} prospects / mo`,

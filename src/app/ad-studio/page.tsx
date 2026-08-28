@@ -27,6 +27,7 @@ interface OpportunityItem extends BuilderOpportunity {
 }
 
 interface Intelligence {
+  siteUrl: string | null;
   status: string | null;
   hasCompletedScan: boolean;
   business: { companyName?: string } | null;
@@ -40,12 +41,14 @@ function AdStudioInner() {
   const { data: insights } = useInsights();
   const [siteId, setSiteId] = useState<string | null>(params.get("site"));
   const [selected, setSelected] = useState<string | null>(params.get("offering"));
+  const prospectId = params.get("prospect");
   const [intel, setIntel] = useState<Intelligence | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const sites = useMemo(() => insights?.sites ?? [], [insights]);
-  const site = sites.find((s) => s.siteId === siteId) ?? null;
+  const siteUrl =
+    sites.find((s) => s.siteId === siteId)?.url ?? intel?.siteUrl ?? "";
 
   useEffect(() => {
     if (!siteId && sites.length > 0) setSiteId(sites[0].siteId);
@@ -86,7 +89,7 @@ function AdStudioInner() {
     >
       {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
 
-      {insights && sites.length === 0 && (
+      {insights && sites.length === 0 && !siteId && (
         <EmptyState
           title="Ad Studio needs a scanned website"
           body="Add your site and GEO Archer will identify the products and services you can advertise."
@@ -95,7 +98,7 @@ function AdStudioInner() {
         />
       )}
 
-      {sites.length > 0 && (
+      {(sites.length > 0 || siteId) && (
         <FadeIn className="flex flex-col gap-8">
           {sites.length > 1 && (
             <div className="flex flex-wrap gap-1.5">
@@ -196,15 +199,18 @@ function AdStudioInner() {
             </section>
           )}
 
-          {selectedOffering && site && intel && (
+          {selectedOffering && siteId && intel && (
             <CampaignBuilder
               key={selectedOffering.id}
-              siteId={site.siteId}
-              siteUrl={site.url}
-              businessName={intel.business?.companyName ?? hostOf(site.url)}
+              siteId={siteId}
+              siteUrl={siteUrl}
+              businessName={
+                intel.business?.companyName ?? (siteUrl ? hostOf(siteUrl) : "Business")
+              }
               offering={selectedOffering}
               opportunity={relatedOpportunity}
               images={intel.images}
+              prospectId={prospectId}
             />
           )}
         </FadeIn>

@@ -90,10 +90,10 @@ function PlanFeatureList({ plan }: { plan: PlanLimits }) {
           <Check className="mt-0.5 h-4 w-4 shrink-0 text-violet-500" />
           <span>
             <strong className="font-medium text-slate-800">
-              AI Lead Generation Machine:
+              Advertising lead generation:
             </strong>{" "}
-            {plan.prospectsPerMonth} prospects / month — automated discovery,
-            GEO/SEO scoring, personalized reports + outreach
+            {plan.prospectsPerMonth} prospects / month — find businesses that
+            need ads, score the opportunity, then create campaigns
           </span>
         </li>
       )}
@@ -403,8 +403,8 @@ function SettingsPageInner() {
               <CardContent className="space-y-3 text-sm">
                 {[
                   ["OpenAI", "Powers analysis, visibility modeling, and drafts.", "Connected when OPENAI_API_KEY is set on the server."],
-                  ["Resend", "Sends Lead Machine outreach.", "Connected when RESEND_API_KEY is set."],
-                  ["Apollo", "Finds companies for Lead Machine.", "Connected when APOLLO_API_KEY is set."],
+                  ["Resend", "Sends advertising outreach.", "Connected when RESEND_API_KEY is set."],
+                  ["Apollo", "Finds businesses that need advertising.", "Connected when APOLLO_API_KEY is set."],
                   ["Stripe", "Billing for Pro and Pro Plus.", "Connected when Stripe keys are set."],
                   ["DataForSEO", "Live Google rankings.", "Connect in Rankings after credentials are set."],
                   ["Google Search Console", "Traffic and queries.", "Coming soon — not connected."],

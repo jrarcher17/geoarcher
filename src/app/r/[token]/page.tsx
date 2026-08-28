@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { prisma } from "@/lib/db";
 import type { ProspectReport } from "@/lib/leads/ai";
+import { assessAdvertisingOpportunity } from "@/lib/leads/ad-opportunity";
 import type { Tone } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -49,7 +50,7 @@ export default async function PublicReportPage({
             <BrandWordmark />
           </Link>
           <span className="text-xs font-medium uppercase tracking-wider text-slate-400">
-            Personalized GEO report
+            Advertising opportunity
           </span>
         </div>
       </header>
@@ -73,19 +74,19 @@ export default async function PublicReportPage({
         <div className="mt-8 grid gap-4 sm:grid-cols-3">
           <Card className="p-4">
             <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-              SEO health
+              Advertising opportunity
             </p>
             <p className="mt-1 text-2xl font-bold text-slate-900">
-              {analysis?.seoScore ?? "—"}
+              {assessAdvertisingOpportunity(analysis).score}
               <span className="text-sm font-medium text-slate-400">/100</span>
             </p>
           </Card>
           <Card className="p-4">
             <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-              AI visibility
+              Landing-page health
             </p>
             <p className="mt-1 text-2xl font-bold text-slate-900">
-              {analysis?.geoScore ?? "—"}
+              {analysis?.seoScore ?? "—"}
               <span className="text-sm font-medium text-slate-400">/100</span>
             </p>
           </Card>
@@ -118,7 +119,7 @@ export default async function PublicReportPage({
 
         <Card className="mt-12 border-violet-200 bg-violet-50/50 p-6 text-center">
           <p className="text-sm font-semibold text-slate-900">
-            Want to get found more often in AI search?
+            Want campaigns built from the products and services on your site?
           </p>
           <ReportInterestForm
             token={token}

@@ -125,6 +125,7 @@ export function CampaignBuilder({
   offering,
   opportunity,
   images,
+  prospectId,
 }: {
   siteId: string;
   siteUrl: string;
@@ -132,6 +133,7 @@ export function CampaignBuilder({
   offering: BuilderOffering;
   opportunity: BuilderOpportunity | null;
   images: BuilderImage[];
+  prospectId?: string | null;
 }) {
   const router = useRouter();
   const rec = opportunity?.recommendedCampaign ?? null;
@@ -218,6 +220,7 @@ export function CampaignBuilder({
         location,
         audience,
         status,
+        prospectId: prospectId || undefined,
         platforms: [...(useGoogle ? ["GOOGLE"] : []), ...(useMeta ? ["META"] : [])],
         google: useGoogle ? assets.google : undefined,
         meta: useMeta

@@ -8,6 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AdvertisingOpportunityCard,
+  type AdvertisingView,
+} from "@/components/leads/AdvertisingOpportunity";
 import type { ProspectReport } from "@/lib/leads/ai";
 import type { ProspectProblem } from "@/lib/leads/analyze";
 import { formatDate, type Tone } from "@/lib/utils";
@@ -77,6 +81,7 @@ export default function ProspectDetailPage() {
   const [body, setBody] = useState("");
   const [emailInput, setEmailInput] = useState("");
   const [nameInput, setNameInput] = useState("");
+  const [advertising, setAdvertising] = useState<AdvertisingView | null>(null);
 
   const load = useCallback(async () => {
     const accessRes = await fetch("/api/leads/access", { cache: "no-store" });
@@ -99,6 +104,7 @@ export default function ProspectDetailPage() {
       return;
     }
     setProspect(json.prospect);
+    setAdvertising(json.advertising ?? null);
     setCampaignName(json.campaign?.name ?? "");
     const draft = (json.prospect.emails as EmailRow[] | undefined)?.find(
       (e) => e.followUpIndex === 0
@@ -115,6 +121,21 @@ export default function ProspectDetailPage() {
     const timer = window.setTimeout(() => void load(), 0);
     return () => window.clearTimeout(timer);
   }, [load]);
+
+  const scanBusy = ["QUEUED", "CRAWLING", "ANALYZING"].includes(
+    advertising?.site?.scanStatus ?? ""
+  );
+  const intelBusy =
+    advertising?.site?.intelligenceStatus === "RUNNING" ||
+    (advertising?.site?.scanStatus === "COMPLETE" &&
+      (advertising?.offerings.length ?? 0) === 0 &&
+      !advertising?.site?.intelligenceStatus);
+
+  useEffect(() => {
+    if (!scanBusy && !intelBusy) return;
+    const interval = window.setInterval(() => void load(), 4000);
+    return () => window.clearInterval(interval);
+  }, [scanBusy, intelBusy, load]);
 
   const draft = prospect?.emails.find(
     (e) =>
@@ -134,6 +155,23 @@ export default function ProspectDetailPage() {
       await load();
     } catch (err) {
       alert(err instanceof Error ? err.message : "Update failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function scanWebsite() {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/leads/prospects/${params.id}/advertise`, {
+        method: "POST",
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error ?? "Could not start the scan.");
+      if (json.advertising) setAdvertising(json.advertising);
+      else await load();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Could not start the scan.");
     } finally {
       setBusy(false);
     }
@@ -173,7 +211,7 @@ export default function ProspectDetailPage() {
       subtitle={
         prospect
           ? `${prospect.domain}${campaignName ? ` · ${campaignName}` : ""}`
-          : "Problems found, report, and outreach."
+          : "Advertising opportunity, scan, and outreach."
       }
       actions={
         prospect ? (
@@ -211,6 +249,15 @@ export default function ProspectDetailPage() {
               <p className="rounded-none border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
                 {prospect.error}
               </p>
+            )}
+
+            {advertising && (
+              <AdvertisingOpportunityCard
+                advertising={advertising}
+                prospectId={prospect.id}
+                busy={busy}
+                onScan={() => void scanWebsite()}
+              />
             )}
 
             <Card className="p-6">
@@ -317,7 +364,9 @@ export default function ProspectDetailPage() {
             </Card>
 
             <Card className="p-5">
-              <h2 className="text-sm font-semibold text-slate-900">Problems</h2>
+              <h2 className="text-sm font-semibold text-slate-900">
+                Site check notes
+              </h2>
               <div className="mt-3 space-y-3">
                 {(prospect.problems ?? []).map((p) => (
                   <div key={p.id}>

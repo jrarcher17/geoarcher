@@ -3,6 +3,10 @@ import type {
   OutreachEmail,
   Prospect,
 } from "@/generated/prisma/client";
+import {
+  assessAdvertisingOpportunity,
+  type SiteCheckFacts,
+} from "@/lib/leads/ad-opportunity";
 
 export function serializeCampaign(
   campaign: LeadCampaign & { _count?: { prospects: number } }
@@ -51,6 +55,9 @@ export function serializeProspect(
     domain: prospect.domain,
     status: prospect.status,
     score: prospect.score,
+    adOpportunityScore: prospect.analysis
+      ? assessAdvertisingOpportunity(prospect.analysis as SiteCheckFacts).score
+      : null,
     scoreBreakdown: prospect.scoreBreakdown,
     problems: prospect.problems,
     analysis: prospect.analysis,

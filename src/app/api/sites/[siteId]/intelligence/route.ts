@@ -12,8 +12,9 @@ export async function GET(
   const access = await requireSiteAccess(siteId);
   if (access instanceof NextResponse) return access;
 
-  const [intelligence, offerings, images, opportunities, hasScan] =
+  const [site, intelligence, offerings, images, opportunities, hasScan] =
     await Promise.all([
+      prisma.site.findUnique({ where: { id: siteId }, select: { url: true } }),
       prisma.siteIntelligence.findUnique({ where: { siteId } }),
       prisma.offering.findMany({
         where: { siteId },
@@ -36,6 +37,7 @@ export async function GET(
     ]);
 
   return NextResponse.json({
+    siteUrl: site?.url ?? null,
     status: intelligence?.status ?? null,
     error: intelligence?.error ?? null,
     updatedAt: intelligence?.updatedAt.toISOString() ?? null,

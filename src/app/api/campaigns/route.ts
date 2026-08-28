@@ -143,11 +143,28 @@ export async function POST(request: NextRequest) {
   const audience = typeof body?.audience === "string" ? body.audience.trim() : "";
   const google = (body?.google ?? null) as GooglePayload | null;
   const meta = (body?.meta ?? null) as MetaPayload | null;
+  const prospectId =
+    typeof body?.prospectId === "string" && body.prospectId.trim()
+      ? body.prospectId.trim()
+      : null;
+  if (prospectId) {
+    const owned = await prisma.prospect.findFirst({
+      where: { id: prospectId, campaign: { userId: access.userId } },
+      select: { id: true },
+    });
+    if (!owned) {
+      return NextResponse.json(
+        { error: "That prospect does not belong to you." },
+        { status: 400 }
+      );
+    }
+  }
 
   const base = {
     userId: access.userId,
     siteId,
     offeringId,
+    prospectId,
     status,
     goal,
     landingPage,

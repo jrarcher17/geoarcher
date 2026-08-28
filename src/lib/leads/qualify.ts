@@ -1,6 +1,11 @@
+export {
+  hasAdvertisingOpportunity,
+  type SiteCheckFacts,
+} from "./ad-opportunity";
+
 /**
- * Outreach-need threshold (100 − GEO score). Default 40 means qualify when
- * estimated GEO is below 60 — Grade F on a GEO Archer scan.
+ * Outreach-need threshold (100 − GEO score). Kept as supporting data —
+ * qualification is now advertising-opportunity, not a GEO gap.
  */
 export function qualifyThreshold(): number {
   const n = Number(process.env["LEADGEN_QUALIFY_THRESHOLD"]);

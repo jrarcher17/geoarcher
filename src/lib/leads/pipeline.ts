@@ -11,7 +11,7 @@ import {
   type ProspectAnalysis,
   type ProspectProblem,
 } from "@/lib/leads/analyze";
-import { needsGeoHelp } from "@/lib/leads/qualify";
+import { hasAdvertisingOpportunity } from "@/lib/leads/qualify";
 import { apolloConfigured, revealContact, searchCompanies } from "@/lib/leads/apollo";
 import {
   countSentTodayForUser,
@@ -282,24 +282,18 @@ export const LIVE_PROSPECT_STATUSES = [
   "BOUNCED",
 ] as const;
 
-/** Flip DISQUALIFIED rows whose GEO is actually below the healthy bar (e.g. 59 F). */
+/** Flip DISQUALIFIED rows that have a live site worth advertising. */
 export async function reclassifyUnhealthySkips(
   campaignId: string
 ): Promise<string[]> {
   const rows = await prisma.prospect.findMany({
     where: { campaignId, status: "DISQUALIFIED" },
-    select: { id: true, score: true, analysis: true },
+    select: { id: true, analysis: true },
   });
   const flipped: string[] = [];
   for (const row of rows) {
-    const stored = (row.analysis as { geoScore?: number } | null)?.geoScore;
-    const geoScore =
-      typeof stored === "number"
-        ? stored
-        : row.score != null
-          ? 100 - row.score
-          : null;
-    if (geoScore == null || !needsGeoHelp(geoScore)) continue;
+    const analysis = row.analysis as ProspectAnalysis | null;
+    if (!hasAdvertisingOpportunity(analysis)) continue;
     await prisma.prospect.update({
       where: { id: row.id },
       data: { status: "QUALIFIED" },
@@ -359,7 +353,7 @@ export async function analyzeProspect(
 
   try {
     const result = await withHeartbeat(analyzeProspectSite(siteUrl));
-    const qualified = needsGeoHelp(result.analysis.geoScore);
+    const qualified = hasAdvertisingOpportunity(result.analysis);
     await prisma.prospect.update({
       where: { id: prospectId },
       data: {

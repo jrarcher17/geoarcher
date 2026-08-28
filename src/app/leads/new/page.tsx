@@ -66,7 +66,7 @@ export default function NewCampaignPage() {
   return (
     <LeadShell
       title="New Campaign"
-      subtitle="Define industry, location, and company size. GEO Archer finds sites, estimates visibility, and drafts outreach."
+      subtitle="Define industry, location, and company size. We find businesses that can run ads, score the opportunity, and draft outreach."
     >
       {allowed === false && <LeadUpgradeGate />}
       {allowed && (

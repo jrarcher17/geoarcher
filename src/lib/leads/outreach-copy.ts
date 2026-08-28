@@ -14,12 +14,12 @@ export function displayDomain(urlOrDomain: string): string {
 }
 
 const SUBJECT_VARIANTS = [
-  (name: string) => `Google & AI may not understand ${name}`,
-  (name: string) => `Google and AI may not be finding ${name}`,
-  (name: string) => `AI assistants may be missing ${name}`,
-  (name: string) => `${name} may be hard for Google and AI to see`,
-  (name: string) => `Google & ChatGPT may not understand ${name}`,
-  (name: string) => `Search and AI may be skipping ${name}`,
+  (name: string) => `${name} looks ready for Google and Meta ads`,
+  (name: string) => `Advertising ideas for ${name}`,
+  (name: string) => `Campaigns ${name} could run from the website`,
+  (name: string) => `I found ad opportunities on ${name}'s site`,
+  (name: string) => `Google and Meta campaigns for ${name}`,
+  (name: string) => `${name} — products and services worth advertising`,
 ] as const;
 
 /** Stable per company so regenerating a draft keeps the same subject. */
@@ -124,7 +124,7 @@ export function pickProblemExamples(
 
 function examplesSentence(examples: string[]): string {
   if (examples.length === 0) {
-    return "For example, the site is missing basic signals Google and AI assistants use to understand a business.";
+    return "The site has enough to advertise from, and paid search or Meta can put those services in front of people who are already looking.";
   }
   if (examples.length === 1) {
     return `For example, ${examples[0]}.`;
@@ -169,11 +169,11 @@ export function buildOutreachDraft(input: OutreachDraftInput): {
       body: [
         hi,
         "",
-        `I sent a short note about how Google and AI assistants see ${company}. The free report is still here:`,
+        `I sent a short note about advertising opportunities I found on ${company}'s website. The report is still here:`,
         "",
         input.reportUrl,
         "",
-        `If you'd like, reply "send it" and I'll point out the 3 highest-impact things I'd fix first.`,
+        `If you'd like, reply "send it" and I'll outline the campaigns I'd start with.`,
         "",
         sender,
       ].join("\n"),
@@ -186,11 +186,11 @@ export function buildOutreachDraft(input: OutreachDraftInput): {
       body: [
         hi,
         "",
-        `Last note from me — I crawled ${domain} and put the findings in this report:`,
+        `Last note from me — I crawled ${domain} and put the advertising opportunities in this report:`,
         "",
         input.reportUrl,
         "",
-        `Happy to point out what I'd fix first if useful. If this isn't a priority, no worries.`,
+        `Happy to sketch the first campaigns if useful. If this isn't a priority, no worries.`,
         "",
         sender,
       ].join("\n"),
@@ -207,17 +207,15 @@ export function buildOutreachDraft(input: OutreachDraftInput): {
     body: [
       hi,
       "",
-      `I crawled ${domain} and found a few issues that could be limiting how easily Google and AI assistants understand and surface ${company}.`,
+      `I crawled ${domain} and ${company} looks like a strong candidate for Google and Meta ads — the site has products or services people can click through to.`,
       "",
       examplesSentence(examples),
       "",
-      "Those are relatively straightforward fixes, but they can make a difference in how your company and services are understood in search results and AI-generated answers.",
-      "",
-      "I put together a free personalized report showing the specific pages and opportunities:",
+      "I put together a short report on the advertising opportunity, grounded in what's actually on the website:",
       "",
       input.reportUrl,
       "",
-      `If you'd like, reply "send it" and I'll point out the 3 highest-impact things I'd fix first.`,
+      `If you'd like, reply "send it" and I'll outline the campaigns I'd start with.`,
       "",
       sender,
     ].join("\n"),

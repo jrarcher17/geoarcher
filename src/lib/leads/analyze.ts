@@ -1,5 +1,6 @@
 import { buildSiteDigest } from "@/lib/analysis";
 import { crawlSite } from "@/lib/crawler";
+import { assessAdvertisingOpportunity } from "@/lib/leads/ad-opportunity";
 import { computeSeoAudit } from "@/lib/seo/checks";
 import { GEO_COMPONENT_NAMES, type PageExtraction } from "@/lib/types";
 import { gradeFor } from "@/lib/utils";
@@ -31,6 +32,10 @@ export interface ProspectAnalysis {
   geoScore: number;
   /** Public emails found on the site (fallback when Apollo people search is blocked). */
   contactEmails?: string[];
+  /** Distinct phone numbers found on crawled pages. */
+  phoneCount?: number;
+  /** Non-data-URI images found on crawled pages. */
+  imageCount?: number;
   /** Trimmed content digest reused by the AI report/outreach stages. */
   digest: string;
 }
@@ -40,6 +45,7 @@ export interface ProspectScoreBreakdown {
   geoGap: number;
   criticalProblems: number;
   warningProblems: number;
+  adOpportunityScore?: number;
 }
 
 export interface ProspectScoreResult {
@@ -277,6 +283,26 @@ export async function analyzeProspectSite(
       pages.flatMap((p) => p.contact.emails.map((e) => e.trim().toLowerCase()))
     ),
   ].filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) && !e.includes("noreply"));
+  const phoneCount = new Set(pages.flatMap((p) => p.contact.phones)).size;
+  const imageCount = pages.reduce(
+    (n, p) =>
+      n +
+      p.images.filter((img) => img.src && !img.src.startsWith("data:")).length,
+    0
+  );
+
+  const analysis = {
+    siteUrl: websiteUrl,
+    pagesCrawled: pages.length,
+    avgWordCount,
+    seoScore: seo.overallScore,
+    geoScore,
+    contactEmails,
+    phoneCount,
+    imageCount,
+    digest: buildSiteDigest(websiteUrl, pages).slice(0, 6000),
+  };
+  const adOpportunity = assessAdvertisingOpportunity(analysis);
 
   return {
     score,
@@ -285,16 +311,9 @@ export async function analyzeProspectSite(
       geoGap,
       criticalProblems: problems.filter((p) => p.severity === "critical").length,
       warningProblems: problems.filter((p) => p.severity === "warning").length,
+      adOpportunityScore: adOpportunity.score,
     },
     problems,
-    analysis: {
-      siteUrl: websiteUrl,
-      pagesCrawled: pages.length,
-      avgWordCount,
-      seoScore: seo.overallScore,
-      geoScore,
-      contactEmails,
-      digest: buildSiteDigest(websiteUrl, pages).slice(0, 6000),
-    },
+    analysis,
   };
 }
