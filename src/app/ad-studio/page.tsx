@@ -1,45 +1,37 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { FadeIn } from "@/components/cards/FadeIn";
-import { LevelBadge } from "@/components/ads/primitives";
+import {
+  CampaignBuilder,
+  type BuilderImage,
+  type BuilderOffering,
+  type BuilderOpportunity,
+} from "@/components/ads/CampaignBuilder";
 import { EmptyState, SectionLabel } from "@/components/os/primitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useInsights } from "@/lib/useInsights";
 import { cn, hostOf } from "@/lib/utils";
 
-interface OfferingItem {
-  id: string;
-  kind: "PRODUCT" | "SERVICE";
-  name: string;
-  description: string;
-  price: string | null;
-  url: string | null;
+interface OfferingItem extends BuilderOffering {
   images: { id: string; url: string; alt: string | null }[];
 }
 
-interface OpportunityItem {
+interface OpportunityItem extends BuilderOpportunity {
   id: string;
-  title: string;
   level: string;
-  rationale: string;
-  recommendedCampaign: {
-    name?: string;
-    goal?: string;
-    audience?: string;
-    budgetHint?: string;
-  } | null;
   offering: { id: string; name: string; kind: string } | null;
 }
 
 interface Intelligence {
   status: string | null;
   hasCompletedScan: boolean;
+  business: { companyName?: string } | null;
   offerings: OfferingItem[];
+  images: BuilderImage[];
   opportunities: OpportunityItem[];
 }
 
@@ -53,6 +45,7 @@ function AdStudioInner() {
   const [error, setError] = useState<string | null>(null);
 
   const sites = useMemo(() => insights?.sites ?? [], [insights]);
+  const site = sites.find((s) => s.siteId === siteId) ?? null;
 
   useEffect(() => {
     if (!siteId && sites.length > 0) setSiteId(sites[0].siteId);
@@ -203,88 +196,16 @@ function AdStudioInner() {
             </section>
           )}
 
-          {selectedOffering && (
-            <section className="border border-slate-200 bg-white p-6 sm:p-8">
-              <SectionLabel>Campaign brief</SectionLabel>
-              <div className="mt-3 flex flex-wrap items-center gap-3">
-                <h2 className="text-xl font-semibold tracking-tight text-slate-900">
-                  {relatedOpportunity?.recommendedCampaign?.name ??
-                    selectedOffering.name}
-                </h2>
-                {relatedOpportunity && (
-                  <LevelBadge level={relatedOpportunity.level} />
-                )}
-              </div>
-              {relatedOpportunity && (
-                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
-                  {relatedOpportunity.rationale}
-                </p>
-              )}
-              <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-3">
-                <div>
-                  <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                    Suggested goal
-                  </dt>
-                  <dd className="mt-1 text-slate-900">
-                    {relatedOpportunity?.recommendedCampaign?.goal?.replaceAll("_", " ") ??
-                      "Leads"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                    Suggested budget
-                  </dt>
-                  <dd className="mt-1 text-slate-900">
-                    {relatedOpportunity?.recommendedCampaign?.budgetHint ?? "—"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                    Landing page
-                  </dt>
-                  <dd className="mt-1 truncate text-slate-900">
-                    {selectedOffering.url ?? "—"}
-                  </dd>
-                </div>
-              </dl>
-              {relatedOpportunity?.recommendedCampaign?.audience && (
-                <p className="mt-4 text-sm text-slate-600">
-                  <span className="font-medium text-slate-900">Audience: </span>
-                  {relatedOpportunity.recommendedCampaign.audience}
-                </p>
-              )}
-              {selectedOffering.images.length > 0 && (
-                <div className="mt-5">
-                  <SectionLabel>Available creative</SectionLabel>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {selectedOffering.images.map((img) => (
-                      <Image
-                        key={img.id}
-                        src={img.url}
-                        alt={img.alt ?? ""}
-                        width={96}
-                        height={64}
-                        unoptimized
-                        className="h-16 w-24 border border-slate-200 object-cover"
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-              <div className="mt-6 flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  disabled
-                  className="btn-primary cursor-not-allowed text-sm opacity-60"
-                >
-                  Generate campaign with AI
-                </button>
-                <p className="text-xs text-slate-400">
-                  The AI campaign builder — copy, keywords, creative and preview —
-                  is the next milestone in this rollout.
-                </p>
-              </div>
-            </section>
+          {selectedOffering && site && intel && (
+            <CampaignBuilder
+              key={selectedOffering.id}
+              siteId={site.siteId}
+              siteUrl={site.url}
+              businessName={intel.business?.companyName ?? hostOf(site.url)}
+              offering={selectedOffering}
+              opportunity={relatedOpportunity}
+              images={intel.images}
+            />
           )}
         </FadeIn>
       )}
