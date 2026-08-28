@@ -18,6 +18,11 @@ export const PROTECTED_PATH_PREFIXES = [
   "/leads",
   "/reports",
   "/settings",
+  "/ad-studio",
+  "/campaigns",
+  "/analytics",
+  "/assistant",
+  "/integrations",
 ] as const;
 
 export function isProtectedAppPath(pathname: string): boolean {
@@ -38,6 +43,11 @@ export function isProtectedAppPath(pathname: string): boolean {
   if (pathname === "/reports") return true;
   if (pathname === "/settings" || pathname.startsWith("/settings/")) return true;
   if (pathname === "/sites" || pathname.startsWith("/sites/")) return true;
+  if (pathname === "/ad-studio" || pathname.startsWith("/ad-studio/")) return true;
+  if (pathname === "/campaigns" || pathname.startsWith("/campaigns/")) return true;
+  if (pathname === "/analytics") return true;
+  if (pathname === "/assistant") return true;
+  if (pathname === "/integrations") return true;
   return false;
 }
 

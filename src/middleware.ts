@@ -51,5 +51,12 @@ export const config = {
     "/reports/:path*",
     "/settings",
     "/settings/:path*",
+    "/ad-studio",
+    "/ad-studio/:path*",
+    "/campaigns",
+    "/campaigns/:path*",
+    "/analytics",
+    "/assistant",
+    "/integrations",
   ],
 };

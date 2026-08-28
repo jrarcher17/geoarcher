@@ -11,12 +11,18 @@ async function runScanPipelineInline(
   withSeoAudit: boolean
 ): Promise<void> {
   await runScan(scanId);
-  if (!withSeoAudit) return;
   const scan = await prisma.scan.findUnique({
     where: { id: scanId },
-    select: { status: true, pagesCrawled: true },
+    select: { status: true, pagesCrawled: true, benchmarkScanId: true },
   });
-  if (scan?.status === "COMPLETE" && scan.pagesCrawled > 0) {
+  const scanOk = scan?.status === "COMPLETE" && (scan.pagesCrawled ?? 0) > 0;
+  if (scanOk && !scan.benchmarkScanId) {
+    const { runAdvertisingIntelligence } = await import(
+      "@/lib/advertising/intelligence"
+    );
+    await runAdvertisingIntelligence(siteId, scanId);
+  }
+  if (withSeoAudit && scanOk) {
     await runSeoAuditInline(siteId, scanId);
   }
 }
@@ -101,6 +107,21 @@ export async function startLeadGenCampaign(campaignId: string): Promise<void> {
       slices += 1;
     }
   });
+}
+
+export async function startAdvertisingIntelligence(
+  siteId: string,
+  scanId?: string
+): Promise<void> {
+  const { runAdvertisingIntelligence } = await import(
+    "@/lib/advertising/intelligence"
+  );
+  await sendOrInline(
+    { name: "advertising/intelligence.requested", data: { siteId, scanId } },
+    async () => {
+      await runAdvertisingIntelligence(siteId, scanId);
+    }
+  );
 }
 
 export async function startAutopilot(

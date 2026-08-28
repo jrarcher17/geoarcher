@@ -23,6 +23,11 @@ model Site {
   seoKeywords            SeoKeyword[]
   autopilotEnabled       Boolean                @default(false)
   autopilotRuns          AutopilotRun[]
+  intelligence           SiteIntelligence?
+  offerings              Offering[]
+  siteImages             SiteImage[]
+  adOpportunities        AdOpportunity[]
+  adCampaigns            AdCampaign[]
 }
 
 model UserSite {
@@ -58,6 +63,10 @@ model User {
   accounts      Account[]
   userSites     UserSite[]
   leadCampaigns LeadCampaign[]
+  adCampaigns           AdCampaign[]
+  adPlatformConnections AdPlatformConnection[]
+  aiActions             AIAction[]
+  aiRecommendations     AIRecommendation[]
 
   @@unique([email])
   @@map("user")
@@ -443,6 +452,7 @@ model Prospect {
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   emails         OutreachEmail[]
+  adCampaigns    AdCampaign[]
 
   @@unique([campaignId, domain])
   @@index([campaignId, status])
@@ -476,6 +486,310 @@ model EmailSuppression {
   email     String   @unique
   reason    String
   createdAt DateTime @default(now())
+}
+
+// ---- AI Advertising Command Center ----
+// The scan is the intelligence source: business profile, offerings (products/
+// services), images and marketing assets extracted from crawled pages power
+// Ad Studio, campaigns and lead-gen advertising opportunity scoring.
+
+enum IntelligenceStatus {
+  RUNNING
+  COMPLETE
+  FAILED
+}
+
+/// AI business profile + marketing assets extracted from a site's scan.
+model SiteIntelligence {
+  id     String             @id @default(uuid())
+  site   Site               @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId String             @unique
+  /// Scan the intelligence was derived from
+  scanId String?
+  status IntelligenceStatus @default(RUNNING)
+  error  String?
+  /// { companyName, description, industry, locations[], phone, email, address }
+  business  Json?
+  /// { headlines[], valueProps[], ctas[], promotions[], testimonials[], trustSignals[], usps[], faqs[] }
+  marketing Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum OfferingKind {
+  PRODUCT
+  SERVICE
+}
+
+/// A product or service identified on the website — the advertisable unit.
+model Offering {
+  id          String       @id @default(uuid())
+  site        Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId      String
+  kind        OfferingKind
+  name        String
+  description String
+  /// Price as found on the site (verbatim string); never invented
+  price       String?
+  url         String?
+  /// { benefits[], features[], cta, location }
+  details     Json?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  images      SiteImage[]
+  opportunities AdOpportunity[]
+  adCampaigns   AdCampaign[]
+
+  @@unique([siteId, name])
+  @@index([siteId, kind])
+}
+
+/// Useful image discovered on the website, selectable as ad creative.
+model SiteImage {
+  id         String    @id @default(uuid())
+  site       Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId     String
+  offering   Offering? @relation(fields: [offeringId], references: [id], onDelete: SetNull)
+  offeringId String?
+  url        String
+  alt        String?
+  pageUrl    String?
+  width      Int?
+  height     Int?
+  createdAt  DateTime  @default(now())
+
+  @@unique([siteId, url])
+  @@index([siteId])
+}
+
+enum OpportunityLevel {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+/// An advertising opportunity the AI identified for a site's offering.
+model AdOpportunity {
+  id         String           @id @default(uuid())
+  site       Site             @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId     String
+  offering   Offering?        @relation(fields: [offeringId], references: [id], onDelete: Cascade)
+  offeringId String?
+  title      String
+  level      OpportunityLevel
+  rationale  String
+  /// e.g. ["google", "meta", "ai"]
+  channels   Json             @default("[]")
+  /// AI-recommended campaign starting point: { name, goal, budgetHint, audience }
+  recommendedCampaign Json?
+  dismissed  Boolean          @default(false)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  @@index([siteId, level])
+}
+
+enum AdPlatform {
+  GOOGLE
+  META
+  AI_CHAT
+}
+
+enum AdCampaignGoal {
+  LEADS
+  SALES
+  TRAFFIC
+  PHONE_CALLS
+  AWARENESS
+}
+
+enum AdCampaignStatus {
+  DRAFT
+  READY
+  PENDING_APPROVAL
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ERROR
+}
+
+/// One advertising campaign on one platform (Ad Studio may create several).
+model AdCampaign {
+  id         String           @id @default(uuid())
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  site       Site?            @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  siteId     String?
+  offering   Offering?        @relation(fields: [offeringId], references: [id], onDelete: SetNull)
+  offeringId String?
+  /// Set when the campaign originated from a lead-gen prospect
+  prospect   Prospect?        @relation(fields: [prospectId], references: [id], onDelete: SetNull)
+  prospectId String?
+  platform   AdPlatform
+  status     AdCampaignStatus @default(DRAFT)
+  name       String
+  goal       AdCampaignGoal
+  landingPage String?
+  /// Daily budget in cents
+  budgetDailyCents Int?
+  currency         String  @default("USD")
+  /// Geographic targeting: [{ name, type }]
+  locations Json @default("[]")
+  /// AI audience recommendation: { description, segments[], ageRange, interests[] }
+  audience  Json?
+  /// Platform-specific structure (Google: ad groups/keywords; Meta: ad sets)
+  structure Json?
+  /// Platform campaign id once actually published (never faked)
+  externalId String?
+  error      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  publishedAt DateTime?
+  ads        Ad[]
+  metrics    CampaignMetric[]
+
+  @@index([userId, createdAt])
+  @@index([siteId, status])
+  @@index([userId, status])
+}
+
+enum CreativeSource {
+  SITE_IMAGE
+  UPLOAD
+  GENERATED
+  NONE
+}
+
+/// An individual ad inside a campaign.
+model Ad {
+  id          String     @id @default(uuid())
+  campaign    AdCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaignId  String
+  name        String?
+  /// Ad copy: { headlines[], descriptions[], primaryText, cta, keywords[] }
+  copy        Json
+  destinationUrl String?
+  creativeSource CreativeSource @default(NONE)
+  /// { url, alt, width, height, siteImageId }
+  creative    Json?
+  externalId  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  metrics     AdMetric[]
+
+  @@index([campaignId])
+}
+
+enum ConnectionStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
+}
+
+/// OAuth connection to an advertising platform. Tokens are encrypted at rest
+/// and never sent to the browser.
+model AdPlatformConnection {
+  id          String           @id @default(uuid())
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  platform    AdPlatform
+  status      ConnectionStatus @default(DISCONNECTED)
+  accountId   String?
+  accountName String?
+  /// Encrypted (AES-256-GCM) — never exposed to the client
+  accessToken  String?
+  refreshToken String?
+  expiresAt    DateTime?
+  scopes       String?
+  error        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, platform])
+}
+
+/// Daily performance snapshot for a campaign (synced from the platform).
+model CampaignMetric {
+  id          String     @id @default(uuid())
+  campaign    AdCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaignId  String
+  date        DateTime   @db.Date
+  spendCents  Int        @default(0)
+  impressions Int        @default(0)
+  clicks      Int        @default(0)
+  conversions Int        @default(0)
+  revenueCents Int       @default(0)
+
+  @@unique([campaignId, date])
+  @@index([campaignId, date])
+}
+
+/// Daily performance snapshot for an individual ad.
+model AdMetric {
+  id          String   @id @default(uuid())
+  ad          Ad       @relation(fields: [adId], references: [id], onDelete: Cascade)
+  adId        String
+  date        DateTime @db.Date
+  spendCents  Int      @default(0)
+  impressions Int      @default(0)
+  clicks      Int      @default(0)
+  conversions Int      @default(0)
+
+  @@unique([adId, date])
+}
+
+enum AIActionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXECUTED
+  FAILED
+}
+
+/// Audit trail for AI-initiated actions. Spend-changing actions require
+/// explicit user approval before execution.
+model AIAction {
+  id         String         @id @default(uuid())
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  action     String
+  platform   AdPlatform?
+  campaignId String?
+  previousValue Json?
+  newValue      Json?
+  status     AIActionStatus @default(PENDING)
+  approvedBy String?
+  error      String?
+  createdAt  DateTime  @default(now())
+  executedAt DateTime?
+
+  @@index([userId, createdAt])
+  @@index([userId, status])
+}
+
+enum AIRecommendationStatus {
+  NEW
+  REVIEWED
+  APPLIED
+  DISMISSED
+}
+
+/// AI performance recommendation surfaced on the dashboard/analytics.
+model AIRecommendation {
+  id         String                 @id @default(uuid())
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  campaignId String?
+  type       String
+  title      String
+  detail     String
+  /// Structured payload for one-click apply (e.g. { budgetDailyCents: 4600 })
+  payload    Json?
+  status     AIRecommendationStatus @default(NEW)
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+
+  @@index([userId, status])
 }
 
 model SeoSearchOpportunity {

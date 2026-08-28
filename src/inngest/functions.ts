@@ -7,6 +7,7 @@ import {
   notifyScanComplete,
 } from "@/lib/jobs/notify";
 import { prisma } from "@/lib/db";
+import { runAdvertisingIntelligence } from "@/lib/advertising/intelligence";
 import { runScan } from "@/lib/scan-runner";
 import { runSeoAudit } from "@/lib/seo/audit-runner";
 import { runAutopilotCycle } from "@/lib/seo/autopilot-pipeline";
@@ -27,14 +28,24 @@ export const scanPipeline = inngest.createFunction(
 
     await step.run("crawl-and-analyze", () => runScan(scanId));
 
-    if (withSeoAudit) {
-      const scan = await step.run("check-scan", () =>
-        prisma.scan.findUnique({
-          where: { id: scanId },
-          select: { status: true, pagesCrawled: true },
-        })
+    const scan = await step.run("check-scan", () =>
+      prisma.scan.findUnique({
+        where: { id: scanId },
+        select: { status: true, pagesCrawled: true, benchmarkScanId: true },
+      })
+    );
+    const scanOk = scan?.status === "COMPLETE" && (scan.pagesCrawled ?? 0) > 0;
+
+    // Advertising intelligence: extract business profile, offerings, images
+    // and ad opportunities from the fresh crawl (skip competitor benchmarks).
+    if (scanOk && !scan.benchmarkScanId) {
+      await step.run("advertising-intelligence", () =>
+        runAdvertisingIntelligence(siteId, scanId)
       );
-      if (scan?.status === "COMPLETE" && (scan.pagesCrawled ?? 0) > 0) {
+    }
+
+    if (withSeoAudit) {
+      if (scanOk) {
         await step.run("seo-audit", async () => {
           try {
             await runSeoAudit(siteId, scanId);
@@ -127,6 +138,21 @@ export const leadFollowups = inngest.createFunction(
       );
     }
     return { campaigns: campaigns.length };
+  }
+);
+
+/** On-demand advertising-intelligence extraction for an already-scanned site. */
+export const adIntelligenceJob = inngest.createFunction(
+  {
+    id: "advertising-intelligence",
+    concurrency: { limit: 1, key: "event.data.siteId" },
+    retries: 1,
+    triggers: { event: "advertising/intelligence.requested" },
+  },
+  async ({ event, step }) => {
+    const siteId = String(event.data.siteId);
+    const scanId = event.data.scanId ? String(event.data.scanId) : undefined;
+    return step.run("extract", () => runAdvertisingIntelligence(siteId, scanId));
   }
 );
 

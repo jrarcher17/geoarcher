@@ -5,23 +5,15 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   BarChart3,
-  Eye,
-  FileText,
+  Bot,
   Globe,
   LayoutDashboard,
-  Link2,
+  Megaphone,
   Menu,
-  MessageCircleQuestion,
-  Plus,
-  Quote,
-  Rocket,
+  Plug,
   Settings,
-  Sparkles,
   Target,
-  TrendingUp,
   Users,
-  Wrench,
-  Zap,
 } from "lucide-react";
 import { signOut, useSession } from "@/lib/auth-client";
 import { BrandWordmark } from "@/components/BrandWordmark";
@@ -30,55 +22,27 @@ import { isProtectedAppPath, loginUrlWithReturn } from "@/lib/auth-guard";
 
 const NAV = [
   {
-    label: "Workspace",
+    label: "Command Center",
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { href: "/sites", label: "Sites", icon: Globe },
-      { href: "/visibility", label: "AI Visibility", icon: Eye },
-    ],
-  },
-  {
-    label: "Discover",
-    items: [
-      { href: "/ai-search", label: "AI Search", icon: Sparkles },
-      { href: "/competitors", label: "Competitors", icon: Users },
-      { href: "/optimize", label: "Opportunities", icon: Rocket },
-      { href: "/opportunities", label: "Content Gaps", icon: MessageCircleQuestion },
-    ],
-  },
-  {
-    label: "Autopilot",
-    items: [
-      { href: "/autopilot", label: "Overview", icon: Zap },
-      { href: "/seo/opportunities", label: "Optimizations", icon: Rocket },
-      { href: "/seo/content", label: "Content", icon: FileText },
-      { href: "/seo/technical", label: "Technical SEO", icon: Wrench },
-      { href: "/seo/internal-links", label: "Internal Links", icon: Link2 },
+      { href: "/ad-studio", label: "Ad Studio", icon: Megaphone },
+      { href: "/campaigns", label: "Campaigns", icon: Target },
+      { href: "/analytics", label: "Analytics", icon: BarChart3 },
     ],
   },
   {
     label: "Grow",
     items: [
-      { href: "/traffic", label: "Traffic", icon: BarChart3 },
-      { href: "/seo/rankings", label: "Rankings", icon: TrendingUp },
-      { href: "/citations", label: "AI Citations", icon: Quote },
-      { href: "/backlinks", label: "Backlinks", icon: Link2 },
+      { href: "/leads", label: "Lead Generation", icon: Users },
+      { href: "/assistant", label: "AI Assistant", icon: Bot },
     ],
   },
   {
-    label: "Lead Machine",
+    label: "Account",
     items: [
-      { href: "/leads/prospects", label: "Prospects", icon: Users },
-      { href: "/leads", label: "Campaigns", icon: Target },
-      { href: "/leads/new", label: "New Campaign", icon: Plus },
-    ],
-  },
-  {
-    label: "Settings",
-    items: [
-      { href: "/settings", label: "Account", icon: Settings },
-      { href: "/settings?tab=integrations", label: "Integrations", icon: Sparkles },
-      { href: "/settings?tab=billing", label: "Billing", icon: BarChart3 },
+      { href: "/integrations", label: "Integrations", icon: Plug },
+      { href: "/settings", label: "Settings", icon: Settings },
     ],
   },
 ];
@@ -86,31 +50,18 @@ const NAV = [
 function isActive(pathname: string, href: string): boolean {
   const path = href.split("?")[0];
   if (path === "/dashboard") return pathname === "/dashboard";
-  if (path === "/autopilot") return pathname === "/autopilot";
-  if (path === "/leads") {
-    return (
-      pathname === "/leads" ||
-      (pathname.startsWith("/leads/") &&
-        !pathname.startsWith("/leads/new") &&
-        !pathname.startsWith("/leads/prospects"))
-    );
-  }
-  if (path === "/sites") return pathname === "/sites" || pathname.startsWith("/sites/");
-  if (path === "/seo/opportunities") {
-    return pathname === "/seo/opportunities";
-  }
   if (path === "/settings") return pathname === "/settings";
   return pathname === path || pathname.startsWith(`${path}/`);
 }
 
 interface LiveStatus {
   active: boolean;
-  optimizing: boolean;
-  pages: number;
+  scanning: boolean;
+  sites: number;
+  offerings: number;
   opportunities: number;
-  automated: number;
-  competitors: number;
-  questions: number;
+  campaigns: number;
+  activeCampaigns: number;
 }
 
 export function AppShell({
@@ -272,15 +223,16 @@ export function AppShell({
                   status.active ? "bg-emerald-400" : "bg-slate-500"
                 )}
               />
-              {status.optimizing ? "Autopilot" : status.active ? "Active" : "Idle"}
+              {status.scanning ? "Scanning" : status.active ? "Active" : "Idle"}
             </span>
           </div>
           <ul className="mt-2 space-y-0.5 text-[11px] text-slate-500">
-            <li>{status.pages} pages analyzed</li>
-            <li>{status.opportunities} opportunities</li>
-            <li>{status.automated} improvements completed</li>
-            <li>{status.competitors} competitor monitors</li>
-            <li>{status.questions} customer questions</li>
+            <li>{status.sites} sites scanned</li>
+            <li>{status.offerings} products &amp; services</li>
+            <li>{status.opportunities} ad opportunities</li>
+            <li>
+              {status.activeCampaigns} active / {status.campaigns} campaigns
+            </li>
           </ul>
         </div>
       )}

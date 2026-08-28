@@ -46,7 +46,7 @@ export default function SitesPage() {
     <>
       <AppShell
         title="Sites"
-        subtitle="Every site you track, with its current AI readiness."
+        subtitle="Every website you've connected. One scan builds the advertising intelligence behind your campaigns."
         actions={
           atSiteLimit ? (
             <div className="flex flex-wrap items-center gap-2">
@@ -84,7 +84,8 @@ export default function SitesPage() {
                 <Globe className="mx-auto h-8 w-8 text-slate-300" />
                 <p className="mt-3 font-medium text-slate-700">No sites yet</p>
                 <p className="mt-1 text-sm text-slate-400">
-                  Add a URL to crawl, score, and track over time.
+                  Add a URL and GEO Archer scans it, understands the business, and
+                  finds what&apos;s worth advertising.
                 </p>
                 <Button className="mt-6" onClick={() => setAddOpen(true)}>
                   <Plus className="h-4 w-4" />
@@ -102,7 +103,7 @@ export default function SitesPage() {
                       key={s.siteId}
                       className="group relative p-5 transition hover:border-sky-200 hover:shadow-md"
                     >
-                      <Link href={`/sites/${s.siteId}`} className="block">
+                      <Link href={`/sites/${s.siteId}/intelligence`} className="block">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <p className="flex items-center gap-1.5 font-semibold text-slate-900">
@@ -194,7 +195,7 @@ export default function SitesPage() {
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent
           title="Add a site"
-          description="Enter a URL to crawl. We'll map AI understanding, GEO score, gaps, and recommendations."
+          description="Enter a URL to scan. GEO Archer identifies your business, products, services, images and advertising opportunities."
           className="max-w-md"
         >
           <ScanForm

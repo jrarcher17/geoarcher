@@ -4,33 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "@/lib/auth-client";
 import { BrandWordmark } from "@/components/BrandWordmark";
+import { isProtectedAppPath } from "@/lib/auth-guard";
 
 export function AuthNav() {
   const pathname = usePathname();
   const { data: session, isPending } = useSession();
 
   // Admin shell owns chrome on all app routes; this nav is for marketing pages.
-  const appRoutes = [
-    "/dashboard",
-    "/sites",
-    "/scans",
-    "/scan/",
-    "/visibility",
-    "/ai-search",
-    "/optimize",
-    "/autopilot",
-    "/traffic",
-    "/citations",
-    "/backlinks",
-    "/recommendations",
-    "/opportunities",
-    "/competitors",
-    "/reports",
-    "/settings",
-    "/seo",
-    "/leads",
-    "/r/",
-  ];
   if (
     pathname === "/" ||
     pathname === "/login" ||
@@ -41,7 +21,9 @@ export function AuthNav() {
     pathname === "/free-seo-geo-audit" ||
     pathname === "/ai-search-optimization" ||
     pathname === "/seo-autopilot" ||
-    appRoutes.some((r) => pathname === r.replace(/\/$/, "") || pathname.startsWith(r))
+    pathname.startsWith("/r/") ||
+    pathname.startsWith("/scan/") ||
+    isProtectedAppPath(pathname)
   ) {
     return null;
   }
