@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { FadeIn } from "@/components/cards/FadeIn";
 import {
@@ -54,6 +55,7 @@ const STATUS_FILTERS = [
 const PLATFORM_FILTERS = ["ALL", "GOOGLE", "META"] as const;
 
 export default function CampaignsPage() {
+  const router = useRouter();
   const [campaigns, setCampaigns] = useState<CampaignRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [upgrade, setUpgrade] = useState(false);
@@ -186,9 +188,15 @@ export default function CampaignsPage() {
               </thead>
               <tbody>
                 {filtered.map((c) => (
-                  <tr key={c.id} className="border-b border-slate-100 last:border-0">
+                  <tr
+                    key={c.id}
+                    className="cursor-pointer border-b border-slate-100 transition hover:bg-slate-50 last:border-0"
+                    onClick={() => router.push(`/campaigns/${c.id}`)}
+                  >
                     <td className="px-4 py-3">
-                      <p className="font-medium text-slate-900">{c.name}</p>
+                      <p className="font-medium text-slate-900 underline-offset-2 hover:underline">
+                        {c.name}
+                      </p>
                       <p className="text-xs text-slate-400">
                         {c.site ? hostOf(c.site.url) : "—"}
                         {c.offering ? ` · ${c.offering.name}` : ""}
