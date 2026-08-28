@@ -8,10 +8,8 @@ import { cn } from "@/lib/utils";
 
 const LINKS = [
   { href: "/#how", label: "How it works" },
-  { href: "/seo-autopilot", label: "Autopilot" },
-  { href: "/ai-search-optimization", label: "AI Search" },
+  { href: "/#product", label: "Product" },
   { href: "/#pricing", label: "Pricing" },
-  { href: "/free-seo-geo-audit", label: "Free audit" },
 ];
 
 export function MarketingNav({
@@ -51,7 +49,7 @@ export function MarketingNav({
           {!signUpDisabled && (
             <Link
               href={signupHref}
-              className="inline-flex items-center gap-2 rounded-full bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-sky-500/25 transition hover:bg-sky-600"
+              className="inline-flex items-center gap-2 rounded-full bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-600/25 transition hover:bg-violet-700"
             >
               Sign up
               <ArrowRight className="h-4 w-4" />
@@ -96,7 +94,7 @@ export function MarketingNav({
           {!signUpDisabled && (
             <Link
               href={signupHref}
-              className="inline-flex justify-center rounded-full bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white"
+              className="inline-flex justify-center rounded-full bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white"
               onClick={() => setOpen(false)}
             >
               Sign up
