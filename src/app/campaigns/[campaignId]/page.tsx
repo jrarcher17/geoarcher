@@ -68,6 +68,13 @@ interface CampaignDetail {
   };
 }
 
+interface ConnectionInfo {
+  connected: boolean;
+  accountName: string | null;
+  canPublish: boolean;
+  blockedReason: string | null;
+}
+
 const GOAL_LABELS: Record<string, string> = {
   LEADS: "Leads",
   SALES: "Sales",
@@ -80,6 +87,7 @@ export default function CampaignDetailPage() {
   const { campaignId } = useParams<{ campaignId: string }>();
   const router = useRouter();
   const [campaign, setCampaign] = useState<CampaignDetail | null>(null);
+  const [connection, setConnection] = useState<ConnectionInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -88,6 +96,7 @@ export default function CampaignDetailPage() {
     const json = await res.json();
     if (!res.ok) throw new Error(json.error ?? "Failed to load the campaign.");
     setCampaign(json.campaign);
+    setConnection(json.connection ?? null);
   }, [campaignId]);
 
   useEffect(() => {
@@ -108,8 +117,25 @@ export default function CampaignDetailPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Update failed.");
       setCampaign(json.campaign);
+      if (json.connection) setConnection(json.connection);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Update failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handlePublish() {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/campaigns/${campaignId}/publish`, { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Publish failed.");
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Publish failed.");
+      await load().catch(() => undefined);
     } finally {
       setBusy(false);
     }
@@ -199,12 +225,23 @@ export default function CampaignDetailPage() {
               )}
               {c.status === "READY" && (
                 <>
-                  <span
-                    className="cursor-not-allowed bg-slate-100 px-4 py-2 text-sm font-medium text-slate-400"
-                    title="Connect an ad account in Integrations to publish"
-                  >
-                    Publish
-                  </span>
+                  {connection?.canPublish ? (
+                    <button
+                      type="button"
+                      className="btn-primary text-sm disabled:opacity-60"
+                      disabled={busy}
+                      onClick={() => void handlePublish()}
+                    >
+                      {busy ? "Publishing…" : "Publish"}
+                    </button>
+                  ) : (
+                    <span
+                      className="cursor-not-allowed bg-slate-100 px-4 py-2 text-sm font-medium text-slate-400"
+                      title={connection?.blockedReason ?? "Connect an ad account in Integrations to publish"}
+                    >
+                      Publish
+                    </span>
+                  )}
                   <button
                     type="button"
                     className="btn-secondary text-sm disabled:opacity-60"
@@ -256,6 +293,14 @@ export default function CampaignDetailPage() {
                 </button>
               )}
             </div>
+            {c.status === "READY" && connection && !connection.canPublish && (
+              <p className="w-full text-sm text-slate-500">
+                {connection.blockedReason}{" "}
+                <Link href="/integrations" className="underline underline-offset-2">
+                  Open Integrations
+                </Link>
+              </p>
+            )}
           </header>
 
           <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">

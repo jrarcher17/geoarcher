@@ -11,6 +11,7 @@ import { runAdvertisingIntelligence } from "@/lib/advertising/intelligence";
 import { runScan } from "@/lib/scan-runner";
 import { runSeoAudit } from "@/lib/seo/audit-runner";
 import { runAutopilotCycle } from "@/lib/seo/autopilot-pipeline";
+import { syncAllConnectedUsers, syncUserCampaignMetrics } from "@/lib/advertising/sync";
 
 export const scanPipeline = inngest.createFunction(
   {
@@ -181,5 +182,24 @@ export const autopilotJob = inngest.createFunction(
         ts: Date.now() + result.intervalMs,
       });
     }
+  }
+);
+
+/** Pull real platform metrics into CampaignMetric. Event or every 6 hours. */
+export const adsMetricsSyncJob = inngest.createFunction(
+  {
+    id: "ads-metrics-sync",
+    retries: 1,
+    triggers: [{ event: "ads/metrics.sync" }, { cron: "0 */6 * * *" }],
+  },
+  async ({ event, step }) => {
+    const userId =
+      event.name === "ads/metrics.sync" && event.data && typeof event.data === "object"
+        ? String((event.data as { userId?: string }).userId ?? "")
+        : "";
+    if (userId) {
+      return step.run("user", () => syncUserCampaignMetrics(userId, 30));
+    }
+    return step.run("all", () => syncAllConnectedUsers(30));
   }
 );

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdAccess } from "@/lib/advertising/api-guard";
+import { syncPlatformStatus } from "@/lib/advertising/publish";
 import type { Prisma } from "@/generated/prisma/client";
 
 type Status =
@@ -41,6 +42,43 @@ async function loadOwnCampaign(campaignId: string, userId: string) {
   });
   if (!campaign || campaign.userId !== userId) return null;
   return campaign;
+}
+
+async function connectionInfo(userId: string, platform: string) {
+  if (platform !== "GOOGLE" && platform !== "META") {
+    return {
+      connected: false,
+      accountName: null as string | null,
+      canPublish: false,
+      blockedReason: "AI / ChatGPT advertising is not available yet.",
+    };
+  }
+  const row = await prisma.adPlatformConnection.findUnique({
+    where: { userId_platform: { userId, platform } },
+    select: { status: true, accountId: true, accountName: true },
+  });
+  if (row?.status !== "CONNECTED") {
+    return {
+      connected: false,
+      accountName: null,
+      canPublish: false,
+      blockedReason: `Connect ${platform === "GOOGLE" ? "Google Ads" : "Meta"} in Integrations to publish.`,
+    };
+  }
+  if (!row.accountId) {
+    return {
+      connected: true,
+      accountName: row.accountName,
+      canPublish: false,
+      blockedReason: "Select an ad account in Integrations first.",
+    };
+  }
+  return {
+    connected: true,
+    accountName: row.accountName,
+    canPublish: true,
+    blockedReason: null as string | null,
+  };
 }
 
 function serialize(campaign: NonNullable<Awaited<ReturnType<typeof loadOwnCampaign>>>) {
@@ -105,7 +143,10 @@ export async function GET(
   if (!campaign) {
     return NextResponse.json({ error: "Campaign not found." }, { status: 404 });
   }
-  return NextResponse.json({ campaign: serialize(campaign) });
+  return NextResponse.json({
+    campaign: serialize(campaign),
+    connection: await connectionInfo(access.userId, campaign.platform),
+  });
 }
 
 /** Rename, adjust budget, or move the campaign through its lifecycle. */
@@ -143,6 +184,19 @@ export async function PATCH(
     }
     data.status = nextStatus;
     if (campaign.status === "ERROR") data.error = null;
+    if (
+      campaign.externalId &&
+      (nextStatus === "PAUSED" || nextStatus === "ACTIVE")
+    ) {
+      try {
+        await syncPlatformStatus(access.userId, campaignId, nextStatus);
+      } catch (err) {
+        return NextResponse.json(
+          { error: err instanceof Error ? err.message : "Could not update the live campaign." },
+          { status: 502 }
+        );
+      }
+    }
   }
 
   if (Object.keys(data).length === 0) {
@@ -172,7 +226,10 @@ export async function PATCH(
   }
 
   const fresh = await loadOwnCampaign(campaignId, access.userId);
-  return NextResponse.json({ campaign: serialize(fresh!) });
+  return NextResponse.json({
+    campaign: serialize(fresh!),
+    connection: await connectionInfo(access.userId, campaign.platform),
+  });
 }
 
 /** Delete a campaign that isn't live. Active campaigns must be paused first. */

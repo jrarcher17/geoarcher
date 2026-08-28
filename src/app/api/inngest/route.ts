@@ -2,6 +2,7 @@ import { serve } from "inngest/next";
 import { inngest } from "@/inngest/client";
 import {
   adIntelligenceJob,
+  adsMetricsSyncJob,
   autopilotJob,
   leadCampaignJob,
   leadFollowups,
@@ -21,5 +22,6 @@ export const { GET, POST, PUT } = serve({
     leadFollowups,
     autopilotJob,
     adIntelligenceJob,
+    adsMetricsSyncJob,
   ],
 });

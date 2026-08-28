@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getServerSession } from "@/lib/session";
+import { listAccountsForConnection } from "@/lib/advertising/connections";
+import { googleAdsConfigured, metaAdsConfigured } from "@/lib/advertising/oauth";
 
 /**
  * Connection status for advertising platforms. OAuth credentials are checked
@@ -29,23 +31,33 @@ export async function GET() {
   const google = find("GOOGLE");
   const meta = find("META");
 
+  const [googleAccounts, metaAccounts] = await Promise.all([
+    google?.status === "CONNECTED"
+      ? listAccountsForConnection(session.user.id, "google")
+      : Promise.resolve([]),
+    meta?.status === "CONNECTED"
+      ? listAccountsForConnection(session.user.id, "meta")
+      : Promise.resolve([]),
+  ]);
+
   return NextResponse.json({
     google: {
       connected: google?.status === "CONNECTED",
+      accountId: google?.accountId ?? null,
       accountName: google?.accountName ?? null,
+      accounts: googleAccounts,
+      needsAccount: google?.status === "CONNECTED" && !google.accountId,
       error: google?.error ?? null,
-      // OAuth app credentials present on the server → the Connect flow can run.
-      available: Boolean(
-        process.env.GOOGLE_ADS_CLIENT_ID && process.env.GOOGLE_ADS_CLIENT_SECRET
-      ),
+      available: googleAdsConfigured(),
     },
     meta: {
       connected: meta?.status === "CONNECTED",
+      accountId: meta?.accountId ?? null,
       accountName: meta?.accountName ?? null,
+      accounts: metaAccounts,
+      needsAccount: meta?.status === "CONNECTED" && !meta.accountId,
       error: meta?.error ?? null,
-      available: Boolean(
-        process.env.META_ADS_APP_ID && process.env.META_ADS_APP_SECRET
-      ),
+      available: metaAdsConfigured(),
     },
     openai: {
       configured: Boolean(process.env.OPENAI_API_KEY),

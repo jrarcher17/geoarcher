@@ -134,4 +134,12 @@ export async function startAutopilot(
   });
 }
 
+export async function startAdsMetricSync(userId: string): Promise<void> {
+  const { syncUserCampaignMetrics } = await import("@/lib/advertising/sync");
+  await sendOrInline(
+    { name: "ads/metrics.sync", data: { userId } },
+    () => syncUserCampaignMetrics(userId, 30).then(() => undefined)
+  );
+}
+
 export { inngestConfigured };
