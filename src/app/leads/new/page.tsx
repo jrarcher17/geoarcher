@@ -65,8 +65,8 @@ export default function NewCampaignPage() {
 
   return (
     <LeadShell
-      title="New campaign"
-      subtitle="Tell the machine who to find. It will crawl, score, and draft outreach."
+      title="New Campaign"
+      subtitle="Define industry, location, and company size. GEO Archer finds sites, estimates visibility, and drafts outreach."
     >
       {allowed === false && <LeadUpgradeGate />}
       {allowed && (

@@ -19,20 +19,27 @@ export function HeroAnalyze() {
         }}
       />
       <div className="relative mx-auto max-w-5xl px-4 pb-6 pt-16 text-center sm:px-6 sm:pt-20 lg:pt-24">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-600">
-          Generative engine optimization
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+          AI visibility operating system
         </p>
-        <h1 className="mx-auto mt-4 max-w-3xl text-4xl font-bold leading-[1.08] tracking-tight text-slate-900 sm:text-5xl lg:text-[3.5rem]">
-          Be found everywhere{" "}
-          <span className="text-sky-600">AI search</span> happens
+        <h1 className="mx-auto mt-4 max-w-3xl text-4xl font-semibold leading-[1.08] tracking-tight text-slate-900 sm:text-5xl lg:text-[3.4rem]">
+          Get found by Google.
+          <br />
+          Get mentioned by AI.
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-slate-600">
-          Crawl your site, see how ChatGPT, Claude, Gemini, Perplexity, and
-          Copilot would explain you — then fix what they cannot cite.
+          GEO Archer continuously analyzes and improves your website&apos;s SEO
+          and AI search visibility—without forcing you to rebuild the site or
+          create dozens of unnecessary pages.
         </p>
-        <div className="mx-auto mt-8 max-w-xl text-left [&_.btn-primary]:rounded-full [&_.btn-primary]:shadow-lg [&_.btn-primary]:shadow-sky-500/25 [&_.input-field]:rounded-full [&_.input-field]:bg-white [&_.input-field]:shadow-sm">
-          <ScanForm requireAuth submitLabel="Try it free" />
+        <div className="mx-auto mt-8 max-w-xl text-left [&_.btn-primary]:rounded-full [&_.input-field]:bg-white">
+          <ScanForm requireAuth submitLabel="Analyze My Website Free" />
         </div>
+        <p className="mt-4 text-sm text-slate-500">
+          <a href="#how" className="font-medium text-slate-800 underline-offset-4 hover:underline">
+            See How It Works
+          </a>
+        </p>
       </div>
 
       <div className="relative mx-auto max-w-5xl px-4 pb-6 sm:px-6">

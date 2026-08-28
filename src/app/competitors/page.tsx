@@ -23,8 +23,8 @@ export default function CompetitorsPage() {
 
   return (
     <AppShell
-      title="Competitors"
-      subtitle="Benchmark each site against up to five rivals — scores, topics they own, and where you lead."
+      title="Visibility competition"
+      subtitle="Where competitors appear and you do not — then turn those gaps into an optimization plan."
       actions={
         data && data.sites.length > 1 ? (
           <SiteFilter

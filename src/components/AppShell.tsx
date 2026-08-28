@@ -4,28 +4,24 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  ChevronDown,
+  BarChart3,
   Eye,
-  FileBarChart,
-  FileSearch,
   FileText,
-  Gauge,
   Globe,
   LayoutDashboard,
-  Lightbulb,
   Link2,
   Menu,
   MessageCircleQuestion,
   Plus,
-  Radar,
+  Quote,
   Rocket,
-  Search,
   Settings,
-  Swords,
-  TrendingUp,
+  Sparkles,
   Target,
+  TrendingUp,
   Users,
   Wrench,
+  Zap,
 } from "lucide-react";
 import { signOut, useSession } from "@/lib/auth-client";
 import { BrandWordmark } from "@/components/BrandWordmark";
@@ -38,63 +34,83 @@ const NAV = [
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { href: "/sites", label: "Sites", icon: Globe },
-      { href: "/scans", label: "Scans", icon: Radar },
-    ],
-  },
-  {
-    label: "Intelligence",
-    items: [
       { href: "/visibility", label: "AI Visibility", icon: Eye },
-      { href: "/recommendations", label: "Recommendations", icon: Lightbulb },
-      {
-        href: "/opportunities",
-        label: "Content Opportunities",
-        icon: MessageCircleQuestion,
-      },
-      { href: "/competitors", label: "Competitors", icon: Users },
     ],
   },
   {
-    label: "SEO Autopilot",
+    label: "Discover",
     items: [
-      { href: "/seo", label: "Overview", icon: Gauge },
-      { href: "/seo/opportunities", label: "Opportunities", icon: Rocket },
-      { href: "/seo/technical", label: "Technical SEO", icon: Wrench },
-      { href: "/seo/pages", label: "Pages", icon: FileSearch },
+      { href: "/ai-search", label: "AI Search", icon: Sparkles },
+      { href: "/competitors", label: "Competitors", icon: Users },
+      { href: "/optimize", label: "Opportunities", icon: Rocket },
+      { href: "/opportunities", label: "Content Gaps", icon: MessageCircleQuestion },
+    ],
+  },
+  {
+    label: "Autopilot",
+    items: [
+      { href: "/autopilot", label: "Overview", icon: Zap },
+      { href: "/seo/opportunities", label: "Optimizations", icon: Rocket },
       { href: "/seo/content", label: "Content", icon: FileText },
+      { href: "/seo/technical", label: "Technical SEO", icon: Wrench },
       { href: "/seo/internal-links", label: "Internal Links", icon: Link2 },
-      { href: "/seo/competitors", label: "Competitors", icon: Swords },
+    ],
+  },
+  {
+    label: "Grow",
+    items: [
+      { href: "/traffic", label: "Traffic", icon: BarChart3 },
       { href: "/seo/rankings", label: "Rankings", icon: TrendingUp },
+      { href: "/citations", label: "AI Citations", icon: Quote },
+      { href: "/backlinks", label: "Backlinks", icon: Link2 },
     ],
   },
   {
     label: "Lead Machine",
     items: [
+      { href: "/leads/prospects", label: "Prospects", icon: Users },
       { href: "/leads", label: "Campaigns", icon: Target },
-      { href: "/leads/new", label: "New campaign", icon: Plus },
+      { href: "/leads/new", label: "New Campaign", icon: Plus },
     ],
   },
   {
-    label: "Operate",
+    label: "Settings",
     items: [
-      { href: "/reports", label: "Reports", icon: FileBarChart },
-      { href: "/settings", label: "Settings", icon: Settings },
+      { href: "/settings", label: "Account", icon: Settings },
+      { href: "/settings?tab=integrations", label: "Integrations", icon: Sparkles },
+      { href: "/settings?tab=billing", label: "Billing", icon: BarChart3 },
     ],
   },
 ];
 
 function isActive(pathname: string, href: string): boolean {
-  if (href === "/dashboard") return pathname === "/dashboard";
-  if (href === "/seo") return pathname === "/seo";
-  if (href === "/leads") {
+  const path = href.split("?")[0];
+  if (path === "/dashboard") return pathname === "/dashboard";
+  if (path === "/autopilot") return pathname === "/autopilot";
+  if (path === "/leads") {
     return (
       pathname === "/leads" ||
-      (pathname.startsWith("/leads/") && !pathname.startsWith("/leads/new"))
+      (pathname.startsWith("/leads/") &&
+        !pathname.startsWith("/leads/new") &&
+        !pathname.startsWith("/leads/prospects"))
     );
   }
-  if (href === "/sites") return pathname === "/sites" || pathname.startsWith("/sites/");
-  if (href === "/scans") return pathname === "/scans" || pathname.startsWith("/scan/");
-  return pathname === href || pathname.startsWith(`${href}/`);
+  if (path === "/sites") return pathname === "/sites" || pathname.startsWith("/sites/");
+  if (path === "/seo/opportunities") {
+    return pathname === "/seo/opportunities";
+  }
+  if (path === "/settings") return pathname === "/settings";
+  return pathname === path || pathname.startsWith(`${path}/`);
+}
+
+interface LiveStatus {
+  active: boolean;
+  optimizing: boolean;
+  pages: number;
+  opportunities: number;
+  automated: number;
+  competitors: number;
+  questions: number;
 }
 
 export function AppShell({
@@ -108,9 +124,7 @@ export function AppShell({
   children: React.ReactNode;
   title: string;
   subtitle?: string;
-  /** Optional trail segment shown after the workspace chip. */
   breadcrumb?: string;
-  /** Right-aligned header actions (buttons etc.). */
   actions?: React.ReactNode;
   live?: boolean;
 }) {
@@ -119,6 +133,7 @@ export function AppShell({
   const { data: session, isPending: sessionPending } = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [status, setStatus] = useState<LiveStatus | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -130,6 +145,20 @@ export function AppShell({
       router.replace(loginUrlWithReturn(pathname));
     }
   }, [mounted, sessionPending, session, pathname, router]);
+
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+    fetch("/api/me/status", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (!cancelled && json) setStatus(json);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [session]);
 
   async function handleSignOut() {
     await signOut();
@@ -150,12 +179,8 @@ export function AppShell({
     "GA";
 
   const sidebarAccount = !authReady ? (
-    <div
-      className="flex items-center gap-3"
-      aria-busy="true"
-      aria-label="Loading account"
-    >
-      <div className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-white/10" />
+    <div className="flex items-center gap-3" aria-busy="true" aria-label="Loading account">
+      <div className="h-8 w-8 shrink-0 animate-pulse rounded-full bg-white/10" />
       <div className="min-w-0 flex-1 space-y-2">
         <div className="h-3 w-24 animate-pulse rounded bg-white/10" />
         <div className="h-2.5 w-16 animate-pulse rounded bg-white/5" />
@@ -163,7 +188,7 @@ export function AppShell({
     </div>
   ) : session ? (
     <div className="flex items-center gap-3">
-      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sky-500/20 text-xs font-semibold text-sky-300">
+      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-[11px] font-semibold text-slate-200">
         {initials}
       </div>
       <div className="min-w-0 flex-1">
@@ -185,29 +210,18 @@ export function AppShell({
     </Link>
   );
 
-  const headerAvatar = !authReady ? (
-    <div
-      className="flex h-9 w-9 animate-pulse items-center justify-center rounded-full bg-slate-200"
-      aria-hidden
-    />
-  ) : (
-    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sky-100 text-xs font-semibold text-sky-700">
-      {initials}
-    </div>
-  );
-
   const sidebar = (
-    <aside className="flex h-full w-60 shrink-0 flex-col bg-[#0b1220] text-slate-300">
+    <aside className="flex h-full w-56 shrink-0 flex-col bg-[#0b1220] text-slate-300">
       <div className="px-5 py-5">
         <Link href="/dashboard">
           <BrandWordmark variant="dark" />
         </Link>
       </div>
 
-      <nav className="sidebar-scroll flex-1 space-y-6 overflow-y-auto px-3 pb-6">
+      <nav className="sidebar-scroll flex-1 space-y-5 overflow-y-auto px-3 pb-4">
         {NAV.map((group) => (
           <div key={group.label}>
-            <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+            <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
               {group.label}
             </p>
             <ul className="space-y-0.5">
@@ -215,20 +229,20 @@ export function AppShell({
                 const active = isActive(pathname, item.href);
                 const IconEl = item.icon;
                 return (
-                  <li key={item.href}>
+                  <li key={`${group.label}-${item.href}-${item.label}`}>
                     <Link
                       href={item.href}
                       onClick={() => setMobileOpen(false)}
                       className={cn(
-                        "flex items-center gap-3 rounded-none px-3 py-2 text-sm transition",
+                        "flex items-center gap-2.5 px-3 py-1.5 text-[13px] transition",
                         active
-                          ? "bg-sky-500/90 font-medium text-white shadow-sm shadow-sky-900/40"
+                          ? "bg-white/10 font-medium text-white"
                           : "text-slate-400 hover:bg-white/5 hover:text-slate-100"
                       )}
                     >
                       <IconEl
                         className={cn(
-                          "h-4 w-4",
+                          "h-3.5 w-3.5",
                           active ? "text-white" : "text-slate-500"
                         )}
                       />
@@ -241,6 +255,35 @@ export function AppShell({
           </div>
         ))}
       </nav>
+
+      {status && (
+        <div className="mx-3 mb-3 border border-white/10 bg-white/5 px-3 py-3">
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="font-medium text-slate-200">GEO Archer</span>
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5",
+                status.active ? "text-emerald-400" : "text-slate-500"
+              )}
+            >
+              <span
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full",
+                  status.active ? "bg-emerald-400" : "bg-slate-500"
+                )}
+              />
+              {status.optimizing ? "Autopilot" : status.active ? "Active" : "Idle"}
+            </span>
+          </div>
+          <ul className="mt-2 space-y-0.5 text-[11px] text-slate-500">
+            <li>{status.pages} pages analyzed</li>
+            <li>{status.opportunities} opportunities</li>
+            <li>{status.automated} improvements completed</li>
+            <li>{status.competitors} competitor monitors</li>
+            <li>{status.questions} customer questions</li>
+          </ul>
+        </div>
+      )}
 
       <div className="border-t border-white/10 p-4">{sidebarAccount}</div>
     </aside>
@@ -268,37 +311,24 @@ export function AppShell({
             <div className="flex min-w-0 items-center gap-3">
               <button
                 type="button"
-                className="rounded-full border border-slate-200 bg-white p-2 text-slate-600 lg:hidden"
+                className="border border-slate-200 bg-white p-2 text-slate-600 lg:hidden"
                 onClick={() => setMobileOpen(true)}
                 aria-label="Open menu"
               >
                 <Menu className="h-5 w-5" />
               </button>
               <div className="hidden min-w-0 items-center gap-2 text-sm text-slate-500 sm:flex">
-                <span className="inline-flex items-center gap-1 rounded-none border border-slate-200 bg-white px-2.5 py-1 font-medium text-slate-700">
-                  Personal
-                  <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
-                </span>
-                <span className="text-slate-300">/</span>
+                <span className="truncate font-medium text-slate-700">{title}</span>
                 {breadcrumb && (
                   <>
-                    <span className="shrink-0 text-slate-500">{breadcrumb}</span>
                     <span className="text-slate-300">/</span>
+                    <span className="shrink-0 text-slate-500">{breadcrumb}</span>
                   </>
                 )}
-                <span className="truncate font-medium text-slate-700">{title}</span>
               </div>
             </div>
-
-            <div className="flex items-center gap-3">
-              <div className="hidden items-center gap-2 rounded-none border border-slate-200 bg-white px-3 py-2 text-sm text-slate-400 md:flex">
-                <Search className="h-4 w-4" />
-                <span>Search</span>
-                <kbd className="ml-6 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
-                  ⌘K
-                </kbd>
-              </div>
-              {headerAvatar}
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-[11px] font-semibold text-slate-700">
+              {initials}
             </div>
           </div>
         </header>
@@ -307,20 +337,20 @@ export function AppShell({
           <div className="w-full">
             <div className="mb-8 flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h1 className="flex items-center gap-3 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                <h1 className="flex items-center gap-3 text-2xl font-semibold tracking-tight text-slate-900 sm:text-[1.75rem]">
                   {title}
                   {live && (
-                    <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-                      <span className="relative flex h-2 w-2">
+                    <span className="inline-flex items-center gap-2 border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+                      <span className="relative flex h-1.5 w-1.5">
                         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-                        <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
                       </span>
                       Live
                     </span>
                   )}
                 </h1>
                 {subtitle && (
-                  <p className="mt-1.5 max-w-2xl text-sm text-slate-500">
+                  <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-slate-500">
                     {subtitle}
                   </p>
                 )}

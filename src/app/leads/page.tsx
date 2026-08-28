@@ -82,13 +82,13 @@ export default function LeadsDashboardPage() {
   return (
     <LeadShell
       title="Lead Machine"
-      subtitle="Find companies that need better GEO, score them, and send personalized outreach."
+      subtitle="Find companies that need GEO Archer — score the opportunity, then add them to a campaign."
       actions={
         allowed ? (
           <Link href="/leads/new">
             <Button>
               <Plus className="h-4 w-4" />
-              New campaign
+              Find Prospects
             </Button>
           </Link>
         ) : undefined

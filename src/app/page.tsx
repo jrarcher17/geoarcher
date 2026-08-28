@@ -115,6 +115,41 @@ export default async function Home() {
       <MarketingNav signUpDisabled={registrationsClosed} />
       <HeroAnalyze />
 
+      <section id="how" className="border-y border-slate-100 bg-slate-50 py-16">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+            How it works
+          </p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
+            Your website, then GEO Archer.
+          </h2>
+          <ol className="mt-8 grid gap-3 sm:grid-cols-3">
+            {[
+              "Your website",
+              "GEO Archer understands the business",
+              "Finds visibility gaps",
+              "Fixes what it can",
+              "You approve major changes",
+              "Monitors Google + AI",
+            ].map((step, i) => (
+              <li
+                key={step}
+                className="border border-slate-200 bg-white px-4 py-4 text-sm text-slate-700"
+              >
+                <span className="block text-xs font-semibold text-slate-400">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                {step}
+              </li>
+            ))}
+          </ol>
+          <p className="mt-8 max-w-2xl text-sm text-slate-500">
+            Traditional SEO tools find problems. GEO Archer finds them,
+            prioritizes them, helps fix them, and monitors the result.
+          </p>
+        </div>
+      </section>
+
       <section id="features" className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-600">
           Products

@@ -32,8 +32,8 @@ export default function VisibilityPage() {
 
   return (
     <AppShell
-      title="AI Visibility"
-      subtitle="How likely each AI assistant is to understand and surface your sites."
+      title="AI Search Visibility"
+      subtitle="See how your business appears across modeled AI search engines."
       actions={
         data && data.sites.length > 1 ? (
           <SiteFilter
@@ -73,9 +73,8 @@ export default function VisibilityPage() {
                 No visibility scores yet
               </p>
               <p className="mx-auto mt-1 max-w-md text-sm text-slate-400">
-                Open a site and run visibility scoring from its AI Visibility tab
-                to model how ChatGPT, Claude, Gemini, Perplexity, and Copilot see
-                it.
+                Run your first AI visibility scan to see when modeled assistants
+                mention your business.
               </p>
               <Link href="/sites" className="btn-primary mt-6 inline-block">
                 Go to Sites

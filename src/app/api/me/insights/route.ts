@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { planFromDb } from "@/lib/plans";
 import { getServerSession } from "@/lib/session";
+import { bucketSeoCategory } from "@/lib/opportunity-buckets";
 import type {
   ContentGap,
   GeoScore,
   Recommendation,
+  SimulationResults,
   Understanding,
   VisibilityResults,
 } from "@/lib/types";
@@ -33,6 +35,13 @@ export interface SiteInsight {
     components: { name: string; score: number }[];
   } | null;
   visibility: VisibilityResults | null;
+  simulation: SimulationResults | null;
+  seoOverall: number | null;
+  autopilotEnabled: boolean;
+  layerEnabled: boolean;
+  openOpportunities: number;
+  completedOpportunities: number;
+  opportunityBuckets: { label: string; count: number }[];
   history: { date: string; geo: number | null; understanding: number | null }[];
 }
 
@@ -62,7 +71,16 @@ export async function GET() {
             where: { benchmarkScanId: null },
             orderBy: { createdAt: "desc" },
             take: 12,
-            include: { analysis: true, visibility: true },
+            include: { analysis: true, visibility: true, simulation: true },
+          },
+          geoConfig: { select: { enabled: true } },
+          seoAudits: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            select: { overallScore: true },
+          },
+          seoOpportunities: {
+            select: { category: true, status: true },
           },
         },
       },
@@ -89,6 +107,36 @@ export async function GET() {
       visibilityRow?.status === "COMPLETE"
         ? ((visibilityRow.results as unknown as VisibilityResults) ?? null)
         : null;
+    const simulationRow = latestComplete?.simulation;
+    const simulation =
+      simulationRow?.status === "COMPLETE"
+        ? ((simulationRow.results as unknown as SimulationResults) ?? null)
+        : null;
+
+    const recs =
+      (analysisRow?.recommendations as unknown as Recommendation[]) ?? [];
+    const gaps =
+      (analysisRow?.contentGaps as unknown as ContentGap[]) ?? [];
+    const bucketCounts = new Map<string, number>();
+    let openOpportunities = recs.length + gaps.length;
+    let completedOpportunities = 0;
+    for (const opp of link.site.seoOpportunities) {
+      if (opp.status === "DISMISSED") continue;
+      if (opp.status === "COMPLETED") completedOpportunities += 1;
+      else openOpportunities += 1;
+      const bucket = bucketSeoCategory(opp.category);
+      bucketCounts.set(bucket, (bucketCounts.get(bucket) ?? 0) + 1);
+    }
+    for (const rec of recs) {
+      const bucket = bucketSeoCategory(rec.category || "GEO");
+      bucketCounts.set(bucket, (bucketCounts.get(bucket) ?? 0) + 1);
+    }
+    if (gaps.length > 0) {
+      bucketCounts.set(
+        "Content",
+        (bucketCounts.get("Content") ?? 0) + gaps.length
+      );
+    }
 
     const history = [...scans]
       .filter((s) => s.status === "COMPLETE" && s.analysis)
@@ -135,6 +183,15 @@ export async function GET() {
             }
           : null,
       visibility,
+      simulation,
+      seoOverall: link.site.seoAudits[0]?.overallScore ?? null,
+      autopilotEnabled: link.site.autopilotEnabled,
+      layerEnabled: Boolean(link.site.geoConfig?.enabled),
+      openOpportunities,
+      completedOpportunities,
+      opportunityBuckets: [...bucketCounts.entries()]
+        .map(([label, count]) => ({ label, count }))
+        .sort((a, b) => b.count - a.count),
       history,
     };
   });

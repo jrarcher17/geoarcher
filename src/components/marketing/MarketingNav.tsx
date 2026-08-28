@@ -7,11 +7,11 @@ import { BrandWordmark } from "@/components/BrandWordmark";
 import { cn } from "@/lib/utils";
 
 const LINKS = [
-  { href: "/#features", label: "Features" },
-  { href: "/#autopilot", label: "SEO Autopilot" },
-  { href: "/#platform", label: "Platform" },
+  { href: "/#how", label: "How it works" },
+  { href: "/seo-autopilot", label: "Autopilot" },
+  { href: "/ai-search-optimization", label: "AI Search" },
   { href: "/#pricing", label: "Pricing" },
-  { href: "/#guides", label: "Guides" },
+  { href: "/free-seo-geo-audit", label: "Free audit" },
 ];
 
 export function MarketingNav({

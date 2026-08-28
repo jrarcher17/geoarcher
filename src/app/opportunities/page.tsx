@@ -31,7 +31,7 @@ export default function OpportunitiesPage() {
   return (
     <AppShell
       title="Content Opportunities"
-      subtitle="Questions people ask AI assistants that your sites can't answer today. Each is a page or FAQ waiting to exist."
+      subtitle="Give customers the answers AI search is looking for. Prefer a section or FAQ on an existing page before creating a new URL."
       actions={
         data && data.sites.length > 1 ? (
           <SiteFilter

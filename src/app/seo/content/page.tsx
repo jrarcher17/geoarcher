@@ -63,8 +63,8 @@ function SeoContentInner() {
 
   return (
     <SeoShell
-      title="Content Autopilot"
-      subtitle="A verdict for every notable page — improve, expand, consolidate, redirect, or leave alone. Recommendations and drafts only; nothing is changed automatically."
+      title="Content Intelligence"
+      subtitle="The smallest high-quality change that closes the biggest gap. Prefer improving an existing page. Drafts need approval before publish."
       autopilot={autopilot}
     >
       {overview?.audit && (

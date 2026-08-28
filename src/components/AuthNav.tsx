@@ -16,6 +16,12 @@ export function AuthNav() {
     "/scans",
     "/scan/",
     "/visibility",
+    "/ai-search",
+    "/optimize",
+    "/autopilot",
+    "/traffic",
+    "/citations",
+    "/backlinks",
     "/recommendations",
     "/opportunities",
     "/competitors",
@@ -32,6 +38,9 @@ export function AuthNav() {
     pathname === "/terms" ||
     pathname === "/privacy" ||
     pathname.startsWith("/guides") ||
+    pathname === "/free-seo-geo-audit" ||
+    pathname === "/ai-search-optimization" ||
+    pathname === "/seo-autopilot" ||
     appRoutes.some((r) => pathname === r.replace(/\/$/, "") || pathname.startsWith(r))
   ) {
     return null;

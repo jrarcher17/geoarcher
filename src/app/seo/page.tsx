@@ -44,8 +44,8 @@ function SeoOverviewInner() {
 
   return (
     <SeoShell
-      title="SEO Autopilot"
-      subtitle="Your site's search visibility, technical health, content opportunities and growth recommendations — built from the scan you already run."
+      title="SEO Infrastructure"
+      subtitle="Technical health behind AI visibility — still available, no longer the headline."
       autopilot={autopilot}
     >
       {overview && !audit && (

@@ -277,7 +277,7 @@ function SettingsPageInner() {
   return (
     <AppShell
       title="Settings"
-      subtitle="Profile, security, billing, and account controls."
+      subtitle="Account, integrations, and billing."
     >
       {isPending && <p className="text-sm text-slate-400">Loading…</p>}
       {loadError && <p className="text-sm text-red-600">{loadError}</p>}
@@ -292,10 +292,11 @@ function SettingsPageInner() {
       )}
 
       {session && settings && (
-        <Tabs defaultValue={initialTab} className="w-full">
+        <Tabs key={initialTab} defaultValue={initialTab} className="w-full">
           <TabsList>
-            <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="profile">Account</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
+            <TabsTrigger value="integrations">Integrations</TabsTrigger>
             <TabsTrigger value="billing">Billing</TabsTrigger>
             <TabsTrigger value="danger">Account</TabsTrigger>
           </TabsList>
@@ -386,6 +387,36 @@ function SettingsPageInner() {
                     )}
                   </div>
                 </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="integrations">
+            <Card>
+              <CardHeader>
+                <CardTitle>Integrations</CardTitle>
+                <CardDescription>
+                  Connect the systems GEO Archer already uses. Items marked
+                  coming soon are not live.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                {[
+                  ["OpenAI", "Powers analysis, visibility modeling, and drafts.", "Connected when OPENAI_API_KEY is set on the server."],
+                  ["Resend", "Sends Lead Machine outreach.", "Connected when RESEND_API_KEY is set."],
+                  ["Apollo", "Finds companies for Lead Machine.", "Connected when APOLLO_API_KEY is set."],
+                  ["Stripe", "Billing for Pro and Pro Plus.", "Connected when Stripe keys are set."],
+                  ["DataForSEO", "Live Google rankings.", "Connect in Rankings after credentials are set."],
+                  ["Google Search Console", "Traffic and queries.", "Coming soon — not connected."],
+                  ["Google Analytics", "Sessions and conversions.", "Coming soon — not connected."],
+                  ["WordPress / Shopify / Webflow", "CMS publish for approved content.", "Coming soon — not connected."],
+                ].map(([name, why, state]) => (
+                  <div key={name} className="border border-slate-100 px-4 py-3">
+                    <p className="font-medium text-slate-900">{name}</p>
+                    <p className="mt-0.5 text-slate-500">{why}</p>
+                    <p className="mt-1 text-xs text-slate-400">{state}</p>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           </TabsContent>
