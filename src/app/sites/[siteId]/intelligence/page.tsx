@@ -105,7 +105,7 @@ export default function SiteIntelligencePage({
       return;
     }
     if (pollRef.current) return;
-    pollRef.current = setInterval(() => void load(), 5000);
+    pollRef.current = setInterval(() => void load(), 2000);
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
       pollRef.current = null;
@@ -216,8 +216,8 @@ export default function SiteIntelligencePage({
             Reading your website…
           </h2>
           <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">
-            The AI is identifying your business profile, products, services and
-            advertising opportunities. This page updates automatically.
+            Identifying your business, products, services and campaign
+            opportunities. This usually takes under a minute.
           </p>
         </div>
       )}
