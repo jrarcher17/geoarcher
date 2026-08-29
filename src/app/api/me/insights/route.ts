@@ -43,6 +43,14 @@ export interface SiteInsight {
   completedOpportunities: number;
   opportunityBuckets: { label: string; count: number }[];
   history: { date: string; geo: number | null; understanding: number | null }[];
+  intelligence: {
+    status: string | null;
+    companyName: string | null;
+    industry: string | null;
+    offerings: number;
+    images: number;
+    opportunities: number;
+  };
 }
 
 /** One aggregate read powering Dashboard, Visibility, Recommendations,
@@ -81,6 +89,14 @@ export async function GET() {
           },
           seoOpportunities: {
             select: { category: true, status: true },
+          },
+          intelligence: { select: { status: true, business: true } },
+          _count: {
+            select: {
+              offerings: true,
+              siteImages: true,
+              adOpportunities: { where: { dismissed: false } },
+            },
           },
         },
       },
@@ -151,6 +167,11 @@ export async function GET() {
         };
       });
 
+    const business = link.site.intelligence?.business as
+      | { companyName?: string; industry?: string }
+      | null
+      | undefined;
+
     return {
       siteId: link.site.id,
       url: link.site.url,
@@ -193,6 +214,14 @@ export async function GET() {
         .map(([label, count]) => ({ label, count }))
         .sort((a, b) => b.count - a.count),
       history,
+      intelligence: {
+        status: link.site.intelligence?.status ?? null,
+        companyName: business?.companyName ?? null,
+        industry: business?.industry ?? null,
+        offerings: link.site._count.offerings,
+        images: link.site._count.siteImages,
+        opportunities: link.site._count.adOpportunities,
+      },
     };
   });
 

@@ -34,7 +34,7 @@ export async function notifyScanComplete(scanId: string): Promise<void> {
         ? `The scan for ${scan.site.url} is done.`
         : `The scan for ${scan.site.url} failed${scan.error ? `: ${scan.error}` : "."}`,
       "",
-      `Open it: ${base}/sites/${scan.site.id}`,
+      `Open it: ${base}/sites/${scan.site.id}/intelligence`,
     ].join("\n"),
   });
 }

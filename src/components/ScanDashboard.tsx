@@ -21,7 +21,7 @@ const STEPS = [
 ] as const;
 
 /**
- * Scan progress view. Regular scans hand off to the site workspace when
+ * Scan progress view. Regular scans hand off to Site Intelligence when
  * complete; competitor (benchmark) scans render a compact summary here.
  */
 export function ScanDashboard({ scanId }: { scanId: string }) {
@@ -45,7 +45,7 @@ export function ScanDashboard({ scanId }: { scanId: string }) {
         if (cancelled) return;
         setScan(data);
         if (data.status === "COMPLETE" && !data.benchmarkScanId) {
-          router.replace(`/sites/${data.siteId}?tab=overview`);
+          router.replace(`/sites/${data.siteId}/intelligence`);
           return;
         }
         if (["QUEUED", "CRAWLING", "ANALYZING"].includes(data.status)) {
@@ -109,7 +109,7 @@ export function ScanDashboard({ scanId }: { scanId: string }) {
       subtitle={
         scan?.benchmarkScanId
           ? "Competitor benchmark scan"
-          : "Crawling and analyzing — you'll be redirected when the report is ready."
+          : "Crawling and analyzing — you'll be redirected to Site Intelligence when it's ready."
       }
       live={isRunning}
     >

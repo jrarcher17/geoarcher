@@ -9,13 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FadeIn } from "@/components/cards/FadeIn";
 import { ScanForm } from "@/components/ScanForm";
 import { getPlanLimits } from "@/lib/plans";
 import { useInsights } from "@/lib/useInsights";
-import { formatDate, gradeFor, hostOf, scoreTone } from "@/lib/utils";
+import { formatDate, hostOf } from "@/lib/utils";
 
 export default function SitesPage() {
   const router = useRouter();
@@ -95,9 +94,11 @@ export default function SitesPage() {
             ) : (
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {data.sites.map((s) => {
-                  const running = ["QUEUED", "CRAWLING", "ANALYZING"].includes(
+                  const scanning = ["QUEUED", "CRAWLING", "ANALYZING"].includes(
                     s.latestScan?.status ?? ""
                   );
+                  const intel = s.intelligence;
+                  const title = intel.companyName || hostOf(s.url);
                   return (
                     <Card
                       key={s.siteId}
@@ -107,56 +108,76 @@ export default function SitesPage() {
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <p className="flex items-center gap-1.5 font-semibold text-slate-900">
-                              {hostOf(s.url)}
+                              {title}
                               <ArrowUpRight className="h-3.5 w-3.5 text-slate-300 transition group-hover:text-sky-500" />
                             </p>
                             <p className="mt-0.5 truncate text-xs text-slate-400">
                               {s.url}
                             </p>
+                            {intel.industry && (
+                              <p className="mt-1 truncate text-xs text-slate-500">
+                                {intel.industry}
+                              </p>
+                            )}
                           </div>
-                          {running ? (
+                          {scanning ? (
                             <Badge tone="info">Scanning…</Badge>
                           ) : s.latestScan?.status === "FAILED" ? (
                             <Badge tone="critical">Last scan failed</Badge>
-                          ) : s.analysis ? (
-                            <Badge tone={scoreTone(s.analysis.geoOverall)}>
-                              Grade {gradeFor(s.analysis.geoOverall)}
-                            </Badge>
+                          ) : intel.status === "RUNNING" ? (
+                            <Badge tone="info">Analyzing…</Badge>
+                          ) : intel.status === "FAILED" ? (
+                            <Badge tone="critical">Analysis failed</Badge>
+                          ) : intel.status === "COMPLETE" ? (
+                            <Badge tone="positive">Ready for ads</Badge>
+                          ) : s.latestScan?.status === "COMPLETE" ? (
+                            <Badge tone="neutral">Scan complete</Badge>
                           ) : (
                             <Badge tone="neutral">Not scanned</Badge>
                           )}
                         </div>
 
-                        {s.analysis ? (
-                          <div className="mt-4 flex flex-col gap-3">
+                        {intel.status === "COMPLETE" ? (
+                          <dl className="mt-4 grid grid-cols-3 gap-2 text-center">
                             <div>
-                              <div className="flex items-center justify-between text-xs text-slate-400">
-                                <span>GEO Score</span>
-                                <span className="font-mono text-slate-600">
-                                  {s.analysis.geoOverall}
-                                </span>
-                              </div>
-                              <Progress
-                                value={s.analysis.geoOverall}
-                                className="mt-1"
-                              />
+                              <dt className="text-[11px] text-slate-400">
+                                Offerings
+                              </dt>
+                              <dd className="text-lg font-semibold tabular-nums text-slate-900">
+                                {intel.offerings}
+                              </dd>
                             </div>
                             <div>
-                              <div className="flex items-center justify-between text-xs text-slate-400">
-                                <span>AI Understanding</span>
-                                <span className="font-mono text-slate-600">
-                                  {s.analysis.understanding}
-                                </span>
-                              </div>
-                              <Progress
-                                value={s.analysis.understanding}
-                                className="mt-1"
-                              />
+                              <dt className="text-[11px] text-slate-400">
+                                Images
+                              </dt>
+                              <dd className="text-lg font-semibold tabular-nums text-slate-900">
+                                {intel.images}
+                              </dd>
                             </div>
-                          </div>
+                            <div>
+                              <dt className="text-[11px] text-slate-400">
+                                Opportunities
+                              </dt>
+                              <dd className="text-lg font-semibold tabular-nums text-slate-900">
+                                {intel.opportunities}
+                              </dd>
+                            </div>
+                          </dl>
+                        ) : intel.status === "RUNNING" || scanning ? (
+                          <p className="mt-4 text-sm text-sky-700">
+                            {scanning
+                              ? "Scan in progress — advertising intelligence follows."
+                              : "Extracting advertising intelligence…"}
+                          </p>
+                        ) : s.latestScan?.status === "COMPLETE" ? (
+                          <p className="mt-4 text-sm text-slate-500">
+                            Scan finished. Open the site to review advertising
+                            intelligence.
+                          </p>
                         ) : (
                           <p className="mt-4 text-sm text-slate-400">
-                            No completed analysis yet.
+                            No completed scan yet.
                           </p>
                         )}
 

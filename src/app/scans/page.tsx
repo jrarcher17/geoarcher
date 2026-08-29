@@ -98,7 +98,7 @@ export default function ScansPage() {
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <Link
-                            href={`/sites/${s.siteId}`}
+                            href={`/sites/${s.siteId}/intelligence`}
                             className="font-medium text-slate-900 hover:text-sky-600"
                           >
                             {hostOf(s.siteUrl)}
@@ -125,7 +125,7 @@ export default function ScansPage() {
                         <Link
                           href={
                             s.status === "COMPLETE"
-                              ? `/sites/${s.siteId}`
+                              ? `/sites/${s.siteId}/intelligence`
                               : `/scan/${s.id}`
                           }
                           className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-sky-200 hover:bg-sky-50 hover:text-sky-600"
