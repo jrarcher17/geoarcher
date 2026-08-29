@@ -28,7 +28,7 @@ export function EmptyState({
       <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-slate-500">
         {body}
       </p>
-      <Link href={actionHref} className="btn-primary mt-6 inline-block">
+      <Link href={actionHref} className="btn-primary mt-6 text-sminline-block">
         {actionLabel}
       </Link>
     </div>
