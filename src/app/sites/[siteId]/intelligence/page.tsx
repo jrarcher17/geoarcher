@@ -14,6 +14,7 @@ import { hostOf } from "@/lib/utils";
 
 interface Business {
   companyName?: string;
+  brand?: string | null;
   description?: string;
   industry?: string;
   locations?: string[];
@@ -39,7 +40,13 @@ interface OfferingItem {
   description: string;
   price: string | null;
   url: string | null;
-  details: { benefits?: string[]; features?: string[]; cta?: string | null } | null;
+  details: {
+    benefits?: string[];
+    features?: string[];
+    cta?: string | null;
+    category?: string | null;
+    targetAudience?: string[];
+  } | null;
   images: { id: string; url: string; alt: string | null }[];
 }
 
@@ -60,6 +67,13 @@ interface Intelligence {
     rationale: string;
     channels: unknown;
     offering: { id: string; name: string; kind: string } | null;
+  }[];
+  competitors?: {
+    id: string;
+    name: string;
+    source: string;
+    category: string | null;
+    offering: { id: string; name: string } | null;
   }[];
 }
 
@@ -259,6 +273,14 @@ export default function SiteIntelligencePage({
                 {business.description}
               </p>
               <dl className="mt-5 grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
+                {business.brand && business.brand !== business.companyName && (
+                  <div>
+                    <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                      Brand
+                    </dt>
+                    <dd className="mt-0.5 text-slate-900">{business.brand}</dd>
+                  </div>
+                )}
                 {business.industry && (
                   <div>
                     <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
@@ -397,6 +419,17 @@ export default function SiteIntelligencePage({
                         {o.kind === "PRODUCT" ? "Product" : "Service"}
                       </span>
                     </div>
+                    {(o.details?.category ||
+                      (o.details?.targetAudience?.length ?? 0) > 0) && (
+                      <p className="mt-1 text-xs text-slate-400">
+                        {[
+                          o.details?.category,
+                          ...(o.details?.targetAudience ?? []).slice(0, 2),
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    )}
                     <p className="mt-2 text-sm leading-relaxed text-slate-600">
                       {o.description}
                     </p>
@@ -412,6 +445,12 @@ export default function SiteIntelligencePage({
                     )}
                     <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-3 text-sm">
+                        <Link
+                          href={`/products/${o.id}`}
+                          className="text-xs font-medium text-slate-900 underline-offset-2 hover:underline"
+                        >
+                          Product intelligence
+                        </Link>
                         {o.price && (
                           <span className="font-medium text-slate-900">{o.price}</span>
                         )}
@@ -436,6 +475,39 @@ export default function SiteIntelligencePage({
                   </article>
                 ))}
               </div>
+            </section>
+          )}
+
+          {(intel.competitors?.length ?? 0) > 0 && (
+            <section>
+              <div className="mb-3 flex items-end justify-between">
+                <SectionLabel>Competitors</SectionLabel>
+                <Link
+                  href="/competitors"
+                  className="text-sm font-medium text-slate-900 underline-offset-4 hover:underline"
+                >
+                  View all
+                </Link>
+              </div>
+              <ul className="grid gap-3 sm:grid-cols-2">
+                {intel.competitors!.map((c) => (
+                  <li
+                    key={c.id}
+                    className="border border-slate-200 bg-white px-4 py-3"
+                  >
+                    <p className="font-medium text-slate-900">{c.name}</p>
+                    <p className="mt-0.5 text-xs text-slate-400">
+                      {c.source === "MANUAL"
+                        ? "Added by you"
+                        : c.source === "MENTIONED"
+                          ? "Named on your site"
+                          : "AI recommendation"}
+                      {c.category ? ` · ${c.category}` : ""}
+                      {c.offering ? ` · ${c.offering.name}` : ""}
+                    </p>
+                  </li>
+                ))}
+              </ul>
             </section>
           )}
 

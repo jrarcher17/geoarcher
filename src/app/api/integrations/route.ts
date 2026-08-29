@@ -5,8 +5,7 @@ import { listAccountsForConnection } from "@/lib/advertising/connections";
 import { googleAdsConfigured, metaAdsConfigured } from "@/lib/advertising/oauth";
 
 /**
- * Connection status for advertising platforms. OAuth credentials are checked
- * server-side only; tokens are never returned to the client.
+ * User ad-account connection status. OAuth tokens stay on the server.
  */
 export async function GET() {
   const session = await getServerSession();
@@ -21,7 +20,6 @@ export async function GET() {
       status: true,
       accountId: true,
       accountName: true,
-      updatedAt: true,
       error: true,
     },
   });
@@ -58,10 +56,6 @@ export async function GET() {
       needsAccount: meta?.status === "CONNECTED" && !meta.accountId,
       error: meta?.error ?? null,
       available: metaAdsConfigured(),
-    },
-    openai: {
-      configured: Boolean(process.env.OPENAI_API_KEY),
-      model: process.env.OPENAI_MODEL ?? "gpt-5-mini",
     },
   });
 }

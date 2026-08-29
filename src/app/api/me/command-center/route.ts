@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getServerSession } from "@/lib/session";
+import { scoreForSites } from "@/lib/advertising/library-gaps";
+import { parseGapDetails } from "@/lib/advertising/opportunity-dto";
 
 /** Everything the advertising command center dashboard needs in one call. */
 export async function GET() {
@@ -30,7 +32,9 @@ export async function GET() {
             select: {
               offerings: true,
               siteImages: true,
-              adOpportunities: { where: { dismissed: false } },
+              adOpportunities: { where: { dismissed: false, source: "SITE" } },
+              adCompetitors: { where: { dismissed: false } },
+              libraryAds: true,
             },
           },
         },
@@ -42,7 +46,7 @@ export async function GET() {
   const since = new Date();
   since.setDate(since.getDate() - 30);
 
-  const [campaignCounts, metrics, opportunities, connections, recommendations] =
+  const [campaignCounts, metrics, opportunities, gapOpportunities, connections, recommendations, analyzedAds, score] =
     await Promise.all([
       prisma.adCampaign.groupBy({
         by: ["status"],
@@ -60,8 +64,17 @@ export async function GET() {
         },
       }),
       prisma.adOpportunity.findMany({
-        where: { siteId: { in: siteIds }, dismissed: false },
+        where: { siteId: { in: siteIds }, dismissed: false, source: "SITE" },
         orderBy: [{ level: "asc" }, { createdAt: "asc" }],
+        take: 6,
+        include: {
+          site: { select: { id: true, url: true } },
+          offering: { select: { id: true, name: true, kind: true } },
+        },
+      }),
+      prisma.adOpportunity.findMany({
+        where: { siteId: { in: siteIds }, dismissed: false, source: "COMPETITOR_GAP" },
+        orderBy: [{ createdAt: "desc" }],
         take: 6,
         include: {
           site: { select: { id: true, url: true } },
@@ -77,6 +90,10 @@ export async function GET() {
         orderBy: { createdAt: "desc" },
         take: 5,
       }),
+      prisma.libraryAd.count({
+        where: { siteId: { in: siteIds }, analyzedAt: { not: null } },
+      }),
+      scoreForSites(siteIds),
     ]);
 
   const countByStatus = new Map(campaignCounts.map((c) => [c.status, c._count]));
@@ -110,6 +127,8 @@ export async function GET() {
       offerings: site._count.offerings,
       images: site._count.siteImages,
       opportunities: site._count.adOpportunities,
+      competitors: site._count.adCompetitors,
+      libraryAds: site._count.libraryAds,
     })),
     opportunities: opportunities.map((o) => ({
       id: o.id,
@@ -121,6 +140,18 @@ export async function GET() {
       siteUrl: o.site.url,
       offering: o.offering,
     })),
+    competitorGaps: gapOpportunities.map((o) => ({
+      id: o.id,
+      title: o.title,
+      level: o.level,
+      rationale: o.rationale,
+      channels: o.channels,
+      siteId: o.site.id,
+      siteUrl: o.site.url,
+      offering: o.offering,
+      gap: parseGapDetails(o.details),
+    })),
+    adIntelligenceScore: score,
     connections: {
       google: {
         connected: google?.status === "CONNECTED",
@@ -132,6 +163,7 @@ export async function GET() {
       },
       openai: Boolean(process.env.OPENAI_API_KEY),
     },
+    analyzedAds,
     alerts: recommendations.map((r) => ({
       id: r.id,
       type: r.type,

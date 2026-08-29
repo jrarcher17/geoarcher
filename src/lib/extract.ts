@@ -104,6 +104,13 @@ export function extractPage(
     }))
     .get()
     .filter((img) => img.src);
+  const ogImage = $('meta[property="og:image"]').attr("content")?.trim();
+  if (ogImage) {
+    images.unshift({
+      src: ogImage,
+      alt: $('meta[property="og:title"]').attr("content")?.trim() || "Open Graph image",
+    });
+  }
   const imagesMissingAlt = images.filter((img) => !img.alt?.trim()).length;
 
   // --- FAQs: JSON-LD FAQPage + <details>/<summary> ---

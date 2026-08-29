@@ -11,7 +11,7 @@ import {
   type BuilderOffering,
   type BuilderOpportunity,
 } from "@/components/ads/CampaignBuilder";
-import { EmptyState, SectionLabel } from "@/components/os/primitives";
+import { EmptyState, ErrorBanner, SectionLabel } from "@/components/os/primitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useInsights } from "@/lib/useInsights";
 import { cn, hostOf } from "@/lib/utils";
@@ -23,6 +23,8 @@ interface OfferingItem extends BuilderOffering {
 interface OpportunityItem extends BuilderOpportunity {
   id: string;
   level: string;
+  source?: string;
+  details?: BuilderOpportunity["gap"];
   offering: { id: string; name: string; kind: string } | null;
 }
 
@@ -42,6 +44,8 @@ function AdStudioInner() {
   const [siteId, setSiteId] = useState<string | null>(params.get("site"));
   const [selected, setSelected] = useState<string | null>(params.get("offering"));
   const prospectId = params.get("prospect");
+  const opportunityId = params.get("opportunity");
+  const initialAngle = params.get("angle");
   const [intel, setIntel] = useState<Intelligence | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,16 +82,30 @@ function AdStudioInner() {
     };
   }, [siteId]);
 
+  useEffect(() => {
+    if (selected || !intel || !opportunityId) return;
+    const pinned = intel.opportunities.find((op) => op.id === opportunityId);
+    if (pinned?.offering?.id) setSelected(pinned.offering.id);
+  }, [intel, opportunityId, selected]);
+
   const selectedOffering = intel?.offerings.find((o) => o.id === selected) ?? null;
+  const pinnedOpportunity =
+    opportunityId && intel
+      ? intel.opportunities.find((op) => op.id === opportunityId) ?? null
+      : null;
   const relatedOpportunity =
-    intel?.opportunities.find((op) => op.offering?.id === selected) ?? null;
+    pinnedOpportunity ??
+    intel?.opportunities.find(
+      (op) => op.offering?.id === selected && op.source !== "COMPETITOR_GAP"
+    ) ??
+    null;
 
   return (
     <AppShell
       title="Ad Studio"
-      subtitle="Create advertising campaigns from what your website already says."
+      subtitle="Original ads from your website. Competitor library ads inform patterns only — they are never copied."
     >
-      {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+      {error && <ErrorBanner message={error} />}
 
       {insights && sites.length === 0 && !siteId && (
         <EmptyState
@@ -201,16 +219,27 @@ function AdStudioInner() {
 
           {selectedOffering && siteId && intel && (
             <CampaignBuilder
-              key={selectedOffering.id}
+              key={`${selectedOffering.id}-${relatedOpportunity?.id ?? "none"}`}
               siteId={siteId}
               siteUrl={siteUrl}
               businessName={
                 intel.business?.companyName ?? (siteUrl ? hostOf(siteUrl) : "Business")
               }
               offering={selectedOffering}
-              opportunity={relatedOpportunity}
+              opportunity={
+                relatedOpportunity
+                  ? {
+                      ...relatedOpportunity,
+                      gap:
+                        relatedOpportunity.gap ??
+                        relatedOpportunity.details ??
+                        null,
+                    }
+                  : null
+              }
               images={intel.images}
               prospectId={prospectId}
+              initialAngle={initialAngle}
             />
           )}
         </FadeIn>

@@ -80,6 +80,7 @@ const STATUS_TONES: Record<string, string> = {
   ACTIVE: "bg-emerald-50 text-emerald-800",
   PAUSED: "bg-slate-100 text-slate-500",
   COMPLETED: "bg-slate-100 text-slate-500",
+  ARCHIVED: "bg-slate-100 text-slate-500",
   ERROR: "bg-red-50 text-red-700",
 };
 

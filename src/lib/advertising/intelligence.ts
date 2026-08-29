@@ -15,6 +15,7 @@ const MAX_OTHER_TITLES = 50;
 
 const businessSchema = z.object({
   companyName: z.string(),
+  brand: z.string().nullable(),
   description: z.string(),
   industry: z.string(),
   locations: z.array(z.string()),
@@ -27,10 +28,12 @@ const offeringSchema = z.object({
   kind: z.enum(["PRODUCT", "SERVICE"]),
   name: z.string(),
   description: z.string(),
+  category: z.string().nullable(),
   price: z.string().nullable(),
   url: z.string().nullable(),
   benefits: z.array(z.string()),
   features: z.array(z.string()),
+  targetAudience: z.array(z.string()),
   cta: z.string().nullable(),
   location: z.string().nullable(),
 });
@@ -69,7 +72,7 @@ const intelligenceSchema = z.object({
 // ---- Digest ----
 
 const HIGH_VALUE_PATH =
-  /\/(service|services|product|products|pricing|price|about|contact|location|locations|menu|treatment|treatments|package|packages|membership|shop|store|book|booking|offer|offers|spa|wellness|team|faq|faqs)(\/|$)/i;
+  /\/(service|services|product|products|pricing|price|about|contact|location|locations|menu|treatment|treatments|package|packages|membership|shop|store|collection|collections|buy|book|booking|offer|offers|spa|wellness|team|faq|faqs|solutions|industries)(\/|$)/i;
 const SKIP_PATH =
   /\/(blog|news|privacy|terms|cookie|cookies|legal|tag|category|author|cart|login|account|wp-content|feed|comment|comments|sitemap|search)(\/|$)/i;
 
@@ -93,7 +96,15 @@ function scoreAdvertisingPage(page: PageExtraction): number {
   score += Math.min(25, Math.floor(page.wordCount / 80));
   if (page.contact.phones.length > 0 || page.contact.emails.length > 0) score += 12;
   const blob = `${page.title ?? ""} ${page.metaDescription ?? ""} ${page.headings.h1.join(" ")} ${page.mainContent.slice(0, 400)}`;
-  if (/\$\d|price|starting at|book now|consultation/i.test(blob)) score += 18;
+  if (/\$\d|price|starting at|book now|consultation|add to cart|buy now/i.test(blob))
+    score += 18;
+  if (
+    (page.jsonLdTypes ?? []).some((t) =>
+      /Product|Offer|Service|AggregateOffer/i.test(t)
+    )
+  ) {
+    score += 35;
+  }
   if (page.wordCount < 30 && path !== "/") score -= 15;
   return score;
 }
@@ -103,6 +114,49 @@ export function selectAdvertisingPages(pages: PageExtraction[]): PageExtraction[
   return [...pages]
     .sort((a, b) => scoreAdvertisingPage(b) - scoreAdvertisingPage(a))
     .slice(0, MAX_PRIORITY_PAGES);
+}
+
+function summarizeProductSchema(jsonLd: unknown[]): string {
+  const rows: string[] = [];
+  const visit = (node: unknown) => {
+    if (rows.length >= 8) return;
+    if (Array.isArray(node)) {
+      node.forEach(visit);
+      return;
+    }
+    if (!node || typeof node !== "object") return;
+    const obj = node as Record<string, unknown>;
+    const rawType = obj["@type"];
+    const types = Array.isArray(rawType)
+      ? rawType.filter((t): t is string => typeof t === "string")
+      : typeof rawType === "string"
+        ? [rawType]
+        : [];
+    if (types.some((t) => /Product|Service|Offer|AggregateOffer/i.test(t))) {
+      const name = typeof obj.name === "string" ? obj.name : "";
+      const brand =
+        typeof obj.brand === "string"
+          ? obj.brand
+          : obj.brand && typeof obj.brand === "object" && "name" in obj.brand
+            ? String((obj.brand as { name?: unknown }).name ?? "")
+            : "";
+      const offers = obj.offers as Record<string, unknown> | undefined;
+      const price =
+        typeof offers?.price === "string" || typeof offers?.price === "number"
+          ? String(offers.price)
+          : typeof obj.price === "string" || typeof obj.price === "number"
+            ? String(obj.price)
+            : "";
+      const desc =
+        typeof obj.description === "string" ? obj.description.slice(0, 160) : "";
+      rows.push(
+        `  ${types.join("/")} name=${name || "?"} brand=${brand || "?"} price=${price || "?"} ${desc}`
+      );
+    }
+    for (const value of Object.values(obj)) visit(value);
+  };
+  visit(jsonLd);
+  return rows.join("\n");
 }
 
 function buildAdvertisingDigest(siteUrl: string, pages: PageExtraction[]): string {
@@ -116,15 +170,24 @@ function buildAdvertisingDigest(siteUrl: string, pages: PageExtraction[]): strin
       .slice(0, 4)
       .map((f) => `  Q: ${f.question}\n  A: ${f.answer.slice(0, 140)}`)
       .join("\n");
+    const schema = summarizeProductSchema(p.jsonLd ?? []);
+    const imageAlts = (p.images ?? [])
+      .map((img) => img.alt?.trim())
+      .filter((alt): alt is string => Boolean(alt))
+      .slice(0, 6)
+      .join(" | ");
     const lines = [
       `PAGE: ${p.url}`,
       `TITLE: ${p.title ?? "(none)"}`,
       `META DESCRIPTION: ${p.metaDescription ?? "(none)"}`,
       `H1: ${p.headings.h1.join(" | ") || "(none)"}`,
       `H2: ${p.headings.h2.slice(0, 10).join(" | ") || "(none)"}`,
+      `STRUCTURED DATA: ${p.jsonLdTypes.join(", ") || "(none)"}`,
+      schema ? `PRODUCT/OFFER SCHEMA:\n${schema}` : "",
+      imageAlts ? `IMAGE ALTS: ${imageAlts}` : "",
       `CONTACT: phones=${p.contact.phones.join(",") || "none"} emails=${p.contact.emails.join(",") || "none"}`,
       faqs ? `FAQS:\n${faqs}` : "",
-      `CONTENT: ${p.mainContent.slice(0, Math.max(perPageBudget - 700, 600))}`,
+      `CONTENT: ${p.mainContent.slice(0, Math.max(perPageBudget - 900, 500))}`,
     ].filter(Boolean);
     return lines.join("\n");
   });
@@ -183,13 +246,19 @@ function getClient(): OpenAI {
   return new OpenAI();
 }
 
-const SYSTEM_PROMPT = `You are an advertising strategist analyzing a business website to prepare advertising campaigns. Extract ONLY information that is actually present on the website. Grounding rules (critical):
-- Never invent prices, guarantees, certifications, medical claims, promotions, statistics or testimonials. If a price is not stated on the site, price must be null. Testimonials/promotions arrays must be empty unless real ones appear in the content.
+const SYSTEM_PROMPT = `You are an advertising strategist extracting Product Intelligence from a business website. Extract ONLY information that is actually present on the website. Grounding rules (critical):
+- Never invent prices, guarantees, certifications, medical claims, promotions, statistics, audiences or testimonials. If a price is not stated on the site, price must be null. Testimonials/promotions arrays must be empty unless real ones appear in the content.
 - Quote prices, testimonials and promotions as close to verbatim as practical.
-- offerings: identify each distinct advertisable product or service. Use the site's own naming. Set url to the most relevant page URL from the digest (or null). 3-10 offerings for a typical business; do not pad with duplicates or generic entries like "Contact Us".
-- business: company name, a 1-3 sentence description of what the business does, industry, locations served, and contact details found on the site (null when absent).
-- marketing: real headlines, value propositions, CTAs, promotions, testimonials, trust signals (e.g. licenses, review counts, years in business) and unique selling propositions found in the content. Keep each list to the strongest 6 items.
-- opportunities: 3-6 advertising opportunities ranked by potential. Each references an offering by exact name (offeringName) when applicable. level reflects commercial intent, urgency and margin potential (e.g. emergency services and high-ticket items are usually HIGH). channels: which of google / meta / ai suit it. recommendedCampaign is a realistic starting point; budgetHint is a short phrase like "$30-50/day", based on typical competitiveness, clearly a suggestion.`;
+- offerings: each distinct advertisable PRODUCT or SERVICE the company sells. Use the site's own naming. Set url to the most relevant page URL from the digest (or null). 3-10 offerings for a typical business.
+- Do NOT treat these as offerings: blog posts, guides, category/hub pages, "Contact Us", "About", careers, login, or generic informational content. If a page is only a category listing, extract the sellable items on it — not the category itself.
+- Do NOT extract pricing plans, billing tiers, or SKUs of the same product as separate offerings (e.g. Free / Pro / Unlimited). Extract the core product once; put plan names and prices in features or price when the site states them.
+- kind: PRODUCT = a tangible or packaged item a customer can buy; SERVICE = work, subscription, or delivered expertise. When unsure, prefer SERVICE for agencies/SaaS platforms and PRODUCT for physical goods.
+- category: the product/service category as the site names it (e.g. "Red Light Therapy"), or null.
+- targetAudience: audiences the site itself names (athletes, agencies, homeowners). Empty if the site does not say.
+- business.brand: the consumer-facing brand if it differs from the company name, else the company name, else null.
+- business: company name, 1-3 sentence description, industry, locations served, contact (null when absent).
+- marketing: real headlines, value propositions, CTAs, promotions, testimonials, trust signals and USPs. Keep each list to the strongest 6 items.
+- opportunities: 3-6 advertising opportunities ranked by potential. Each references an offering by exact name (offeringName) when applicable. level reflects commercial intent, urgency and margin potential. channels: google / meta / ai. recommendedCampaign is a realistic starting point; budgetHint is a suggestion like "$30-50/day".`;
 
 export interface IntelligenceExtraction {
   business: z.infer<typeof businessSchema>;
@@ -222,8 +291,17 @@ export async function extractAdvertisingIntelligence(
   if (!parsed) throw new Error("AI intelligence extraction returned no output.");
 
   return {
-    business: parsed.business,
-    offerings: parsed.offerings.slice(0, 10),
+    business: {
+      ...parsed.business,
+      brand: parsed.business.brand || parsed.business.companyName || null,
+    },
+    offerings: parsed.offerings.slice(0, 10).map((o) => ({
+      ...o,
+      category: o.category || null,
+      targetAudience: o.targetAudience.slice(0, 6),
+      benefits: o.benefits.slice(0, 8),
+      features: o.features.slice(0, 8),
+    })),
     marketing: {
       headlines: parsed.marketing.headlines.slice(0, 6),
       valueProps: parsed.marketing.valueProps.slice(0, 6),
@@ -236,6 +314,39 @@ export async function extractAdvertisingIntelligence(
     opportunities: parsed.opportunities.slice(0, 6),
     images: harvestImages(pages),
   };
+}
+
+function normalizePageUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    parsed.hash = "";
+    parsed.search = "";
+    const path = parsed.pathname.replace(/\/+$/, "") || "/";
+    return `${parsed.origin}${path}`.toLowerCase();
+  } catch {
+    return url.toLowerCase();
+  }
+}
+
+function matchOfferingByImage(
+  img: HarvestedImage,
+  offerings: z.infer<typeof offeringSchema>[],
+  offeringIdByName: Map<string, string>
+): string | null {
+  const hay = `${img.alt ?? ""} ${img.url} ${img.pageUrl}`.toLowerCase();
+  for (const o of offerings) {
+    const tokens = o.name
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((t) => t.length > 3);
+    if (tokens.length >= 2 && tokens.every((t) => hay.includes(t))) {
+      return offeringIdByName.get(o.name) ?? null;
+    }
+    if (o.url && normalizePageUrl(img.pageUrl) === normalizePageUrl(o.url)) {
+      return offeringIdByName.get(o.name) ?? null;
+    }
+  }
+  return null;
 }
 
 // ---- Persistence ----
@@ -268,6 +379,8 @@ async function persistIntelligence(
           features: o.features,
           cta: o.cta,
           location: o.location,
+          category: o.category,
+          targetAudience: o.targetAudience,
         }),
       },
       update: {
@@ -280,6 +393,8 @@ async function persistIntelligence(
           features: o.features,
           cta: o.cta,
           location: o.location,
+          category: o.category,
+          targetAudience: o.targetAudience,
         }),
       },
     });
@@ -287,16 +402,18 @@ async function persistIntelligence(
   }
 
   // Images: upsert by (siteId, url); associate with an offering when the image
-  // was found on that offering's page.
+  // was found on that offering's page or the alt/filename matches the name.
   const offeringIdByPageUrl = new Map<string, string>();
   for (const o of offerings) {
-    if (o.url && offeringIdByName.has(o.name)) {
-      offeringIdByPageUrl.set(o.url, offeringIdByName.get(o.name)!);
-    }
+    const id = offeringIdByName.get(o.name);
+    if (!id || !o.url) continue;
+    offeringIdByPageUrl.set(normalizePageUrl(o.url), id);
   }
   await Promise.all(
     images.map((img) => {
-      const offeringId = offeringIdByPageUrl.get(img.pageUrl) ?? null;
+      const offeringId =
+        offeringIdByPageUrl.get(normalizePageUrl(img.pageUrl)) ??
+        matchOfferingByImage(img, offerings, offeringIdByName);
       return prisma.siteImage.upsert({
         where: { siteId_url: { siteId, url: img.url } },
         create: {
@@ -311,18 +428,21 @@ async function persistIntelligence(
     })
   );
 
-  // Opportunities: replace non-dismissed ones; keep dismissed so they stay hidden.
+  // Site opportunities only — competitor-gap rows are owned by the gap engine.
   const dismissed = await prisma.adOpportunity.findMany({
-    where: { siteId, dismissed: true },
+    where: { siteId, dismissed: true, source: "SITE" },
     select: { title: true },
   });
   const dismissedTitles = new Set(dismissed.map((d) => d.title));
-  await prisma.adOpportunity.deleteMany({ where: { siteId, dismissed: false } });
+  await prisma.adOpportunity.deleteMany({
+    where: { siteId, dismissed: false, source: "SITE" },
+  });
   for (const opp of opportunities) {
     if (dismissedTitles.has(opp.title)) continue;
     await prisma.adOpportunity.create({
       data: {
         siteId,
+        source: "SITE",
         offeringId: opp.offeringName
           ? offeringIdByName.get(opp.offeringName) ?? null
           : null,
@@ -388,6 +508,12 @@ export async function runAdvertisingIntelligence(
     const pages = scan.pages.map((p) => p.extracted as unknown as PageExtraction);
     const extraction = await extractAdvertisingIntelligence(scan.site.url, pages);
     await persistIntelligence(siteId, scan.id, extraction);
+    try {
+      const { discoverCompetitors } = await import("./competitors");
+      await discoverCompetitors(siteId);
+    } catch (err) {
+      console.error(`[competitors ${siteId}] discovery failed:`, err);
+    }
     return { ok: true };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

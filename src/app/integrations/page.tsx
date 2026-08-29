@@ -1,9 +1,10 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { FadeIn } from "@/components/cards/FadeIn";
+import { ErrorBanner } from "@/components/os/primitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
@@ -25,24 +26,31 @@ interface PlatformStatus {
 interface IntegrationsStatus {
   google: PlatformStatus;
   meta: PlatformStatus;
-  openai: { configured: boolean; model: string };
 }
 
-function StatusPill({ connected }: { connected: boolean }) {
+type PillState = "connected" | "not_connected" | "not_configured" | "unavailable";
+
+function StatusPill({ state }: { state: PillState }) {
+  const label =
+    state === "connected"
+      ? "Connected"
+      : state === "not_configured"
+        ? "Not configured"
+        : state === "unavailable"
+          ? "No official API"
+          : "Not connected";
+  const on = state === "connected";
   return (
     <span
       className={cn(
         "inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold",
-        connected ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-500"
+        on ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-500"
       )}
     >
       <span
-        className={cn(
-          "h-1.5 w-1.5 rounded-full",
-          connected ? "bg-emerald-500" : "bg-slate-400"
-        )}
+        className={cn("h-1.5 w-1.5 rounded-full", on ? "bg-emerald-500" : "bg-slate-400")}
       />
-      {connected ? "Connected" : "Not Connected"}
+      {label}
     </span>
   );
 }
@@ -107,12 +115,26 @@ function IntegrationCard({
     <article className="border border-slate-200 bg-white p-6">
       <div className="flex items-start justify-between gap-3">
         <h2 className="text-base font-semibold text-slate-900">{name}</h2>
-        <StatusPill connected={status.connected} />
+        <StatusPill
+          state={
+            status.connected
+              ? "connected"
+              : status.available
+                ? "not_connected"
+                : "not_configured"
+          }
+        />
       </div>
       <p className="mt-2 text-sm leading-relaxed text-slate-500">{description}</p>
       {status.connected && status.accountName && (
         <p className="mt-3 text-sm text-slate-700">
           Account: <span className="font-medium">{status.accountName}</span>
+        </p>
+      )}
+      {status.connected && status.needsAccount && (
+        <p className="mt-3 text-sm text-amber-700">
+          Connected, but no ad account is selected yet. Choose one below before
+          creating or updating campaigns.
         </p>
       )}
       {(error || status.error) && (
@@ -189,7 +211,8 @@ function IntegrationsInner() {
   );
   const [syncing, setSyncing] = useState(false);
 
-  function load() {
+  const load = useCallback(() => {
+    setError(null);
     fetch("/api/integrations", { cache: "no-store" })
       .then(async (res) => {
         if (!res.ok) throw new Error((await res.json()).error ?? "Failed to load.");
@@ -199,11 +222,11 @@ function IntegrationsInner() {
       .catch((err) =>
         setError(err instanceof Error ? err.message : "Failed to load.")
       );
-  }
+  }, []);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   async function syncMetrics() {
     setSyncing(true);
@@ -224,38 +247,34 @@ function IntegrationsInner() {
     }
   }
 
-  const anyConnected = data?.google.connected || data?.meta.connected;
+  const anyConnected = Boolean(data?.google.connected || data?.meta.connected);
 
   return (
     <AppShell
       title="Integrations"
-      subtitle="Connect your advertising accounts. Credentials are stored server-side and never exposed to the browser."
+      subtitle="Connect your Google Ads or Meta Ads account so GEO Archer can create, update, and read analytics for your campaigns. ChatGPT advertising has no official account login."
     >
-      {error && (
-        <p className="mb-4 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </p>
-      )}
+      {error && <ErrorBanner message={error} onRetry={data ? undefined : load} />}
       {notice && (
         <p className="mb-4 border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
           {notice}
         </p>
       )}
       {!data && !error && (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-44" />
+        <div className="grid gap-4 lg:grid-cols-3">
+          {[...Array(3)].map((_, i) => (
+            <Skeleton key={i} className="h-52" />
           ))}
         </div>
       )}
 
       {data && (
         <FadeIn className="flex flex-col gap-4">
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-3">
             <IntegrationCard
               name="Google Ads"
               platform="google"
-              description="Publish search campaigns, sync spend and conversion data, and let AI optimize budgets and keywords."
+              description="Sign in with your Google Ads account. GEO Archer can then create and update campaigns and pull the spend and conversion numbers Google reports."
               status={data.google}
               connectLabel="Connect Google Ads"
               unavailableNote="Set GOOGLE_ADS_CLIENT_ID, GOOGLE_ADS_CLIENT_SECRET and GOOGLE_ADS_DEVELOPER_TOKEN, then restart the server. Redirect URI: /api/integrations/google/callback"
@@ -264,43 +283,23 @@ function IntegrationsInner() {
             <IntegrationCard
               name="Meta Ads"
               platform="meta"
-              description="Publish Facebook and Instagram campaigns with creative from your website, and pull performance data."
+              description="Sign in with your Meta Business account. GEO Archer can then create and update Facebook and Instagram campaigns and pull reported performance."
               status={data.meta}
-              connectLabel="Connect Meta"
+              connectLabel="Connect Meta Ads"
               unavailableNote="Set META_ADS_APP_ID and META_ADS_APP_SECRET, then restart the server. Redirect URI: /api/integrations/meta/callback"
               onChanged={load}
             />
-            <article className="border border-slate-200 bg-white p-6">
-              <div className="flex items-start justify-between gap-3">
-                <h2 className="text-base font-semibold text-slate-900">OpenAI</h2>
-                <StatusPill connected={data.openai.configured} />
-              </div>
-              <p className="mt-2 text-sm leading-relaxed text-slate-500">
-                The intelligence layer: website understanding, ad copy generation,
-                audience recommendations and campaign analysis.
-              </p>
-              {data.openai.configured ? (
-                <p className="mt-3 text-sm text-slate-700">
-                  Model: <span className="font-mono text-xs">{data.openai.model}</span>
-                </p>
-              ) : (
-                <p className="mt-3 text-xs text-slate-400">
-                  Set OPENAI_API_KEY on the server to enable AI generation and analysis.
-                </p>
-              )}
-            </article>
             <article className="border border-dashed border-slate-300 bg-white p-6">
               <div className="flex items-start justify-between gap-3">
                 <h2 className="text-base font-semibold text-slate-900">
-                  AI / ChatGPT Advertising
+                  ChatGPT advertising
                 </h2>
-                <span className="inline-flex bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">
-                  Coming Soon
-                </span>
+                <StatusPill state="unavailable" />
               </div>
               <p className="mt-2 text-sm leading-relaxed text-slate-500">
-                Advertising opportunities inside AI platforms will be supported as
-                official advertising APIs become available.
+                There is no official ChatGPT ads API, so you cannot connect an
+                account. Creative can still be prepared in Ad Generator. GEO
+                Archer cannot create, update, or read analytics for ChatGPT ads.
               </p>
             </article>
           </div>
@@ -308,8 +307,8 @@ function IntegrationsInner() {
           {anyConnected && (
             <div className="border border-slate-200 bg-white px-6 py-4">
               <p className="text-sm text-slate-600">
-                Pull spend and conversions from published campaigns into Analytics.
-                Only numbers the ad platform actually reports are stored.
+                Pull spend and conversions from published campaigns. Only numbers
+                the ad platform actually reports are stored.
               </p>
               <button
                 type="button"
@@ -317,7 +316,7 @@ function IntegrationsInner() {
                 disabled={syncing}
                 onClick={() => void syncMetrics()}
               >
-                {syncing ? "Syncing…" : "Sync performance now"}
+                {syncing ? "Syncing…" : "Sync analytics now"}
               </button>
             </div>
           )}

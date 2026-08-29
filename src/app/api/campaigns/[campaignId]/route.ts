@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdAccess } from "@/lib/advertising/api-guard";
+import { hasRealPerformance } from "@/lib/advertising/ad-preview";
 import { syncPlatformStatus } from "@/lib/advertising/publish";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -11,15 +12,18 @@ type Status =
   | "ACTIVE"
   | "PAUSED"
   | "COMPLETED"
+  | "ARCHIVED"
   | "ERROR";
 
 /** Lifecycle moves the user can make directly (publishing is a separate flow). */
 const ALLOWED_TRANSITIONS: Partial<Record<Status, Status[]>> = {
-  DRAFT: ["READY"],
-  READY: ["DRAFT"],
+  DRAFT: ["READY", "ARCHIVED"],
+  READY: ["DRAFT", "ARCHIVED"],
   ACTIVE: ["PAUSED"],
-  PAUSED: ["ACTIVE"],
-  ERROR: ["DRAFT"],
+  PAUSED: ["ACTIVE", "ARCHIVED"],
+  COMPLETED: ["ARCHIVED"],
+  ERROR: ["DRAFT", "ARCHIVED"],
+  ARCHIVED: ["DRAFT"],
 };
 
 async function loadOwnCampaign(campaignId: string, userId: string) {
@@ -50,7 +54,8 @@ async function connectionInfo(userId: string, platform: string) {
       connected: false,
       accountName: null as string | null,
       canPublish: false,
-      blockedReason: "AI / ChatGPT advertising is not available yet.",
+      blockedReason:
+        "ChatGPT ads can be prepared here. There is no official ads API, so they cannot be published.",
     };
   }
   const row = await prisma.adPlatformConnection.findUnique({
@@ -81,7 +86,10 @@ async function connectionInfo(userId: string, platform: string) {
   };
 }
 
-function serialize(campaign: NonNullable<Awaited<ReturnType<typeof loadOwnCampaign>>>) {
+function serialize(
+  campaign: NonNullable<Awaited<ReturnType<typeof loadOwnCampaign>>>,
+  siblings: { id: string; platform: string; status: string }[]
+) {
   const sum = campaign.metrics.reduce(
     (acc, m) => ({
       spendCents: acc.spendCents + m.spendCents,
@@ -93,6 +101,7 @@ function serialize(campaign: NonNullable<Awaited<ReturnType<typeof loadOwnCampai
     { spendCents: 0, impressions: 0, clicks: 0, conversions: 0, revenueCents: 0 }
   );
   const business = campaign.site?.intelligence?.business as { companyName?: string } | null;
+  const live = hasRealPerformance(sum);
 
   return {
     id: campaign.id,
@@ -106,12 +115,14 @@ function serialize(campaign: NonNullable<Awaited<ReturnType<typeof loadOwnCampai
     locations: campaign.locations,
     audience: campaign.audience,
     structure: campaign.structure,
+    familyId: campaign.familyId,
     error: campaign.error,
     createdAt: campaign.createdAt.toISOString(),
     publishedAt: campaign.publishedAt?.toISOString() ?? null,
     site: campaign.site ? { id: campaign.site.id, url: campaign.site.url } : null,
     businessName: business?.companyName ?? null,
     offering: campaign.offering,
+    siblings,
     ads: campaign.ads.map((ad) => ({
       id: ad.id,
       name: ad.name,
@@ -120,15 +131,42 @@ function serialize(campaign: NonNullable<Awaited<ReturnType<typeof loadOwnCampai
       creativeSource: ad.creativeSource,
       creative: ad.creative,
     })),
-    metrics: {
-      ...sum,
-      ctr: sum.impressions > 0 ? sum.clicks / sum.impressions : null,
-      cpcCents: sum.clicks > 0 ? Math.round(sum.spendCents / sum.clicks) : null,
-      cpaCents:
-        sum.conversions > 0 ? Math.round(sum.spendCents / sum.conversions) : null,
-      roas: sum.spendCents > 0 ? sum.revenueCents / sum.spendCents : null,
-    },
+    hasPerformance: live,
+    metrics: live
+      ? {
+          ...sum,
+          ctr: sum.impressions > 0 ? sum.clicks / sum.impressions : null,
+          cpcCents: sum.clicks > 0 ? Math.round(sum.spendCents / sum.clicks) : null,
+          cpaCents:
+            sum.conversions > 0 ? Math.round(sum.spendCents / sum.conversions) : null,
+          roas: sum.spendCents > 0 ? sum.revenueCents / sum.spendCents : null,
+        }
+      : {
+          spendCents: 0,
+          impressions: 0,
+          clicks: 0,
+          conversions: 0,
+          revenueCents: 0,
+          ctr: null,
+          cpcCents: null,
+          cpaCents: null,
+          roas: null,
+        },
   };
+}
+
+async function loadSiblings(
+  userId: string,
+  campaign: { id: string; familyId: string | null; platform: string; status: string }
+) {
+  if (!campaign.familyId) {
+    return [{ id: campaign.id, platform: campaign.platform, status: campaign.status }];
+  }
+  return prisma.adCampaign.findMany({
+    where: { userId, familyId: campaign.familyId },
+    select: { id: true, platform: true, status: true },
+    orderBy: { createdAt: "asc" },
+  });
 }
 
 export async function GET(
@@ -144,7 +182,10 @@ export async function GET(
     return NextResponse.json({ error: "Campaign not found." }, { status: 404 });
   }
   return NextResponse.json({
-    campaign: serialize(campaign),
+    campaign: serialize(
+      campaign,
+      await loadSiblings(access.userId, campaign)
+    ),
     connection: await connectionInfo(access.userId, campaign.platform),
   });
 }
@@ -227,7 +268,7 @@ export async function PATCH(
 
   const fresh = await loadOwnCampaign(campaignId, access.userId);
   return NextResponse.json({
-    campaign: serialize(fresh!),
+    campaign: serialize(fresh!, await loadSiblings(access.userId, fresh!)),
     connection: await connectionInfo(access.userId, campaign.platform),
   });
 }

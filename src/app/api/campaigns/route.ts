@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdAccess } from "@/lib/advertising/api-guard";
+import {
+  audienceDescription,
+  hasRealPerformance,
+} from "@/lib/advertising/ad-preview";
 import { userOwnsSite } from "@/lib/user-plan";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -56,6 +60,7 @@ export async function GET(request: NextRequest) {
         }),
         { spendCents: 0, impressions: 0, clicks: 0, conversions: 0, revenueCents: 0 }
       );
+      const live = hasRealPerformance(sum);
       return {
         id: c.id,
         name: c.name,
@@ -63,20 +68,27 @@ export async function GET(request: NextRequest) {
         status: c.status,
         goal: c.goal,
         budgetDailyCents: c.budgetDailyCents,
+        landingPage: c.landingPage,
+        audience: audienceDescription(c.audience),
+        familyId: c.familyId,
+        publishedAt: c.publishedAt?.toISOString() ?? null,
         site: c.site,
         offering: c.offering,
         ads: c._count.ads,
         createdAt: c.createdAt.toISOString(),
-        spendCents: sum.spendCents,
-        impressions: sum.impressions,
-        clicks: sum.clicks,
-        ctr: sum.impressions > 0 ? sum.clicks / sum.impressions : null,
-        cpcCents: sum.clicks > 0 ? Math.round(sum.spendCents / sum.clicks) : null,
-        conversions: sum.conversions,
+        hasPerformance: live,
+        spendCents: live ? sum.spendCents : 0,
+        impressions: live ? sum.impressions : 0,
+        clicks: live ? sum.clicks : 0,
+        ctr: live && sum.impressions > 0 ? sum.clicks / sum.impressions : null,
+        cpcCents: live && sum.clicks > 0 ? Math.round(sum.spendCents / sum.clicks) : null,
+        conversions: live ? sum.conversions : 0,
         cpaCents:
-          sum.conversions > 0 ? Math.round(sum.spendCents / sum.conversions) : null,
-        revenueCents: sum.revenueCents,
-        roas: sum.spendCents > 0 ? sum.revenueCents / sum.spendCents : null,
+          live && sum.conversions > 0
+            ? Math.round(sum.spendCents / sum.conversions)
+            : null,
+        revenueCents: live ? sum.revenueCents : 0,
+        roas: live && sum.spendCents > 0 ? sum.revenueCents / sum.spendCents : null,
       };
     }),
   });
@@ -85,11 +97,22 @@ export async function GET(request: NextRequest) {
 const GOALS = ["LEADS", "SALES", "TRAFFIC", "PHONE_CALLS", "AWARENESS"] as const;
 type Goal = (typeof GOALS)[number];
 
+interface PmaxConceptPayload {
+  theme?: string;
+  headlines?: string[];
+  descriptions?: string[];
+  audience?: string;
+}
+
 interface GooglePayload {
   adGroupName?: string;
   headlines?: string[];
   descriptions?: string[];
   keywords?: string[];
+  negativeKeywords?: string[];
+  path1?: string;
+  path2?: string;
+  pmaxConcepts?: PmaxConceptPayload[];
 }
 
 interface MetaPayload {
@@ -98,11 +121,36 @@ interface MetaPayload {
   headline?: string;
   description?: string;
   cta?: string;
-  creative?: { siteImageId?: string; url?: string; alt?: string | null } | null;
+  creative?: {
+    siteImageId?: string;
+    url?: string;
+    alt?: string | null;
+    source?: "SITE_IMAGE" | "GENERATED";
+  } | null;
 }
 
 const strings = (v: unknown): string[] =>
   Array.isArray(v) ? v.filter((s): s is string => typeof s === "string") : [];
+
+const displayPath = (v: unknown): string =>
+  typeof v === "string" ? v.replace(/^\/+/, "").slice(0, 15) : "";
+
+const pmaxConcepts = (v: unknown) => {
+  if (!Array.isArray(v)) return [];
+  return v
+    .slice(0, 3)
+    .map((item) => {
+      const o =
+        item && typeof item === "object" ? (item as Record<string, unknown>) : {};
+      return {
+        theme: typeof o.theme === "string" ? o.theme : "",
+        headlines: strings(o.headlines).slice(0, 5),
+        descriptions: strings(o.descriptions).slice(0, 2),
+        audience: typeof o.audience === "string" ? o.audience : "",
+      };
+    })
+    .filter((c) => c.theme || c.headlines.length > 0);
+};
 
 /**
  * Save AI-generated campaigns after user review. Creates one AdCampaign per
@@ -122,8 +170,8 @@ export async function POST(request: NextRequest) {
     typeof body?.landingPage === "string" ? body.landingPage.trim() : "";
   const status = body?.status === "READY" ? "READY" : "DRAFT";
   const platforms = strings(body?.platforms).filter((p) =>
-    ["GOOGLE", "META"].includes(p)
-  ) as ("GOOGLE" | "META")[];
+    ["GOOGLE", "META", "AI_CHAT"].includes(p)
+  ) as ("GOOGLE" | "META" | "AI_CHAT")[];
 
   if (!siteId || !name || !goal || !landingPage || platforms.length === 0) {
     return NextResponse.json(
@@ -143,6 +191,21 @@ export async function POST(request: NextRequest) {
   const audience = typeof body?.audience === "string" ? body.audience.trim() : "";
   const google = (body?.google ?? null) as GooglePayload | null;
   const meta = (body?.meta ?? null) as MetaPayload | null;
+  const chatgpt = (body?.chatgpt ?? null) as {
+    advertiser?: string;
+    headline?: string;
+    description?: string;
+    prompt?: string;
+    answer?: string;
+    followUp?: string | null;
+    intents?: string[];
+    creative?: {
+      siteImageId?: string;
+      url?: string;
+      alt?: string | null;
+      source?: "SITE_IMAGE" | "GENERATED";
+    } | null;
+  } | null;
   const prospectId =
     typeof body?.prospectId === "string" && body.prospectId.trim()
       ? body.prospectId.trim()
@@ -160,11 +223,13 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  const familyId = crypto.randomUUID();
   const base = {
     userId: access.userId,
     siteId,
     offeringId,
     prospectId,
+    familyId,
     status,
     goal,
     landingPage,
@@ -179,6 +244,10 @@ export async function POST(request: NextRequest) {
     const headlines = strings(google?.headlines);
     const descriptions = strings(google?.descriptions);
     const keywords = strings(google?.keywords);
+    const negativeKeywords = strings(google?.negativeKeywords);
+    const path1 = displayPath(google?.path1);
+    const path2 = displayPath(google?.path2);
+    const pmax = pmaxConcepts(google?.pmaxConcepts);
     if (headlines.length === 0 || descriptions.length === 0) {
       return NextResponse.json(
         { error: "Google campaigns need headlines and descriptions." },
@@ -193,13 +262,25 @@ export async function POST(request: NextRequest) {
         structure: asJson({
           adGroupName: google?.adGroupName ?? name,
           keywords,
+          negativeKeywords,
+          path1,
+          path2,
+          pmaxConcepts: pmax,
         }),
         ads: {
           create: {
             name: google?.adGroupName ?? name,
             destinationUrl: landingPage,
             creativeSource: "NONE",
-            copy: asJson({ headlines, descriptions, keywords }),
+            copy: asJson({
+              headlines,
+              descriptions,
+              keywords,
+              negativeKeywords,
+              path1,
+              path2,
+              pmaxConcepts: pmax,
+            }),
           },
         },
       },
@@ -214,11 +295,18 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    const creativeSource =
+      meta.creative?.source === "GENERATED"
+        ? "GENERATED"
+        : meta.creative?.url
+          ? "SITE_IMAGE"
+          : "NONE";
     const creative = meta.creative?.url
       ? {
           url: meta.creative.url,
           alt: meta.creative.alt ?? null,
           siteImageId: meta.creative.siteImageId ?? null,
+          source: creativeSource,
         }
       : null;
     const campaign = await prisma.adCampaign.create({
@@ -234,7 +322,7 @@ export async function POST(request: NextRequest) {
           create: {
             name: meta.adSetName ?? name,
             destinationUrl: landingPage,
-            creativeSource: creative ? "SITE_IMAGE" : "NONE",
+            creativeSource,
             creative: creative ? asJson(creative) : undefined,
             copy: asJson({
               primaryText: meta.primaryText,
@@ -247,6 +335,60 @@ export async function POST(request: NextRequest) {
       },
     });
     created.push({ id: campaign.id, platform: "META" });
+  }
+
+  if (platforms.includes("AI_CHAT")) {
+    if (!chatgpt?.prompt || !chatgpt?.answer) {
+      return NextResponse.json(
+        { error: "ChatGPT-style campaigns need a prompt and an answer." },
+        { status: 400 }
+      );
+    }
+    const creativeSource =
+      chatgpt.creative?.source === "GENERATED"
+        ? "GENERATED"
+        : chatgpt.creative?.url
+          ? "SITE_IMAGE"
+          : "NONE";
+    const creative = chatgpt.creative?.url
+      ? {
+          url: chatgpt.creative.url,
+          alt: chatgpt.creative.alt ?? null,
+          siteImageId: chatgpt.creative.siteImageId ?? null,
+          source: creativeSource,
+        }
+      : null;
+    const campaign = await prisma.adCampaign.create({
+      data: {
+        ...base,
+        platform: "AI_CHAT",
+        name,
+        structure: asJson({
+          note: "Prepared creative and targeting context — not a live ChatGPT placement.",
+          advertiser: typeof chatgpt.advertiser === "string" ? chatgpt.advertiser : "",
+        }),
+        ads: {
+          create: {
+            name: `${name} · ChatGPT`,
+            destinationUrl: landingPage,
+            creativeSource,
+            creative: creative ? asJson(creative) : undefined,
+            copy: asJson({
+              advertiser:
+                typeof chatgpt.advertiser === "string" ? chatgpt.advertiser : "",
+              headline: typeof chatgpt.headline === "string" ? chatgpt.headline : "",
+              description:
+                typeof chatgpt.description === "string" ? chatgpt.description : "",
+              prompt: chatgpt.prompt,
+              answer: chatgpt.answer,
+              followUp: chatgpt.followUp ?? null,
+              intents: strings(chatgpt.intents),
+            }),
+          },
+        },
+      },
+    });
+    created.push({ id: campaign.id, platform: "AI_CHAT" });
   }
 
   // Audit trail: record the user's review decision on AI-generated campaigns.

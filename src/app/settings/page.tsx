@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { Check, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,8 +23,8 @@ import {
   useSession,
 } from "@/lib/auth-client";
 import type { PlanId, PlanLimits } from "@/lib/plans";
-import { formatSiteLimit } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { StrategyInbox } from "@/components/strategy/StrategyInbox";
+import { cn, formatSiteLimit } from "@/lib/utils";
 
 interface SettingsPayload {
   user: { name: string; email: string; createdAt: string };
@@ -97,7 +98,12 @@ function PlanFeatureList({ plan }: { plan: PlanLimits }) {
 function SettingsPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialTab = searchParams.get("tab") ?? "profile";
+  const requestedTab = searchParams.get("tab") ?? "profile";
+  const initialTab =
+    requestedTab === "integrations" ||
+    !["profile", "security", "billing", "strategy", "danger"].includes(requestedTab)
+      ? "profile"
+      : requestedTab;
   const checkoutNotice = searchParams.get("checkout");
   const scanError = searchParams.get("scanError");
   const { data: session, isPending } = useSession();
@@ -270,9 +276,14 @@ function SettingsPageInner() {
   return (
     <AppShell
       title="Settings"
-      subtitle="Account, integrations, and billing."
+      subtitle="Account, billing, and strategy requests."
     >
-      {isPending && <p className="text-sm text-slate-400">Loading…</p>}
+      {isPending && (
+        <div className="flex flex-col gap-3">
+          <Skeleton className="h-10" />
+          <Skeleton className="h-48" />
+        </div>
+      )}
       {loadError && <p className="text-sm text-red-600">{loadError}</p>}
 
       {!session && !isPending && (
@@ -289,9 +300,9 @@ function SettingsPageInner() {
           <TabsList>
             <TabsTrigger value="profile">Account</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
-            <TabsTrigger value="integrations">Integrations</TabsTrigger>
             <TabsTrigger value="billing">Billing</TabsTrigger>
-            <TabsTrigger value="danger">Account</TabsTrigger>
+            <TabsTrigger value="strategy">Strategy requests</TabsTrigger>
+            <TabsTrigger value="danger">Delete account</TabsTrigger>
           </TabsList>
 
           <TabsContent value="profile">
@@ -380,32 +391,6 @@ function SettingsPageInner() {
                     )}
                   </div>
                 </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="integrations">
-            <Card>
-              <CardHeader>
-                <CardTitle>Integrations</CardTitle>
-                <CardDescription>
-                  Connect the systems GEO Archer uses for advertising.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                {[
-                  ["OpenAI", "Powers site intelligence, ad copy, and the assistant.", "Connected when OPENAI_API_KEY is set on the server."],
-                  ["Resend", "Sends advertising outreach.", "Connected when RESEND_API_KEY is set."],
-                  ["Apollo", "Finds businesses that need advertising.", "Connected when APOLLO_API_KEY is set."],
-                  ["Stripe", "Billing for Pro and Pro Plus.", "Connected when Stripe keys are set."],
-                  ["Google Ads / Meta", "Publish approved campaigns.", "Connect from Integrations."],
-                ].map(([name, why, state]) => (
-                  <div key={name} className="border border-slate-100 px-4 py-3">
-                    <p className="font-medium text-slate-900">{name}</p>
-                    <p className="mt-0.5 text-slate-500">{why}</p>
-                    <p className="mt-1 text-xs text-slate-400">{state}</p>
-                  </div>
-                ))}
               </CardContent>
             </Card>
           </TabsContent>
@@ -557,6 +542,22 @@ function SettingsPageInner() {
             </p>
           </TabsContent>
 
+          <TabsContent value="strategy">
+            <Card>
+              <CardHeader>
+                <CardTitle>Strategy requests</CardTitle>
+                <CardDescription>
+                  Inbound leads for GEO Archer to build an advertising and GEO
+                  strategy. These are stored requests — not live campaigns or
+                  invented performance.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <StrategyInbox />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="danger">
             <Card className="border-red-200">
               <CardHeader>
@@ -619,7 +620,10 @@ export default function SettingsPage() {
           title="Settings"
           subtitle="Profile, security, billing, and account controls."
         >
-          <p className="text-sm text-slate-400">Loading…</p>
+          <div className="flex flex-col gap-3">
+            <Skeleton className="h-10" />
+            <Skeleton className="h-48" />
+          </div>
         </AppShell>
       }
     >

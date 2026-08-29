@@ -28,6 +28,9 @@ model Site {
   siteImages             SiteImage[]
   adOpportunities        AdOpportunity[]
   adCampaigns            AdCampaign[]
+  adCompetitors          AdCompetitor[]
+  libraryAds             LibraryAd[]
+  librarySearches        LibrarySearch[]
 }
 
 model UserSite {
@@ -63,6 +66,7 @@ model User {
   accounts      Account[]
   userSites     UserSite[]
   leadCampaigns LeadCampaign[]
+  strategyRequests      StrategyRequest[]
   adCampaigns           AdCampaign[]
   adPlatformConnections AdPlatformConnection[]
   aiActions             AIAction[]
@@ -405,6 +409,23 @@ enum OutreachEmailStatus {
   REPLIED
 }
 
+/// Inbound request for GEO Archer to build an advertising/GEO strategy.
+/// Separate from LeadCampaign / Prospect (those find customers for the user).
+model StrategyRequest {
+  id                    String   @id @default(uuid())
+  name                  String
+  email                 String
+  company               String
+  website               String
+  monthlyAdBudgetCents  Int?
+  user                  User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId                String?
+  createdAt             DateTime @default(now())
+
+  @@index([email, createdAt])
+  @@index([userId, createdAt])
+}
+
 model LeadCampaign {
   id          String             @id @default(uuid())
   user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -532,13 +553,15 @@ model Offering {
   /// Price as found on the site (verbatim string); never invented
   price       String?
   url         String?
-  /// { benefits[], features[], cta, location }
+  /// { benefits[], features[], cta, location, category, targetAudience[] }
   details     Json?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   images      SiteImage[]
   opportunities AdOpportunity[]
   adCampaigns   AdCampaign[]
+  competitors   AdCompetitor[]
+  libraryAds    LibraryAd[]
 
   @@unique([siteId, name])
   @@index([siteId, kind])
@@ -562,31 +585,135 @@ model SiteImage {
   @@index([siteId])
 }
 
+enum CompetitorSource {
+  MENTIONED
+  AI_RECOMMENDATION
+  MANUAL
+}
+
+/// A brand in the same advertising landscape as a scanned site.
+/// Never stores invented ad counts, spend, or publication dates.
+model AdCompetitor {
+  id         String           @id @default(uuid())
+  site       Site             @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId     String
+  offering   Offering?        @relation(fields: [offeringId], references: [id], onDelete: SetNull)
+  offeringId String?
+  name       String
+  /// Only when the user supplied it or the scanned site named a URL. Never invented.
+  website    String?
+  category   String?
+  rationale  String
+  /// { similarProducts[], searchTerms[], customerProblems[], customerIntent[] }
+  details    Json?
+  source     CompetitorSource
+  dismissed  Boolean          @default(false)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  libraryAds LibraryAd[]
+
+  @@unique([siteId, name])
+  @@index([siteId, source])
+}
+
+enum LibraryAdContext {
+  SITE
+  OFFERING
+  COMPETITOR
+}
+
+/// An ad returned by an official library (Meta ads_archive, etc.).
+/// Never invented — only fields the provider actually returned.
+model LibraryAd {
+  id                 String           @id @default(uuid())
+  site               Site             @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId             String
+  offering           Offering?        @relation(fields: [offeringId], references: [id], onDelete: SetNull)
+  offeringId         String?
+  competitor         AdCompetitor?    @relation(fields: [competitorId], references: [id], onDelete: SetNull)
+  competitorId       String?
+  contextType        LibraryAdContext
+  contextId          String
+  provider           String
+  platform           AdPlatform
+  externalId         String
+  advertiserName     String?
+  headline           String?
+  primaryText        String?
+  cta                String?
+  landingPage        String?
+  creativeUrl        String?
+  format             String?
+  firstSeen          DateTime?
+  lastSeen           DateTime?
+  sourceUrl          String?
+  publisherPlatforms Json             @default("[]")
+  searchTerms        String
+  countries          Json
+  /// AI recommendation from the stored copy. Never treated as measured performance.
+  analysis           Json?
+  analyzedAt         DateTime?
+  fetchedAt          DateTime         @default(now())
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  @@unique([siteId, provider, externalId, contextType, contextId])
+  @@index([siteId, fetchedAt])
+  @@index([contextType, contextId])
+}
+
+/// One official-library search. resultCount 0 is a real empty result.
+model LibrarySearch {
+  id          String           @id @default(uuid())
+  site        Site             @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId      String
+  contextType LibraryAdContext
+  contextId   String
+  provider    String
+  terms       String
+  countries   Json
+  resultCount Int
+  error       String?
+  createdAt   DateTime         @default(now())
+
+  @@index([siteId, contextType, contextId, createdAt])
+}
+
 enum OpportunityLevel {
   HIGH
   MEDIUM
   LOW
 }
 
+enum AdOpportunitySource {
+  SITE
+  COMPETITOR_GAP
+}
+
 /// An advertising opportunity the AI identified for a site's offering.
 model AdOpportunity {
-  id         String           @id @default(uuid())
-  site       Site             @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  id         String              @id @default(uuid())
+  site       Site                @relation(fields: [siteId], references: [id], onDelete: Cascade)
   siteId     String
-  offering   Offering?        @relation(fields: [offeringId], references: [id], onDelete: Cascade)
+  offering   Offering?           @relation(fields: [offeringId], references: [id], onDelete: Cascade)
   offeringId String?
+  source     AdOpportunitySource @default(SITE)
   title      String
   level      OpportunityLevel
   rationale  String
   /// e.g. ["google", "meta", "ai"]
-  channels   Json             @default("[]")
+  channels   Json                @default("[]")
   /// AI-recommended campaign starting point: { name, goal, budgetHint, audience }
   recommendedCampaign Json?
-  dismissed  Boolean          @default(false)
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
+  /// Gap details (focusedOn, missing, recommendedAngle, scores). SITE rows may be null.
+  details    Json?
+  dismissed  Boolean             @default(false)
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
 
   @@index([siteId, level])
+  @@index([siteId, source])
 }
 
 enum AdPlatform {
@@ -610,6 +737,7 @@ enum AdCampaignStatus {
   ACTIVE
   PAUSED
   COMPLETED
+  ARCHIVED
   ERROR
 }
 
@@ -641,6 +769,8 @@ model AdCampaign {
   structure Json?
   /// Platform campaign id once actually published (never faked)
   externalId String?
+  /// Shared when one Ad Studio save creates Google + Meta + ChatGPT together
+  familyId   String?
   error      String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -651,6 +781,7 @@ model AdCampaign {
   @@index([userId, createdAt])
   @@index([siteId, status])
   @@index([userId, status])
+  @@index([userId, familyId])
 }
 
 enum CreativeSource {

@@ -6,12 +6,18 @@ import { useEffect, useState } from "react";
 import {
   BarChart3,
   Bot,
+  FolderKanban,
   Globe,
   LayoutDashboard,
+  Lightbulb,
   Megaphone,
   Menu,
+  Package,
+  Palette,
   Plug,
+  Radar,
   Settings,
+  Swords,
   Target,
   Users,
 } from "lucide-react";
@@ -22,25 +28,41 @@ import { isProtectedAppPath, loginUrlWithReturn } from "@/lib/auth-guard";
 
 const NAV = [
   {
-    label: "Command Center",
+    label: "Workspace",
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/sites", label: "Sites", icon: Globe },
-      { href: "/ad-studio", label: "Ad Studio", icon: Megaphone },
+      { href: "/sites", label: "Websites", icon: Globe },
+      { href: "/products", label: "Products", icon: Package },
+    ],
+  },
+  {
+    label: "Intelligence",
+    items: [
+      { href: "/ad-intelligence", label: "Ad Intelligence", icon: Radar },
+      { href: "/competitors", label: "Competitors", icon: Swords },
+      { href: "/opportunities", label: "Opportunities", icon: Lightbulb },
+    ],
+  },
+  {
+    label: "Create",
+    items: [
+      { href: "/ad-studio", label: "Ad Generator", icon: Megaphone },
+      { href: "/creative-studio", label: "Creative Studio", icon: Palette },
+    ],
+  },
+  {
+    label: "Manage",
+    items: [
+      { href: "/ads", label: "My Ads", icon: FolderKanban },
       { href: "/campaigns", label: "Campaigns", icon: Target },
       { href: "/analytics", label: "Analytics", icon: BarChart3 },
     ],
   },
   {
-    label: "Grow",
+    label: "Growth",
     items: [
       { href: "/leads", label: "Lead Generation", icon: Users },
       { href: "/assistant", label: "AI Assistant", icon: Bot },
-    ],
-  },
-  {
-    label: "Account",
-    items: [
       { href: "/integrations", label: "Integrations", icon: Plug },
       { href: "/settings", label: "Settings", icon: Settings },
     ],
@@ -60,6 +82,9 @@ interface LiveStatus {
   sites: number;
   offerings: number;
   opportunities: number;
+  competitors: number;
+  libraryAds: number;
+  analyzedAds?: number;
   campaigns: number;
   activeCampaigns: number;
 }
@@ -89,6 +114,17 @@ export function AppShell({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileOpen]);
 
   useEffect(() => {
     if (!mounted || sessionPending) return;
@@ -207,6 +243,17 @@ export function AppShell({
         ))}
       </nav>
 
+      {session && !status && (
+        <div className="mx-3 mb-3 border border-white/10 bg-white/5 px-3 py-3" aria-hidden>
+          <div className="h-3 w-20 animate-pulse rounded bg-white/10" />
+          <div className="mt-2 space-y-1.5">
+            <div className="h-2.5 w-full animate-pulse rounded bg-white/5" />
+            <div className="h-2.5 w-4/5 animate-pulse rounded bg-white/5" />
+            <div className="h-2.5 w-3/5 animate-pulse rounded bg-white/5" />
+          </div>
+        </div>
+      )}
+
       {status && (
         <div className="mx-3 mb-3 border border-white/10 bg-white/5 px-3 py-3">
           <div className="flex items-center justify-between text-[11px]">
@@ -229,6 +276,13 @@ export function AppShell({
           <ul className="mt-2 space-y-0.5 text-[11px] text-slate-500">
             <li>{status.sites} sites scanned</li>
             <li>{status.offerings} products &amp; services</li>
+            <li>{status.competitors} competitors</li>
+            <li>
+              {status.analyzedAds ?? 0} ads analyzed
+              {status.libraryAds
+                ? ` / ${status.libraryAds} stored`
+                : ""}
+            </li>
             <li>{status.opportunities} ad opportunities</li>
             <li>
               {status.activeCampaigns} active / {status.campaigns} campaigns
@@ -269,19 +323,28 @@ export function AppShell({
               >
                 <Menu className="h-5 w-5" />
               </button>
-              <div className="hidden min-w-0 items-center gap-2 text-sm text-slate-500 sm:flex">
-                <span className="truncate font-medium text-slate-700">{title}</span>
+              <div className="min-w-0 items-center gap-2 text-sm text-slate-500 sm:flex">
+                <span className="block truncate font-medium text-slate-700">
+                  {title}
+                </span>
                 {breadcrumb && breadcrumb !== title && (
-                  <>
-                    <span className="text-slate-300">/</span>
-                    <span className="shrink-0 text-slate-500">{breadcrumb}</span>
-                  </>
+                  <span className="hidden sm:inline">
+                    <span className="text-slate-300"> / </span>
+                    <span className="text-slate-500">{breadcrumb}</span>
+                  </span>
                 )}
               </div>
             </div>
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-[11px] font-semibold text-slate-700">
-              {initials}
-            </div>
+            {authReady ? (
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-[11px] font-semibold text-slate-700">
+                {initials}
+              </div>
+            ) : (
+              <div
+                className="h-8 w-8 animate-pulse rounded-full bg-slate-200"
+                aria-hidden
+              />
+            )}
           </div>
         </header>
 

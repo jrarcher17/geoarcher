@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate, type Tone } from "@/lib/utils";
+import { StrategyCta } from "@/components/strategy/StrategyCta";
 
 interface CampaignRow {
   id: string;
@@ -81,8 +82,8 @@ export default function LeadsDashboardPage() {
 
   return (
     <LeadShell
-      title="Lead Generation"
-      subtitle="Find businesses that need better advertising — score the opportunity, then create campaigns in Ad Studio."
+      title="Get more customers from AI & advertising"
+      subtitle="Find businesses that need better advertising — or ask GEO Archer to build the strategy for you."
       actions={
         allowed ? (
           <Link href="/leads/new">
@@ -101,7 +102,12 @@ export default function LeadsDashboardPage() {
           <Skeleton className="h-28" />
         </div>
       )}
-      {allowed === false && <LeadUpgradeGate />}
+      {allowed === false && (
+        <div className="space-y-6">
+          <LeadUpgradeGate />
+          <StrategyCta />
+        </div>
+      )}
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       {allowed && data && (
@@ -213,6 +219,7 @@ export default function LeadsDashboardPage() {
               </table>
             </div>
           )}
+          <StrategyCta />
         </div>
       )}
     </LeadShell>

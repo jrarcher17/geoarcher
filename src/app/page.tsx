@@ -322,6 +322,25 @@ export default async function Home() {
         </div>
       </section>
 
+      <section className="mx-auto max-w-5xl px-4 pb-8 sm:px-6">
+        <div className="border border-slate-200 bg-white px-6 py-10 sm:px-10">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+            Advertising &amp; GEO services
+          </p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
+            Get more customers from AI &amp; advertising
+          </h2>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-600">
+            Want GEO Archer to build your advertising strategy? Leave your
+            name, email, company, and website. Optional monthly ad budget helps
+            us scope the work. We store the lead — we do not invent results.
+          </p>
+          <Link href="/strategy" className="btn-primary mt-6 inline-block text-sm">
+            Request a strategy
+          </Link>
+        </div>
+      </section>
+
       <FinalCta signUpDisabled={registrationsClosed} />
       <MarketingFooter />
     </div>

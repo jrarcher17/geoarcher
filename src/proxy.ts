@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
 import { isProtectedAppPath, loginUrlWithReturn } from "@/lib/auth-guard";
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
   if (!isProtectedAppPath(pathname)) {
@@ -58,5 +58,13 @@ export const config = {
     "/analytics",
     "/assistant",
     "/integrations",
+    "/products",
+    "/products/:path*",
+    "/ad-intelligence",
+    "/ad-intelligence/:path*",
+    "/creative-studio",
+    "/creative-studio/:path*",
+    "/ads",
+    "/ads/:path*",
   ],
 };

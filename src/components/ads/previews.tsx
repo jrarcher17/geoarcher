@@ -7,12 +7,18 @@ export function GoogleAdPreview({
   headlines,
   descriptions,
   landingPage,
+  path1,
+  path2,
 }: {
   headlines: string[];
   descriptions: string[];
   landingPage: string;
+  path1?: string;
+  path2?: string;
 }) {
   const shown = headlines.slice(0, 3);
+  const host = hostOf(landingPage);
+  const displayPath = [path1, path2].filter(Boolean).join("/");
   return (
     <div className="border border-slate-200 bg-white p-5">
       <div className="max-w-xl">
@@ -24,7 +30,10 @@ export function GoogleAdPreview({
             <Globe className="h-3.5 w-3.5 text-slate-500" />
           </span>
           <div className="leading-tight">
-            <p className="text-sm text-slate-800">{hostOf(landingPage)}</p>
+            <p className="text-sm text-slate-800">
+              {host}
+              {displayPath ? `/${displayPath}` : ""}
+            </p>
             <p className="text-xs text-slate-500">{landingPage}</p>
           </div>
         </div>
@@ -50,7 +59,7 @@ const CTA_LABELS: Record<string, string> = {
   GET_OFFER: "Get offer",
 };
 
-/** Facebook/Instagram feed-ad style preview. */
+/** Facebook/Instagram feed or story preview. */
 export function MetaAdPreview({
   businessName,
   primaryText,
@@ -59,6 +68,8 @@ export function MetaAdPreview({
   cta,
   imageUrl,
   landingPage,
+  format = "feed",
+  imageLabel,
 }: {
   businessName: string;
   primaryText: string;
@@ -67,7 +78,46 @@ export function MetaAdPreview({
   cta: string;
   imageUrl: string | null;
   landingPage: string;
+  format?: "feed" | "story";
+  imageLabel?: string | null;
 }) {
+  if (format === "story") {
+    return (
+      <div className="mx-auto w-full max-w-[280px] overflow-hidden border border-slate-200 bg-slate-900">
+        <div className="relative aspect-[9/16] bg-slate-800">
+          {imageUrl ? (
+            <Image
+              src={imageUrl}
+              alt={imageLabel ?? ""}
+              fill
+              unoptimized
+              className="object-cover"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center px-4 text-center text-xs text-slate-400">
+              No image selected
+            </div>
+          )}
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+            <p className="text-[11px] text-white/70">{businessName} · Sponsored</p>
+            <p className="mt-1 text-sm font-semibold text-white">
+              {headline || "Headline"}
+            </p>
+            {description && (
+              <p className="mt-1 text-xs text-white/80">{description}</p>
+            )}
+            <span className="mt-3 inline-block bg-white px-3 py-1.5 text-xs font-medium text-slate-900">
+              {CTA_LABELS[cta] ?? "Learn more"}
+            </span>
+          </div>
+        </div>
+        {imageLabel && (
+          <p className="bg-slate-900 px-3 py-2 text-[10px] text-slate-400">{imageLabel}</p>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-md border border-slate-200 bg-white">
       <div className="flex items-center gap-2.5 px-4 pt-4">
@@ -85,7 +135,7 @@ export function MetaAdPreview({
       {imageUrl ? (
         <Image
           src={imageUrl}
-          alt=""
+          alt={imageLabel ?? ""}
           width={640}
           height={335}
           unoptimized
@@ -95,6 +145,9 @@ export function MetaAdPreview({
         <div className="flex h-40 items-center justify-center bg-slate-100 text-xs text-slate-400">
           No image selected
         </div>
+      )}
+      {imageLabel && (
+        <p className="px-4 pt-2 text-[11px] text-slate-400">{imageLabel}</p>
       )}
       <div className="flex items-center justify-between gap-3 bg-slate-50 px-4 py-3">
         <div className="min-w-0 leading-tight">
@@ -116,18 +169,116 @@ export function MetaAdPreview({
   );
 }
 
-/** Honest placeholder — no official AI-platform ad APIs exist yet. */
-export function AiAdPreview() {
+/** ChatGPT-style conversation + sponsored card. Not a live placement. */
+export function AiAdPreview({
+  advertiser,
+  headline,
+  description,
+  prompt,
+  answer,
+  followUp,
+  landingPage,
+  intents,
+  imageUrl,
+  imageLabel,
+}: {
+  advertiser?: string;
+  headline?: string;
+  description?: string;
+  prompt?: string;
+  answer?: string;
+  followUp?: string | null;
+  landingPage?: string;
+  intents?: string[];
+  imageUrl?: string | null;
+  imageLabel?: string | null;
+}) {
+  if (!prompt && !answer && !headline) {
+    return (
+      <div className="max-w-md border border-dashed border-slate-300 bg-white px-6 py-10 text-center">
+        <p className="text-sm font-semibold text-slate-900">AI / ChatGPT</p>
+        <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-slate-500">
+          Generate ads with ChatGPT selected to preview prepared creative and
+          targeting context. There is no official ChatGPT ads API — nothing is
+          placed.
+        </p>
+      </div>
+    );
+  }
   return (
-    <div className="max-w-md border border-dashed border-slate-300 bg-white px-6 py-10 text-center">
-      <p className="text-sm font-semibold text-slate-900">AI / ChatGPT</p>
-      <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-slate-500">
-        Advertising opportunities inside AI platforms will be supported as
-        official advertising APIs become available.
+    <div className="max-w-md border border-slate-200 bg-white p-5">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+        Prepared for ChatGPT · not a live placement
       </p>
-      <span className="mt-4 inline-flex bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">
-        Coming Soon
-      </span>
+      {prompt && (
+        <div className="mt-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+            You
+          </p>
+          <p className="mt-1 text-sm font-medium text-slate-900">{prompt}</p>
+        </div>
+      )}
+      {answer && (
+        <div className="mt-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+            Recommended answer
+          </p>
+          <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
+            {answer}
+          </p>
+          {followUp && (
+            <p className="mt-3 text-xs text-slate-400">Follow-up · {followUp}</p>
+          )}
+        </div>
+      )}
+      {(headline || description || advertiser) && (
+        <div className="mt-4 border border-slate-100 bg-slate-50 p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+            Sponsored recommendation
+          </p>
+          {imageUrl && (
+            <div className="relative mt-2">
+              <Image
+                src={imageUrl}
+                alt={imageLabel ?? headline ?? advertiser ?? ""}
+                width={400}
+                height={220}
+                unoptimized
+                className="h-36 w-full bg-white object-cover"
+              />
+              {imageLabel && (
+                <p className="mt-1 text-[10px] text-slate-400">{imageLabel}</p>
+              )}
+            </div>
+          )}
+          {advertiser && (
+            <p className="mt-2 text-xs font-medium text-slate-500">{advertiser}</p>
+          )}
+          {headline && (
+            <p className="mt-0.5 text-sm font-semibold text-slate-900">{headline}</p>
+          )}
+          {description && (
+            <p className="mt-1 text-xs leading-relaxed text-slate-600">{description}</p>
+          )}
+          {landingPage && (
+            <p className="mt-2 truncate text-[11px] text-slate-400">
+              {hostOf(landingPage)}
+            </p>
+          )}
+          {(intents ?? []).length > 0 && (
+            <ul className="mt-2 flex flex-wrap gap-1">
+              {intents!.map((intent) => (
+                <li
+                  key={intent}
+                  className="bg-white px-1.5 py-0.5 text-[10px] text-slate-500"
+                >
+                  {intent}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }

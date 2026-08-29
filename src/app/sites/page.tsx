@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FadeIn } from "@/components/cards/FadeIn";
+import { ErrorBanner } from "@/components/os/primitives";
 import { ScanForm } from "@/components/ScanForm";
 import { getPlanLimits } from "@/lib/plans";
 import { useInsights } from "@/lib/useInsights";
@@ -44,8 +45,8 @@ export default function SitesPage() {
   return (
     <>
       <AppShell
-        title="Sites"
-        subtitle="Every website you've connected. One scan builds the advertising intelligence behind your campaigns."
+        title="Websites"
+        subtitle="Every website you've connected. One scan builds the product intelligence behind your ads."
         actions={
           atSiteLimit ? (
             <div className="flex flex-wrap items-center gap-2">
@@ -67,7 +68,7 @@ export default function SitesPage() {
           )
         }
       >
-        {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+        {error && <ErrorBanner message={error} />}
         {loading && (
           <div className="grid gap-4 md:grid-cols-2">
             {[...Array(4)].map((_, i) => (

@@ -15,7 +15,7 @@ import {
   KpiCard,
   PlatformBadge,
 } from "@/components/ads/primitives";
-import { EmptyState, SectionLabel } from "@/components/os/primitives";
+import { EmptyState, ErrorBanner, SectionLabel } from "@/components/os/primitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   formatCount,
@@ -146,11 +146,7 @@ export default function AnalyticsPage() {
       title="Analytics"
       subtitle="Advertising performance across every platform — only numbers synced from live campaigns."
     >
-      {error && (
-        <p className="mb-4 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </p>
-      )}
+      {error && <ErrorBanner message={error} />}
 
       {upgrade && (
         <EmptyState

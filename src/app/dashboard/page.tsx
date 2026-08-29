@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { FadeIn } from "@/components/cards/FadeIn";
 import {
@@ -9,14 +9,16 @@ import {
   KpiCard,
   LevelBadge,
 } from "@/components/ads/primitives";
-import { EmptyState, SectionLabel } from "@/components/os/primitives";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
-  formatCount,
-  formatMoney,
-  formatRoas,
-  greeting,
-} from "@/lib/advertising/format";
+  ComingSoon,
+  EmptyState,
+  ErrorBanner,
+  OnboardingSteps,
+  SectionLabel,
+} from "@/components/os/primitives";
+import { StrategyCta } from "@/components/strategy/StrategyCta";
+import { Skeleton } from "@/components/ui/skeleton";
+import { formatCount, greeting } from "@/lib/advertising/format";
 import { hostOf } from "@/lib/utils";
 
 interface BusinessProfileLite {
@@ -26,17 +28,13 @@ interface BusinessProfileLite {
 }
 
 interface CommandCenter {
-  kpis: {
-    activeCampaigns: number;
-    draftCampaigns: number;
-    totalCampaigns: number;
-    spendCents: number;
-    impressions: number;
-    clicks: number;
-    conversions: number;
-    cpaCents: number | null;
-    roas: number | null;
-  };
+  kpis: { totalCampaigns: number; draftCampaigns: number };
+  analyzedAds: number;
+  adIntelligenceScore: {
+    label: string;
+    overall: number;
+    groundedAdCount: number;
+  } | null;
   sites: {
     siteId: string;
     url: string;
@@ -44,8 +42,9 @@ interface CommandCenter {
     intelligenceStatus: string | null;
     business: BusinessProfileLite | null;
     offerings: number;
-    images: number;
     opportunities: number;
+    competitors: number;
+    libraryAds: number;
   }[];
   opportunities: {
     id: string;
@@ -57,17 +56,14 @@ interface CommandCenter {
     siteUrl: string;
     offering: { id: string; name: string; kind: string } | null;
   }[];
-  connections: {
-    google: { connected: boolean; accountName: string | null };
-    meta: { connected: boolean; accountName: string | null };
-    openai: boolean;
-  };
-  alerts: {
+  competitorGaps: {
     id: string;
-    type: string;
     title: string;
-    detail: string;
-    campaignId: string | null;
+    rationale: string;
+    siteId: string;
+    siteUrl: string;
+    offering: { id: string; name: string; kind: string } | null;
+    gap: { opportunityScore: number; recommendedAngle: string; label: string } | null;
   }[];
 }
 
@@ -75,147 +71,215 @@ export default function DashboardPage() {
   const [data, setData] = useState<CommandCenter | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const load = useCallback(async () => {
+    const res = await fetch("/api/me/command-center", { cache: "no-store" });
+    if (!res.ok) throw new Error((await res.json()).error ?? "Failed to load.");
+    setData(await res.json());
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/me/command-center", { cache: "no-store" })
-      .then(async (res) => {
-        if (!res.ok) throw new Error((await res.json()).error ?? "Failed to load.");
-        return res.json();
-      })
-      .then((json) => {
-        if (!cancelled) setData(json);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load.");
-      });
+    load().catch((err) => {
+      if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load.");
+    });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [load]);
 
-  const hasCampaigns = (data?.kpis.totalCampaigns ?? 0) > 0;
-  const hasIntelligence = data?.sites.some((s) => s.intelligenceStatus === "COMPLETE");
+  const productCount = data?.sites.reduce((n, s) => n + s.offerings, 0) ?? 0;
+  const opportunityCount = data?.sites.reduce((n, s) => n + s.opportunities, 0) ?? 0;
+  const gapCount = data?.competitorGaps.length ?? 0;
+  const score = data?.adIntelligenceScore ?? null;
+  const competitorCount = data?.sites.reduce((n, s) => n + (s.competitors ?? 0), 0) ?? 0;
+  const libraryAdCount = data?.sites.reduce((n, s) => n + (s.libraryAds ?? 0), 0) ?? 0;
+  const analyzedAdCount = data?.analyzedAds ?? 0;
   const scanning = data?.sites.some((s) =>
     ["QUEUED", "CRAWLING", "ANALYZING"].includes(s.latestScan?.status ?? "")
   );
+  const primary = data?.sites.find((s) => s.intelligenceStatus === "COMPLETE");
+  const business = primary?.business ?? null;
+  const nextMove = data?.opportunities[0] ?? null;
 
   return (
     <AppShell
       title={greeting()}
-      subtitle="Your advertising command center — what's running, what's working, and what to launch next."
+      subtitle={
+        productCount > 0
+          ? "What should you advertise next — from your scanned websites."
+          : "Scan a website. We'll find the products and the ads worth making."
+      }
       live={Boolean(scanning)}
     >
-      {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+      {error && (
+        <ErrorBanner
+          message={error}
+          onRetry={() => {
+            setError(null);
+            void load().catch((err) =>
+              setError(err instanceof Error ? err.message : "Failed to load.")
+            );
+          }}
+        />
+      )}
       {!data && !error && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          {[...Array(5)].map((_, i) => (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
             <Skeleton key={i} className="h-28" />
           ))}
         </div>
       )}
 
       {data && data.sites.length === 0 && (
-        <EmptyState
-          title="Turn your website into your advertising engine"
-          body="Add your website and GEO Archer will scan it, understand your business, identify the products and services worth advertising, and prepare campaigns."
-          actionHref="/sites"
-          actionLabel="+ Add Site"
-        />
+        <div className="flex flex-col gap-6">
+          <EmptyState
+            title="See what you should advertise"
+            body="Add a website. GEO Archer scans it, finds products and services, and prepares ads from what the site already says."
+            actionHref="/sites"
+            actionLabel="Scan a website"
+          />
+          <OnboardingSteps
+            title="Your first advertising workspace"
+            body="Nothing here is invented. Each step uses a real scan or an ad you create."
+            steps={[
+              { label: "Scan a website", done: false, href: "/sites" },
+              { label: "Review products and services", done: false, href: "/products" },
+              { label: "Create an ad", done: false, href: "/ad-studio" },
+            ]}
+          />
+        </div>
       )}
 
       {data && data.sites.length > 0 && (
         <FadeIn className="flex flex-col gap-8">
-          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            <KpiCard
-              label="Active Campaigns"
-              value={formatCount(data.kpis.activeCampaigns)}
-              hint={
-                data.kpis.draftCampaigns > 0
-                  ? `${data.kpis.draftCampaigns} drafts in Ad Studio`
-                  : undefined
-              }
+          {productCount === 0 || (data.kpis.totalCampaigns ?? 0) === 0 ? (
+            <OnboardingSteps
+              title="Next in your workspace"
+              body="Finish the path from a real scan to a reviewable ad."
+              steps={[
+                {
+                  label: "Scan a website",
+                  done:
+                    productCount > 0 ||
+                    data.sites.some((s) => s.intelligenceStatus === "COMPLETE"),
+                  href: "/sites",
+                },
+                {
+                  label: "Review products and services",
+                  done: productCount > 0,
+                  href: "/products",
+                },
+                {
+                  label: "Create an ad",
+                  done: (data.kpis.totalCampaigns ?? 0) > 0,
+                  href: "/ad-studio",
+                },
+              ]}
             />
-            <KpiCard
-              label="Ad Spend"
-              value={formatMoney(hasCampaigns ? data.kpis.spendCents : null)}
-              hint="Last 30 days"
-            />
-            <KpiCard
-              label="Conversions"
-              value={hasCampaigns ? formatCount(data.kpis.conversions) : "—"}
-              hint="Last 30 days"
-            />
-            <KpiCard label="Average CPA" value={formatMoney(data.kpis.cpaCents)} />
-            <KpiCard label="ROAS" value={formatRoas(data.kpis.roas)} />
-          </section>
-
-          {!data.connections.google.connected && !data.connections.meta.connected && (
+          ) : null}
+          {business && (
             <section className="border border-slate-200 bg-white px-6 py-5">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">
-                    No ad accounts connected
-                  </p>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Connect Google Ads or Meta to publish campaigns and pull live
-                    performance data. Until then, campaigns stay as ready-to-publish
-                    drafts.
-                  </p>
-                </div>
-                <Link href="/integrations" className="btn-secondary shrink-0 text-sm">
-                  Open Integrations
-                </Link>
-              </div>
+              <SectionLabel>Your business</SectionLabel>
+              <h2 className="mt-2 text-xl font-semibold text-slate-900">
+                {business.companyName || hostOf(primary!.url)}
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                {primary!.url}
+                {business.industry ? ` · ${business.industry}` : ""}
+              </p>
+              {business.description && (
+                <p className="mt-3 max-w-3xl text-sm leading-relaxed text-slate-600">
+                  {business.description}
+                </p>
+              )}
             </section>
           )}
 
-          <section>
-            <SectionLabel>AI Alerts</SectionLabel>
-            {data.alerts.length > 0 ? (
-              <div className="mt-3 grid gap-3">
-                {data.alerts.map((a) => (
-                  <article key={a.id} className="border border-slate-200 bg-white p-5">
-                    <h3 className="text-sm font-semibold text-slate-900">{a.title}</h3>
-                    <p className="mt-1 text-sm text-slate-600">{a.detail}</p>
-                    <Link
-                      href="/assistant"
-                      className="mt-2 inline-block text-xs font-medium text-slate-900 underline underline-offset-2"
-                    >
-                      Review in Assistant
-                    </Link>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-3 text-sm text-slate-500">
-                {hasCampaigns
-                  ? "No alerts right now. AI monitors campaign performance and flags anything that needs attention."
-                  : "Once campaigns are running, AI monitors performance and alerts you to rising costs, winning campaigns, and creative fatigue."}
-              </p>
-            )}
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <KpiCard
+              label="Products & services"
+              value={formatCount(productCount)}
+              hint="Extracted from your scans"
+            />
+            <KpiCard
+              label="Website opportunities"
+              value={formatCount(opportunityCount)}
+              hint="From site content — not competitor ads"
+            />
+            <KpiCard
+              label="Competitors"
+              value={formatCount(competitorCount)}
+              hint="AI recommendations + brands you added"
+            />
+            <KpiCard
+              label="Ads analyzed"
+              value={formatCount(analyzedAdCount)}
+              hint={
+                analyzedAdCount > 0
+                  ? "AI recommendations — not measured performance"
+                  : libraryAdCount > 0
+                    ? `${libraryAdCount} stored · not analyzed yet`
+                    : "Official libraries only — nothing invented"
+              }
+            />
           </section>
 
-          <section>
-            <div className="mb-3 flex items-end justify-between">
-              <div>
-                <SectionLabel>Advertising opportunities</SectionLabel>
-                <p className="mt-2 text-sm text-slate-500">
-                  What your website says you should be advertising.
-                </p>
-              </div>
-              {hasIntelligence && (
+          {nextMove ? (
+            <section className="border border-slate-200 bg-white p-6 sm:p-8">
+              <SectionLabel>Recommended next move</SectionLabel>
+              <h2 className="mt-3 text-xl font-semibold text-slate-900">
+                {nextMove.offering
+                  ? `Promote ${nextMove.offering.name}`
+                  : nextMove.title}
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
+                {nextMove.rationale}
+              </p>
+              <p className="mt-2 text-xs text-slate-400">{hostOf(nextMove.siteUrl)}</p>
+              <div className="mt-5 flex flex-wrap gap-2">
                 <Link
-                  href="/ad-studio"
+                  href={`/ad-studio?site=${nextMove.siteId}${nextMove.offering ? `&offering=${nextMove.offering.id}` : ""}`}
+                  className="btn-primary text-sm"
+                >
+                  Create Ad
+                </Link>
+                <Link href="/opportunities" className="btn-secondary text-sm">
+                  View all opportunities
+                </Link>
+              </div>
+            </section>
+          ) : scanning ? (
+            <p className="text-sm text-slate-500">
+              Scan in progress — recommended ads appear when extraction finishes.
+            </p>
+          ) : (
+            <div className="border border-dashed border-slate-300 bg-white px-6 py-8">
+              <p className="text-sm font-medium text-slate-900">
+                No website opportunities yet
+              </p>
+              <p className="mt-1 max-w-xl text-sm text-slate-500">
+                Finish a scan so GEO Archer can identify what to advertise from the
+                site itself.
+              </p>
+              <Link href="/sites" className="btn-primary mt-4 inline-block text-sm">
+                Go to Websites
+              </Link>
+            </div>
+          )}
+
+          {data.opportunities.length > 0 && (
+            <section>
+              <div className="mb-3 flex items-end justify-between">
+                <SectionLabel>Top advertising opportunities</SectionLabel>
+                <Link
+                  href="/opportunities"
                   className="text-sm font-medium text-slate-900 underline-offset-4 hover:underline"
                 >
-                  Open Ad Studio
+                  View all
                 </Link>
-              )}
-            </div>
-
-            {data.opportunities.length > 0 ? (
+              </div>
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {data.opportunities.map((o) => (
+                {data.opportunities.slice(0, 3).map((o) => (
                   <article
                     key={o.id}
                     className="flex flex-col border border-slate-200 bg-white p-5"
@@ -229,93 +293,177 @@ export default function DashboardPage() {
                     <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-600">
                       {o.rationale}
                     </p>
-                    <p className="mt-2 text-xs text-slate-400">{hostOf(o.siteUrl)}</p>
                     <div className="mt-3">
                       <ChannelChips channels={o.channels} />
                     </div>
-                    <div className="mt-4">
-                      <Link
-                        href={`/ad-studio?site=${o.siteId}${o.offering ? `&offering=${o.offering.id}` : ""}`}
-                        className="btn-primary text-sm"
-                      >
-                        Create Ad
-                      </Link>
-                    </div>
+                    <Link
+                      href={`/ad-studio?site=${o.siteId}${o.offering ? `&offering=${o.offering.id}` : ""}`}
+                      className="btn-primary mt-4 text-sm"
+                    >
+                      Create Ad
+                    </Link>
                   </article>
                 ))}
               </div>
-            ) : scanning ? (
-              <p className="text-sm text-slate-500">
-                Scan in progress — advertising opportunities appear when the AI
-                intelligence extraction finishes.
-              </p>
-            ) : hasIntelligence ? (
-              <p className="text-sm text-slate-500">
-                No open opportunities. Re-run intelligence from a site page after
-                content changes.
-              </p>
-            ) : (
-              <div className="border border-dashed border-slate-300 bg-white px-6 py-8">
-                <p className="text-sm font-medium text-slate-900">
-                  Your sites haven&apos;t been analyzed for advertising yet.
-                </p>
-                <p className="mt-1 max-w-xl text-sm text-slate-500">
-                  Open a site and run the advertising intelligence scan. GEO Archer
-                  will identify your products, services, images and the campaigns
-                  worth launching.
-                </p>
-                <Link href="/sites" className="btn-primary mt-4 inline-block text-sm">
-                  Go to Sites
+            </section>
+          )}
+
+          {gapCount > 0 && (
+            <section>
+              <div className="mb-3 flex items-end justify-between">
+                <SectionLabel>Competitor gaps</SectionLabel>
+                <Link
+                  href="/opportunities"
+                  className="text-sm font-medium text-slate-900 underline-offset-4 hover:underline"
+                >
+                  View all
                 </Link>
               </div>
-            )}
-          </section>
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {data.competitorGaps.slice(0, 3).map((o) => (
+                  <article
+                    key={o.id}
+                    className="flex flex-col border border-slate-200 bg-white p-5"
+                  >
+                    <h3 className="text-base font-semibold text-slate-900">{o.title}</h3>
+                    {o.gap && (
+                      <p className="mt-2 text-2xl font-semibold tabular-nums text-slate-900">
+                        {o.gap.opportunityScore}
+                        <span className="ml-1 text-xs font-medium text-slate-400">
+                          · {o.gap.label}
+                        </span>
+                      </p>
+                    )}
+                    {o.gap?.recommendedAngle && (
+                      <blockquote className="mt-3 border-l-2 border-slate-900 pl-3 text-sm font-medium text-slate-900">
+                        {o.gap.recommendedAngle}
+                      </blockquote>
+                    )}
+                    <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-600">
+                      {o.rationale}
+                    </p>
+                    <Link
+                      href={`/ad-studio?site=${o.siteId}${o.offering ? `&offering=${o.offering.id}` : ""}&opportunity=${o.id}`}
+                      className="btn-primary mt-4 text-sm"
+                    >
+                      Create Ad
+                    </Link>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {competitorCount > 0 ? (
+            <section>
+              <div className="mb-3 flex items-end justify-between">
+                <SectionLabel>Competitors</SectionLabel>
+                <Link
+                  href="/competitors"
+                  className="text-sm font-medium text-slate-900 underline-offset-4 hover:underline"
+                >
+                  View all
+                </Link>
+              </div>
+              <p className="text-sm text-slate-600">
+                {competitorCount === 1
+                  ? "1 brand suggested from your products."
+                  : `${formatCount(competitorCount)} brands suggested from your products.`}
+                Ad activity appears after a library is connected — not invented.
+              </p>
+              <Link href="/competitors" className="btn-secondary mt-4 inline-block text-sm">
+                Open competitors
+              </Link>
+            </section>
+          ) : (
+            <ComingSoon
+              status="Ready when you are"
+              title="Find competitors from your products"
+              body="GEO Archer can recommend brands in the same category as your scanned offerings. It will not invent ads, spend, or that they are advertising."
+            />
+          )}
+
+          {score ? (
+            <section className="border border-slate-200 bg-white p-6 sm:p-8">
+              <SectionLabel>Ad Intelligence Score</SectionLabel>
+              <p className="mt-3 text-5xl font-semibold tabular-nums tracking-tight text-slate-900">
+                {score.overall}
+              </p>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
+                {score.label} from {score.groundedAdCount} analyzed library ads — not
+                measured performance.
+              </p>
+              <Link href="/opportunities" className="btn-secondary mt-5 text-sm">
+                See competitor gaps
+              </Link>
+            </section>
+          ) : analyzedAdCount > 0 ? (
+            <section className="border border-slate-200 bg-white p-6 sm:p-8">
+              <SectionLabel>Ad analysis</SectionLabel>
+              <h2 className="mt-3 text-xl font-semibold text-slate-900">
+                {analyzedAdCount === 1
+                  ? "1 stored library ad analyzed"
+                  : `${analyzedAdCount} stored library ads analyzed`}
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
+                Analyze at least two ads to compare angles and score the landscape.
+                Scores are AI recommendations — not spend or clicks.
+              </p>
+              <Link href="/ad-intelligence" className="btn-secondary mt-5 text-sm">
+                Review analyses
+              </Link>
+            </section>
+          ) : libraryAdCount > 0 ? (
+            <section className="border border-dashed border-slate-300 bg-white p-6 sm:p-8">
+              <SectionLabel>Ready to analyze</SectionLabel>
+              <h2 className="mt-3 text-xl font-semibold text-slate-900">
+                Library ads are stored
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
+                {libraryAdCount} official-library ads are waiting for AI analysis.
+                Scores will be recommendations, not measured performance.
+              </p>
+              <Link href="/ad-intelligence" className="btn-secondary mt-5 text-sm">
+                Open Ad Intelligence
+              </Link>
+            </section>
+          ) : (
+            <ComingSoon
+              status="Integration required"
+              title="Competitor ad activity"
+              body="Ads analyzed and an Ad Intelligence Score will appear here after official ad-library providers are connected. We will not invent those numbers."
+            />
+          )}
+
+          <StrategyCta />
 
           <section>
-            <SectionLabel>Sites</SectionLabel>
-            <div className="mt-3 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="mb-3 flex items-end justify-between">
+              <SectionLabel>Websites</SectionLabel>
+              <Link
+                href="/sites"
+                className="text-sm font-medium text-slate-900 underline-offset-4 hover:underline"
+              >
+                Manage
+              </Link>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {data.sites.map((s) => {
-                const business = s.business as BusinessProfileLite | null;
+                const biz = s.business as BusinessProfileLite | null;
                 return (
                   <Link
                     key={s.siteId}
                     href={`/sites/${s.siteId}/intelligence`}
-                    className="group border border-slate-200 bg-white p-5 transition hover:border-slate-300 hover:shadow-sm"
+                    className="border border-slate-200 bg-white p-5 transition hover:border-slate-300 hover:shadow-sm"
                   >
                     <p className="font-semibold text-slate-900">
-                      {business?.companyName || hostOf(s.url)}
+                      {biz?.companyName || hostOf(s.url)}
                     </p>
                     <p className="mt-0.5 truncate text-xs text-slate-400">{s.url}</p>
-                    {s.intelligenceStatus === "COMPLETE" ? (
-                      <dl className="mt-4 grid grid-cols-3 gap-2 text-center">
-                        <div>
-                          <dt className="text-[11px] text-slate-400">Offerings</dt>
-                          <dd className="text-lg font-semibold tabular-nums text-slate-900">
-                            {s.offerings}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-[11px] text-slate-400">Images</dt>
-                          <dd className="text-lg font-semibold tabular-nums text-slate-900">
-                            {s.images}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-[11px] text-slate-400">Opportunities</dt>
-                          <dd className="text-lg font-semibold tabular-nums text-slate-900">
-                            {s.opportunities}
-                          </dd>
-                        </div>
-                      </dl>
-                    ) : s.intelligenceStatus === "RUNNING" ? (
-                      <p className="mt-4 text-sm text-sky-700">
-                        Extracting advertising intelligence…
-                      </p>
-                    ) : (
-                      <p className="mt-4 text-sm text-slate-500">
-                        Not analyzed for advertising yet.
-                      </p>
-                    )}
+                    <p className="mt-4 text-sm text-slate-600">
+                      {s.offerings} products &amp; services · {s.opportunities}{" "}
+                      opportunities
+                    </p>
                   </Link>
                 );
               })}

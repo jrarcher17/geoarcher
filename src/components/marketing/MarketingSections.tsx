@@ -35,6 +35,7 @@ export function MarketingFooter() {
             title: "Company",
             links: [
               { href: "/login", label: "Sign in" },
+              { href: "/strategy", label: "Request a strategy" },
               { href: "/terms", label: "Terms of Service" },
               { href: "/privacy", label: "Privacy Policy" },
             ],
@@ -76,22 +77,30 @@ export function FinalCta({
     <section className="px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-6xl overflow-hidden rounded-3xl bg-slate-900 px-8 py-16 text-center sm:px-16">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-300">
-          Get started
+          Get more customers from AI &amp; advertising
         </p>
         <h2 className="mt-3 text-2xl font-bold text-white sm:text-4xl">
-          How can this website win more customers?
+          Want GEO Archer to build your advertising strategy?
         </h2>
         <p className="mx-auto mt-3 max-w-xl text-slate-400">
-          Paste a URL. We scan it, identify what to advertise, and prepare
-          campaigns you can review. Nothing publishes until you say so.
+          Request a strategy from your company and website, or start free and
+          generate the ads yourself. Nothing publishes until you say so.
         </p>
-        <Link
-          href={href}
-          className="mt-8 inline-flex items-center gap-2 rounded-full bg-violet-500 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/30 transition hover:bg-violet-400"
-        >
-          {label}
-          <ArrowRight className="h-4 w-4" />
-        </Link>
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <Link
+            href="/strategy"
+            className="inline-flex items-center gap-2 rounded-full bg-violet-500 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/30 transition hover:bg-violet-400"
+          >
+            Request a strategy
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+          <Link
+            href={href}
+            className="inline-flex items-center rounded-full border border-white/20 px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-white/10"
+          >
+            {label}
+          </Link>
+        </div>
       </div>
     </section>
   );

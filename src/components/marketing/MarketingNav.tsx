@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/#how", label: "How it works" },
   { href: "/#product", label: "Product" },
   { href: "/#pricing", label: "Pricing" },
+  { href: "/strategy", label: "Strategy" },
 ];
 
 export function MarketingNav({

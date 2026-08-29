@@ -37,6 +37,9 @@ yarn-error.log*
 # generated prisma client (run `pnpm exec prisma generate`)
 /src/generated/
 
+# AI concept images (Phase 10 Meta studio)
+/public/generated/
+
 # vercel
 .vercel
 

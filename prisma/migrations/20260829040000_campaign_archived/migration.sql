@@ -1,0 +1,1 @@
+ALTER TYPE "AdCampaignStatus" ADD VALUE 'ARCHIVED';

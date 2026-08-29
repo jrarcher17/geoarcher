@@ -28,7 +28,9 @@ export async function publishCampaign(userId: string, campaignId: string) {
     throw new Error("Campaign not found.");
   }
   if (campaign.platform === "AI_CHAT") {
-    throw new Error("AI / ChatGPT advertising is not available yet.");
+    throw new Error(
+      "ChatGPT ads can be prepared here. There is no official ads API, so they cannot be published."
+    );
   }
   if (campaign.status !== "READY") {
     throw new Error("Only Ready campaigns can be published.");

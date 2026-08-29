@@ -12,7 +12,7 @@ export async function GET(
   const access = await requireSiteAccess(siteId);
   if (access instanceof NextResponse) return access;
 
-  const [site, intelligence, offerings, images, opportunities, hasScan] =
+  const [site, intelligence, offerings, images, opportunities, competitors, hasScan] =
     await Promise.all([
       prisma.site.findUnique({ where: { id: siteId }, select: { url: true } }),
       prisma.siteIntelligence.findUnique({ where: { siteId } }),
@@ -29,6 +29,12 @@ export async function GET(
         where: { siteId, dismissed: false },
         orderBy: [{ level: "asc" }, { createdAt: "asc" }],
         include: { offering: { select: { id: true, name: true, kind: true } } },
+      }),
+      prisma.adCompetitor.findMany({
+        where: { siteId, dismissed: false },
+        orderBy: [{ source: "asc" }, { name: "asc" }],
+        take: 8,
+        include: { offering: { select: { id: true, name: true } } },
       }),
       prisma.scan.findFirst({
         where: { siteId, status: "COMPLETE", benchmarkScanId: null },
@@ -68,8 +74,17 @@ export async function GET(
       level: o.level,
       rationale: o.rationale,
       channels: o.channels,
+      source: o.source,
       recommendedCampaign: o.recommendedCampaign ?? null,
+      details: o.details ?? null,
       offering: o.offering,
+    })),
+    competitors: competitors.map((c) => ({
+      id: c.id,
+      name: c.name,
+      source: c.source,
+      category: c.category,
+      offering: c.offering,
     })),
   });
 }

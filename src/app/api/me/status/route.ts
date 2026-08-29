@@ -16,7 +16,7 @@ export async function GET() {
   });
   const siteIds = links.map((l) => l.siteId);
 
-  const [scannedSites, scanning, offerings, opportunities, campaigns, activeCampaigns] =
+  const [scannedSites, scanning, offerings, opportunities, competitors, libraryAds, analyzedAds, campaigns, activeCampaigns] =
     await Promise.all([
       prisma.scan.groupBy({
         by: ["siteId"],
@@ -32,6 +32,13 @@ export async function GET() {
       prisma.adOpportunity.count({
         where: { siteId: { in: siteIds }, dismissed: false },
       }),
+      prisma.adCompetitor.count({
+        where: { siteId: { in: siteIds }, dismissed: false },
+      }),
+      prisma.libraryAd.count({ where: { siteId: { in: siteIds } } }),
+      prisma.libraryAd.count({
+        where: { siteId: { in: siteIds }, analyzedAt: { not: null } },
+      }),
       prisma.adCampaign.count({ where: { userId } }),
       prisma.adCampaign.count({ where: { userId, status: "ACTIVE" } }),
     ]);
@@ -42,6 +49,9 @@ export async function GET() {
     sites: scannedSites.length,
     offerings,
     opportunities,
+    competitors,
+    libraryAds,
+    analyzedAds,
     campaigns,
     activeCampaigns,
   });

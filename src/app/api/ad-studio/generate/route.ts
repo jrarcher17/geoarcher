@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdAccess } from "@/lib/advertising/api-guard";
-import { generateAdAssets, type CampaignBrief } from "@/lib/advertising/generate";
+import {
+  AD_TONES,
+  generateAdAssets,
+  type AdTone,
+  type CampaignBrief,
+} from "@/lib/advertising/generate";
 import { userOwnsSite } from "@/lib/user-plan";
 
 export const maxDuration = 120;
@@ -9,8 +14,8 @@ export const maxDuration = 120;
 const GOALS = ["LEADS", "SALES", "TRAFFIC", "PHONE_CALLS", "AWARENESS"] as const;
 
 /**
- * Generate grounded Google + Meta ad assets for an offering. Stateless —
- * nothing is saved until the user approves on the review screen.
+ * Generate original Google, Meta, and ChatGPT-style assets.
+ * Stateless — nothing is saved until the user approves on the review screen.
  */
 export async function POST(request: Request) {
   const access = await requireAdAccess();
@@ -29,6 +34,10 @@ export async function POST(request: Request) {
     );
   }
 
+  const tone: AdTone = (AD_TONES as readonly string[]).includes(body?.tone)
+    ? (body.tone as AdTone)
+    : "Professional";
+
   const offering = await prisma.offering.findUnique({
     where: { id: offeringId },
     select: { siteId: true },
@@ -38,16 +47,23 @@ export async function POST(request: Request) {
   }
 
   try {
-    const assets = await generateAdAssets(offeringId, {
+    const result = await generateAdAssets(offeringId, {
       name,
       goal,
+      objectiveNote:
+        typeof body?.objectiveNote === "string" ? body.objectiveNote.trim() : "",
       landingPage,
       budgetDailyCents:
         typeof body?.budgetDailyCents === "number" ? body.budgetDailyCents : null,
       location: typeof body?.location === "string" ? body.location.trim() : "",
       audience: typeof body?.audience === "string" ? body.audience.trim() : "",
+      tone,
+      offer: typeof body?.offer === "string" ? body.offer.trim() : "",
+      angle: typeof body?.angle === "string" ? body.angle.trim() : "",
+      opportunityId:
+        typeof body?.opportunityId === "string" ? body.opportunityId : undefined,
     });
-    return NextResponse.json({ assets });
+    return NextResponse.json(result);
   } catch (err) {
     console.error("[ad-studio] generation failed:", err);
     return NextResponse.json(

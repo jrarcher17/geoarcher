@@ -1,4 +1,4 @@
-/** App routes that require a signed-in user (see middleware.ts). */
+/** App routes that require a signed-in user (see proxy.ts). */
 export const PROTECTED_PATH_PREFIXES = [
   "/dashboard",
   "/sites",
@@ -23,6 +23,10 @@ export const PROTECTED_PATH_PREFIXES = [
   "/analytics",
   "/assistant",
   "/integrations",
+  "/products",
+  "/ad-intelligence",
+  "/creative-studio",
+  "/ads",
 ] as const;
 
 export function isProtectedAppPath(pathname: string): boolean {
@@ -48,6 +52,12 @@ export function isProtectedAppPath(pathname: string): boolean {
   if (pathname === "/analytics") return true;
   if (pathname === "/assistant") return true;
   if (pathname === "/integrations") return true;
+  if (pathname === "/products" || pathname.startsWith("/products/")) return true;
+  if (pathname === "/ad-intelligence" || pathname.startsWith("/ad-intelligence/"))
+    return true;
+  if (pathname === "/creative-studio" || pathname.startsWith("/creative-studio/"))
+    return true;
+  if (pathname === "/ads" || pathname.startsWith("/ads/")) return true;
   return false;
 }
 
