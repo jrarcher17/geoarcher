@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { FadeIn } from "@/components/cards/FadeIn";
@@ -46,6 +47,7 @@ interface Intelligence {
   status: "RUNNING" | "COMPLETE" | "FAILED" | null;
   error: string | null;
   updatedAt: string | null;
+  scanId: string | null;
   hasCompletedScan: boolean;
   business: Business | null;
   marketing: Marketing | null;
@@ -67,12 +69,15 @@ export default function SiteIntelligencePage({
   params: Promise<{ siteId: string }>;
 }) {
   const { siteId } = use(params);
+  const router = useRouter();
   const { data: insights } = useInsights();
   const [intel, setIntel] = useState<Intelligence | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
+  const [rescanning, setRescanning] = useState(false);
   const [showAllImages, setShowAllImages] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoStarted = useRef(false);
 
   const site = insights?.sites.find((s) => s.siteId === siteId);
 
@@ -112,7 +117,7 @@ export default function SiteIntelligencePage({
     };
   }, [intel?.status, load]);
 
-  async function runAnalysis() {
+  const runAnalysis = useCallback(async () => {
     setStarting(true);
     setError(null);
     try {
@@ -128,6 +133,36 @@ export default function SiteIntelligencePage({
     } finally {
       setStarting(false);
     }
+  }, [siteId, load]);
+
+  // Older scans finished before advertising was part of the crawl. Start it
+  // automatically instead of asking for a click.
+  useEffect(() => {
+    if (!intel || autoStarted.current) return;
+    if (intel.hasCompletedScan && intel.status === null) {
+      autoStarted.current = true;
+      void runAnalysis();
+    }
+  }, [intel, runAnalysis]);
+
+  async function scanAgain() {
+    const scanId = intel?.scanId ?? site?.latestScan?.id;
+    if (!scanId || rescanning) return;
+    setRescanning(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/scans/${scanId}/rescan`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 409 && data.scanId) {
+        router.push(`/scan/${data.scanId}`);
+        return;
+      }
+      if (!res.ok) throw new Error(data.error ?? "Could not start a new scan.");
+      router.push(`/scan/${data.scanId}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not start a new scan.");
+      setRescanning(false);
+    }
   }
 
   const business = intel?.business;
@@ -135,6 +170,10 @@ export default function SiteIntelligencePage({
   const host = site ? hostOf(site.url) : "";
   const title = business?.companyName || host || "Site Intelligence";
   const running = intel?.status === "RUNNING";
+  const awaitingAnalysis =
+    starting ||
+    running ||
+    Boolean(intel?.hasCompletedScan && intel.status === null);
   const visibleImages = showAllImages ? intel?.images : intel?.images.slice(0, 12);
 
   return (
@@ -142,20 +181,29 @@ export default function SiteIntelligencePage({
       title={title}
       subtitle={site?.url}
       breadcrumb="Site Intelligence"
-      live={running}
+      live={awaitingAnalysis}
       actions={
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => void runAnalysis()}
-            disabled={starting || running || !intel?.hasCompletedScan}
+            onClick={() => void scanAgain()}
+            disabled={
+              rescanning ||
+              awaitingAnalysis ||
+              !(intel?.scanId ?? site?.latestScan?.id)
+            }
             className="btn-secondary text-sm disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {running ? "Analyzing…" : "Re-run advertising analysis"}
+            {rescanning ? "Starting…" : "Scan again"}
           </button>
-          <Link href={`/sites/${siteId}`} className="btn-secondary text-sm">
-            Scan details
-          </Link>
+          <button
+            type="button"
+            onClick={() => void runAnalysis()}
+            disabled={awaitingAnalysis || !intel?.hasCompletedScan}
+            className="btn-secondary text-sm disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {awaitingAnalysis ? "Analyzing…" : "Re-run advertising analysis"}
+          </button>
         </div>
       }
     >
@@ -174,32 +222,12 @@ export default function SiteIntelligencePage({
             Scan this site to build its advertising intelligence
           </h2>
           <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">
-            GEO Archer crawls the website, understands the business, and identifies
-            the products, services and images you can advertise.
+            Add the URL from Sites. The scan crawls pages and builds advertising
+            intelligence in one pass.
           </p>
-          <Link href={`/sites/${siteId}`} className="btn-primary mt-6 inline-block">
-            Go to scan
+          <Link href="/sites" className="btn-primary mt-6 inline-block">
+            Go to Sites
           </Link>
-        </div>
-      )}
-
-      {intel && intel.hasCompletedScan && intel.status === null && (
-        <div className="border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
-          <h2 className="text-lg font-semibold text-slate-900">
-            Ready to analyze for advertising
-          </h2>
-          <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">
-            The scan is complete. Run the advertising analysis to extract your
-            business profile, products, services, images and campaign opportunities.
-          </p>
-          <button
-            type="button"
-            onClick={() => void runAnalysis()}
-            disabled={starting}
-            className="btn-primary mt-6 inline-block disabled:opacity-60"
-          >
-            {starting ? "Starting…" : "Run advertising analysis"}
-          </button>
         </div>
       )}
 
@@ -210,7 +238,7 @@ export default function SiteIntelligencePage({
         </div>
       )}
 
-      {running && !business && (
+      {awaitingAnalysis && !business && (
         <div className="border border-slate-200 bg-white px-6 py-12 text-center">
           <h2 className="text-lg font-semibold text-slate-900">
             Reading your website…

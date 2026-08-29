@@ -27,8 +27,8 @@ export async function notifyScanComplete(scanId: string): Promise<void> {
   await sendInternalEmail({
     to: owner.user.email,
     subject: ok
-      ? `GEO scan finished for ${scan.site.url}`
-      : `GEO scan failed for ${scan.site.url}`,
+      ? `Scan finished for ${scan.site.url}`
+      : `Scan failed for ${scan.site.url}`,
     body: [
       ok
         ? `The scan for ${scan.site.url} is done.`

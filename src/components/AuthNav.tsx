@@ -17,10 +17,6 @@ export function AuthNav() {
     pathname === "/signup" ||
     pathname === "/terms" ||
     pathname === "/privacy" ||
-    pathname.startsWith("/guides") ||
-    pathname === "/free-seo-geo-audit" ||
-    pathname === "/ai-search-optimization" ||
-    pathname === "/seo-autopilot" ||
     pathname.startsWith("/r/") ||
     pathname.startsWith("/scan/") ||
     isProtectedAppPath(pathname)

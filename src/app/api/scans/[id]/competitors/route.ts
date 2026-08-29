@@ -207,7 +207,6 @@ export async function POST(
     await startScanPipeline({
       scanId: scan.id,
       siteId: site.id,
-      withSeoAudit: false, // competitor sites never get opportunities/plans
     });
   }
 

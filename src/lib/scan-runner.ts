@@ -67,18 +67,31 @@ export async function runScan(scanId: string): Promise<void> {
       data: { status: "ANALYZING" },
     });
 
-    const analysis = await analyzeSite(scan.site.url, pages);
+    if (scan.benchmarkScanId) {
+      const analysis = await analyzeSite(scan.site.url, pages);
+      await prisma.analysis.create({
+        data: {
+          scanId,
+          semanticMap: asJson(analysis.semanticMap),
+          understanding: asJson(analysis.understanding),
+          geoScore: asJson(analysis.geoScore),
+          contentGaps: asJson(analysis.contentGaps),
+          recommendations: asJson(analysis.recommendations),
+        },
+      });
+    } else {
+      const { runAdvertisingIntelligence } = await import(
+        "@/lib/advertising/intelligence"
+      );
+      const result = await runAdvertisingIntelligence(scan.siteId, scanId);
+      if (!result.ok) {
+        console.error(
+          `[scan ${scanId}] advertising intelligence:`,
+          result.error
+        );
+      }
+    }
 
-    await prisma.analysis.create({
-      data: {
-        scanId,
-        semanticMap: asJson(analysis.semanticMap),
-        understanding: asJson(analysis.understanding),
-        geoScore: asJson(analysis.geoScore),
-        contentGaps: asJson(analysis.contentGaps),
-        recommendations: asJson(analysis.recommendations),
-      },
-    });
     await prisma.scan.update({
       where: { id: scanId },
       data: { status: "COMPLETE", finishedAt: new Date() },

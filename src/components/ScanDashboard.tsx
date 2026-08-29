@@ -16,13 +16,14 @@ import type { ScanResult } from "@/lib/types";
 const STEPS = [
   { key: "QUEUED", label: "Queued" },
   { key: "CRAWLING", label: "Crawling pages" },
-  { key: "ANALYZING", label: "AI analysis" },
-  { key: "COMPLETE", label: "Report ready" },
+  { key: "ANALYZING", label: "Advertising analysis" },
+  { key: "COMPLETE", label: "Ready" },
 ] as const;
 
 /**
- * Scan progress view. Regular scans hand off to Site Intelligence when
- * complete; competitor (benchmark) scans render a compact summary here.
+ * Scan progress view. Regular scans crawl, then run advertising analysis,
+ * then hand off to Site Intelligence. Competitor (benchmark) scans still
+ * render a compact GEO summary here.
  */
 export function ScanDashboard({ scanId }: { scanId: string }) {
   const router = useRouter();
@@ -109,7 +110,7 @@ export function ScanDashboard({ scanId }: { scanId: string }) {
       subtitle={
         scan?.benchmarkScanId
           ? "Competitor benchmark scan"
-          : "Crawling and analyzing — you'll be redirected to Site Intelligence when it's ready."
+          : "Crawling the site, then building advertising intelligence. You'll land on the results when it's ready."
       }
       live={isRunning}
     >
@@ -122,7 +123,7 @@ export function ScanDashboard({ scanId }: { scanId: string }) {
                 ? "Queued…"
                 : scan.status === "CRAWLING"
                   ? `Crawling — ${scan.pagesCrawled} page${scan.pagesCrawled === 1 ? "" : "s"} so far`
-                  : "Running AI analysis"}
+                  : "Building advertising intelligence"}
             </p>
             <p className="mx-auto mt-2 max-w-sm text-sm text-slate-500">
               {scan?.status === "CRAWLING" && scan.pagesCrawled === 0

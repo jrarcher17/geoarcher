@@ -110,10 +110,6 @@ export default function ScansPage() {
                         <p className="mt-1 text-xs text-slate-400">
                           {new Date(s.createdAt).toLocaleString()} ·{" "}
                           {s.pagesCrawled} pages
-                          {s.geoOverall != null ? ` · GEO ${s.geoOverall}` : ""}
-                          {s.understanding != null
-                            ? ` · Understanding ${s.understanding}`
-                            : ""}
                         </p>
                         {s.error && (
                           <p className="mt-1 truncate text-xs text-red-500">

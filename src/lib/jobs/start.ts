@@ -5,26 +5,8 @@ import { runLeadCampaignProgress } from "@/lib/leads/campaign-runner";
 import { runScan } from "@/lib/scan-runner";
 import { runSeoAudit } from "@/lib/seo/audit-runner";
 
-async function runScanPipelineInline(
-  scanId: string,
-  siteId: string,
-  withSeoAudit: boolean
-): Promise<void> {
+async function runScanPipelineInline(scanId: string): Promise<void> {
   await runScan(scanId);
-  const scan = await prisma.scan.findUnique({
-    where: { id: scanId },
-    select: { status: true, pagesCrawled: true, benchmarkScanId: true },
-  });
-  const scanOk = scan?.status === "COMPLETE" && (scan.pagesCrawled ?? 0) > 0;
-  if (scanOk && !scan.benchmarkScanId) {
-    const { runAdvertisingIntelligence } = await import(
-      "@/lib/advertising/intelligence"
-    );
-    await runAdvertisingIntelligence(siteId, scanId);
-  }
-  if (withSeoAudit && scanOk) {
-    await runSeoAuditInline(siteId, scanId);
-  }
 }
 
 async function runSeoAuditInline(siteId: string, scanId: string): Promise<void> {
@@ -58,18 +40,17 @@ async function sendOrInline(
 export async function startScanPipeline(options: {
   scanId: string;
   siteId: string;
-  withSeoAudit: boolean;
 }): Promise<"inngest" | "inline"> {
-  const { scanId, siteId, withSeoAudit } = options;
+  const { scanId, siteId } = options;
   try {
     await inngest.send({
       name: "scan/requested",
-      data: { scanId, siteId, withSeoAudit },
+      data: { scanId, siteId },
     });
     return "inngest";
   } catch (err) {
     console.error("[inngest] scan send failed — running inline:", err);
-    after(() => runScanPipelineInline(scanId, siteId, withSeoAudit));
+    after(() => runScanPipelineInline(scanId));
     return "inline";
   }
 }

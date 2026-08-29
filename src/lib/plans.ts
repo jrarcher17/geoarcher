@@ -42,7 +42,7 @@ const FREE_PLAN: PlanLimits = {
   scansPerMonth: 4,
   prospectsPerMonth: 0,
   visibilityFeatures:
-    "Multi-assistant visibility scores (ChatGPT, Claude, Gemini, Perplexity, Copilot)",
+    "Site intelligence, offerings, images, and advertising opportunities",
 };
 
 const PRO_PLAN_BASE: Omit<PlanLimits, "priceLabel"> = {
@@ -54,7 +54,7 @@ const PRO_PLAN_BASE: Omit<PlanLimits, "priceLabel"> = {
   scansPerMonth: 200,
   prospectsPerMonth: 0,
   visibilityFeatures:
-    "Full visibility scoring, deeper crawls + continuous SEO Autopilot",
+    "Deeper crawls, Ad Studio, campaigns, and the AI assistant",
 };
 
 const PRO_PLUS_PLAN_BASE: Omit<PlanLimits, "priceLabel" | "prospectsPerMonth"> =
@@ -66,7 +66,7 @@ const PRO_PLUS_PLAN_BASE: Omit<PlanLimits, "priceLabel" | "prospectsPerMonth"> =
     competitorMaxPages: 200,
     scansPerMonth: 400,
     visibilityFeatures:
-      "Everything in Pro + advertising lead generation: find businesses that need ads, score the opportunity, and create campaigns",
+      "Everything in Pro + advertising lead generation",
   };
 
 export function getPlans(): Record<PlanId, PlanLimits> {

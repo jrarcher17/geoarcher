@@ -1,5 +1,4 @@
-import { Suspense } from "react";
-import { SiteWorkspace } from "@/components/site/SiteWorkspace";
+import { redirect } from "next/navigation";
 
 export default async function SitePage({
   params,
@@ -7,9 +6,5 @@ export default async function SitePage({
   params: Promise<{ siteId: string }>;
 }) {
   const { siteId } = await params;
-  return (
-    <Suspense>
-      <SiteWorkspace siteId={siteId} />
-    </Suspense>
-  );
+  redirect(`/sites/${siteId}/intelligence`);
 }

@@ -5,11 +5,7 @@ import {
   type IntelligenceFacts,
   type SiteCheckFacts,
 } from "@/lib/leads/ad-opportunity";
-import {
-  assertCanAddSite,
-  assertCanStartScan,
-  getPlanForUser,
-} from "@/lib/user-plan";
+import { assertCanAddSite, assertCanStartScan } from "@/lib/user-plan";
 
 export function normalizeProspectUrl(input: string): string | null {
   const raw = input.trim();
@@ -207,11 +203,9 @@ export async function importProspectAsSite(
     const scan = await prisma.scan.create({ data: { siteId: site.id } });
     scanId = scan.id;
     startedScan = true;
-    const plan = await getPlanForUser(userId);
     await startScanPipeline({
       scanId: scan.id,
       siteId: site.id,
-      withSeoAudit: plan !== "free",
     });
   }
 

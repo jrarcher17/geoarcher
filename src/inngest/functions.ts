@@ -21,50 +21,12 @@ export const scanPipeline = inngest.createFunction(
     triggers: { event: "scan/requested" },
   },
   async ({ event, step }) => {
-    const { scanId, siteId, withSeoAudit } = event.data as {
+    const { scanId } = event.data as {
       scanId: string;
       siteId: string;
-      withSeoAudit: boolean;
     };
 
     await step.run("crawl-and-analyze", () => runScan(scanId));
-
-    const scan = await step.run("check-scan", () =>
-      prisma.scan.findUnique({
-        where: { id: scanId },
-        select: { status: true, pagesCrawled: true, benchmarkScanId: true },
-      })
-    );
-    const scanOk = scan?.status === "COMPLETE" && (scan.pagesCrawled ?? 0) > 0;
-
-    // Advertising intelligence: extract business profile, offerings, images
-    // and ad opportunities from the fresh crawl (skip competitor benchmarks).
-    if (scanOk && !scan.benchmarkScanId) {
-      await step.run("advertising-intelligence", () =>
-        runAdvertisingIntelligence(siteId, scanId)
-      );
-    }
-
-    if (withSeoAudit) {
-      if (scanOk) {
-        await step.run("seo-audit", async () => {
-          try {
-            await runSeoAudit(siteId, scanId);
-          } catch (err) {
-            await prisma.seoAudit.updateMany({
-              where: { scanId, status: "RUNNING" },
-              data: {
-                status: "FAILED",
-                error: err instanceof Error ? err.message : "SEO audit failed.",
-                finishedAt: new Date(),
-              },
-            });
-            throw err;
-          }
-        });
-      }
-    }
-
     await step.run("email", () => notifyScanComplete(scanId));
   }
 );

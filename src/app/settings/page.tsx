@@ -74,14 +74,7 @@ function PlanFeatureList({ plan }: { plan: PlanLimits }) {
       <li className="flex items-start gap-2">
         <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
         <span>
-          <strong className="font-medium text-slate-800">Competitor crawl budget:</strong>{" "}
-          {plan.competitorMaxPages}
-        </span>
-      </li>
-      <li className="flex items-start gap-2">
-        <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
-        <span>
-          <strong className="font-medium text-slate-800">AI visibility:</strong>{" "}
+          <strong className="font-medium text-slate-800">Advertising intelligence:</strong>{" "}
           {plan.visibilityFeatures}
         </span>
       </li>
@@ -396,20 +389,16 @@ function SettingsPageInner() {
               <CardHeader>
                 <CardTitle>Integrations</CardTitle>
                 <CardDescription>
-                  Connect the systems GEO Archer already uses. Items marked
-                  coming soon are not live.
+                  Connect the systems GEO Archer uses for advertising.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 {[
-                  ["OpenAI", "Powers analysis, visibility modeling, and drafts.", "Connected when OPENAI_API_KEY is set on the server."],
+                  ["OpenAI", "Powers site intelligence, ad copy, and the assistant.", "Connected when OPENAI_API_KEY is set on the server."],
                   ["Resend", "Sends advertising outreach.", "Connected when RESEND_API_KEY is set."],
                   ["Apollo", "Finds businesses that need advertising.", "Connected when APOLLO_API_KEY is set."],
                   ["Stripe", "Billing for Pro and Pro Plus.", "Connected when Stripe keys are set."],
-                  ["DataForSEO", "Live Google rankings.", "Connect in Rankings after credentials are set."],
-                  ["Google Search Console", "Traffic and queries.", "Coming soon — not connected."],
-                  ["Google Analytics", "Sessions and conversions.", "Coming soon — not connected."],
-                  ["WordPress / Shopify / Webflow", "CMS publish for approved content.", "Coming soon — not connected."],
+                  ["Google Ads / Meta", "Publish approved campaigns.", "Connect from Integrations."],
                 ].map(([name, why, state]) => (
                   <div key={name} className="border border-slate-100 px-4 py-3">
                     <p className="font-medium text-slate-900">{name}</p>

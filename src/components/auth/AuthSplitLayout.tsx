@@ -4,16 +4,16 @@ import { BrandWordmark } from "@/components/BrandWordmark";
 
 const PITCH = [
   {
-    title: "GEO + AI visibility scores",
-    detail: "See how ChatGPT, Claude, Gemini, and Perplexity understand your site.",
+    title: "Scan the business, not just the URL",
+    detail: "GEO Archer reads the site and identifies products, services, and images you can advertise.",
   },
   {
-    title: "SEO Autopilot",
-    detail: "Continuous audits, keyword rankings, and change detection on a loop.",
+    title: "Generate Google and Meta ads",
+    detail: "Copy is grounded in what the website already says. You review before anything publishes.",
   },
   {
-    title: "Fix what assistants cannot cite",
-    detail: "Prioritized recommendations and structured-data playbooks from the crawl.",
+    title: "Approve every change",
+    detail: "The AI assistant can recommend campaigns. You decide what goes live.",
   },
 ] as const;
 
@@ -36,11 +36,11 @@ export function AuthSplitLayout({ children }: { children: React.ReactNode }) {
 
           <div className="flex flex-1 flex-col justify-center py-16">
             <h2 className="text-3xl font-bold leading-tight tracking-tight xl:text-[2.15rem]">
-              Become the answer in AI search.
+              Turn a website into advertising.
             </h2>
             <p className="mt-4 max-w-sm text-[15px] leading-relaxed text-zinc-400">
-              Crawl your site, score GEO, and ship the fixes that get you cited
-              — without a separate SEO stack.
+              Scan a site, understand the business, and generate campaigns from
+              what it already says.
             </p>
             <ul className="mt-10 space-y-5">
               {PITCH.map((item) => (
