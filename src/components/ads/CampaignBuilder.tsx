@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SectionLabel } from "@/components/os/primitives";
+import { rankImagesForOffering } from "@/lib/advertising/image-pick";
 import {
   AiAdPreview,
   GoogleAdPreview,
@@ -26,6 +27,7 @@ export interface BuilderImage {
   id: string;
   url: string;
   alt: string | null;
+  pageUrl?: string | null;
   offeringId?: string | null;
 }
 
@@ -153,6 +155,142 @@ const inputClass =
 const labelClass =
   "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400";
 
+function CreativePicker({
+  images,
+  visible,
+  hiddenCount,
+  query,
+  onQuery,
+  showAll,
+  onShowAll,
+  creativeId,
+  onSelect,
+  onAddUrl,
+  onUpload,
+  adding,
+  onConcept,
+  conceptAlt,
+  conceptBusy,
+}: {
+  images: BuilderImage[];
+  visible: BuilderImage[];
+  hiddenCount: number;
+  query: string;
+  onQuery: (value: string) => void;
+  showAll: boolean;
+  onShowAll: () => void;
+  creativeId: string | null;
+  onSelect: (id: string) => void;
+  onAddUrl: (url: string) => Promise<void>;
+  onUpload: (file: File) => Promise<void>;
+  adding: boolean;
+  onConcept: () => void;
+  conceptAlt: string | null;
+  conceptBusy: boolean;
+}) {
+  const [url, setUrl] = useState("");
+
+  return (
+    <div>
+      <label className={labelClass}>Ad creative</label>
+      <input
+        className={`${inputClass} mb-2`}
+        placeholder="Search site photos…"
+        value={query}
+        onChange={(e) => onQuery(e.target.value)}
+      />
+      {visible.length === 0 ? (
+        <p className="text-sm text-slate-500">
+          {images.length === 0
+            ? "No photos from the scan. Paste a product image URL or upload one."
+            : "No photos match that search."}
+        </p>
+      ) : (
+        <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+          {visible.map((img) => (
+            <button
+              key={img.id}
+              type="button"
+              onClick={() => onSelect(img.id)}
+              className={cn(
+                "border-2 transition",
+                creativeId === img.id
+                  ? "border-slate-900"
+                  : "border-transparent hover:border-slate-300"
+              )}
+            >
+              <Image
+                src={img.url}
+                alt={img.alt ?? ""}
+                width={120}
+                height={80}
+                unoptimized
+                className="h-16 w-full bg-slate-50 object-cover"
+              />
+            </button>
+          ))}
+        </div>
+      )}
+      {hiddenCount > 0 && !showAll && (
+        <button
+          type="button"
+          className="mt-2 text-xs font-medium text-slate-600 underline underline-offset-2"
+          onClick={onShowAll}
+        >
+          Show {hiddenCount} more site photos
+        </button>
+      )}
+      <p className="mt-2 text-xs text-slate-400">
+        Photos from your website, ranked for this product. If the right one is
+        missing, add it — we do not invent product shots.
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <input
+          className={`${inputClass} min-w-[12rem] flex-1`}
+          placeholder="https://… product image URL"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+        />
+        <button
+          type="button"
+          className="btn-secondary text-sm disabled:opacity-60"
+          disabled={adding || !url.trim()}
+          onClick={() => {
+            const next = url.trim();
+            if (!next) return;
+            void onAddUrl(next).then(() => setUrl(""));
+          }}
+        >
+          Use URL
+        </button>
+        <label className="btn-secondary cursor-pointer text-sm">
+          Upload
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className="sr-only"
+            disabled={adding}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) void onUpload(file);
+            }}
+          />
+        </label>
+        <button
+          type="button"
+          className="btn-secondary text-sm disabled:opacity-60"
+          disabled={conceptBusy}
+          onClick={onConcept}
+        >
+          {conceptBusy ? "Working…" : "Generate concept image"}
+        </button>
+      </div>
+      {conceptAlt && <p className="mt-2 text-xs text-slate-500">{conceptAlt}</p>}
+    </div>
+  );
+}
+
 function ListEditor({
   label,
   values,
@@ -235,14 +373,29 @@ export function CampaignBuilder({
   const [busy, setBusy] = useState<"generate" | "save" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [upgrade, setUpgrade] = useState(false);
+  const [library, setLibrary] = useState<BuilderImage[]>(images);
+  const [imageQuery, setImageQuery] = useState("");
+  const [showAllImages, setShowAllImages] = useState(false);
+  const [addingImage, setAddingImage] = useState(false);
 
-  // Offering-specific images first, then the rest of the site's library.
-  const orderedImages = useMemo(() => {
-    const own = images.filter((i) => i.offeringId === offering.id);
-    const rest = images.filter((i) => i.offeringId !== offering.id);
-    return [...own, ...rest].slice(0, 24);
-  }, [images, offering.id]);
-  const creative = orderedImages.find((i) => i.id === creativeId) ?? null;
+  useEffect(() => {
+    setLibrary(images);
+  }, [images]);
+
+  const rankedImages = useMemo(
+    () => rankImagesForOffering(library, offering),
+    [library, offering]
+  );
+  const filteredImages = useMemo(() => {
+    const q = imageQuery.trim().toLowerCase();
+    if (!q) return rankedImages;
+    return rankedImages.filter((img) =>
+      `${img.alt ?? ""} ${img.url} ${img.pageUrl ?? ""}`.toLowerCase().includes(q)
+    );
+  }, [rankedImages, imageQuery]);
+  const visibleImages = showAllImages ? filteredImages : filteredImages.slice(0, 36);
+  const hiddenImageCount = Math.max(0, filteredImages.length - visibleImages.length);
+  const creative = rankedImages.find((i) => i.id === creativeId) ?? null;
   const previewImage = conceptImage?.url ?? creative?.url ?? null;
   const imageLabel = conceptImage?.alt ?? null;
 
@@ -285,8 +438,8 @@ export function CampaignBuilder({
       if (json.assets.audienceRecommendation && !audience) {
         setAudience(json.assets.audienceRecommendation);
       }
-      if (!creativeId && orderedImages.length > 0) {
-        setCreativeId(orderedImages[0].id);
+      if (!creativeId && rankedImages.length > 0) {
+        setCreativeId(rankedImages[0].id);
       }
       setPreviewTab(useGoogle ? "google" : useMeta ? "meta" : "ai");
       setStep("review");
@@ -469,6 +622,50 @@ export function CampaignBuilder({
       setError(err instanceof Error ? err.message : "Meta generation failed.");
     } finally {
       setBusy(null);
+    }
+  }
+
+  async function addLibraryImage(row: BuilderImage) {
+    setLibrary((prev) => (prev.some((i) => i.id === row.id) ? prev : [row, ...prev]));
+    setConceptImage(null);
+    setCreativeId(row.id);
+  }
+
+  async function handleAddImageUrl(url: string) {
+    setAddingImage(true);
+    setError(null);
+    try {
+      const res = await callApi("/api/me/images", {
+        siteId,
+        offeringId: offering.id,
+        url,
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Could not add that image.");
+      await addLibraryImage(json);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not add that image.");
+    } finally {
+      setAddingImage(false);
+    }
+  }
+
+  async function handleUploadImage(file: File) {
+    setAddingImage(true);
+    setError(null);
+    try {
+      const form = new FormData();
+      form.set("siteId", siteId);
+      form.set("offeringId", offering.id);
+      form.set("file", file);
+      const res = await fetch("/api/me/images", { method: "POST", body: form });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Could not upload that image.");
+      await addLibraryImage(json);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not upload that image.");
+    } finally {
+      setAddingImage(false);
     }
   }
 
@@ -1080,53 +1277,26 @@ export function CampaignBuilder({
                     />
                   </div>
 
-                  <div>
-                    <label className={labelClass}>Ad creative</label>
-                    <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
-                      {orderedImages.map((img) => (
-                        <button
-                          key={img.id}
-                          type="button"
-                          onClick={() => {
-                            setConceptImage(null);
-                            setCreativeId(creativeId === img.id ? null : img.id);
-                          }}
-                          className={cn(
-                            "border-2 transition",
-                            creativeId === img.id
-                              ? "border-slate-900"
-                              : "border-transparent hover:border-slate-300"
-                          )}
-                        >
-                          <Image
-                            src={img.url}
-                            alt={img.alt ?? ""}
-                            width={120}
-                            height={80}
-                            unoptimized
-                            className="h-16 w-full bg-slate-50 object-cover"
-                          />
-                        </button>
-                      ))}
-                    </div>
-                    <p className="mt-1 text-xs text-slate-400">
-                      Images discovered on your website. Click to select. Concept
-                      images are labeled as AI-generated — not site photos.
-                    </p>
-                    <button
-                      type="button"
-                      className="btn-secondary mt-3 text-sm disabled:opacity-60"
-                      disabled={busy === "generate"}
-                      onClick={() => void handleConceptImage()}
-                    >
-                      {busy === "generate" && !assets
-                        ? "Working…"
-                        : "Generate concept image"}
-                    </button>
-                    {conceptImage && (
-                      <p className="mt-2 text-xs text-slate-500">{conceptImage.alt}</p>
-                    )}
-                  </div>
+                  <CreativePicker
+                    images={rankedImages}
+                    visible={visibleImages}
+                    hiddenCount={hiddenImageCount}
+                    query={imageQuery}
+                    onQuery={setImageQuery}
+                    showAll={showAllImages}
+                    onShowAll={() => setShowAllImages(true)}
+                    creativeId={creativeId}
+                    onSelect={(id) => {
+                      setConceptImage(null);
+                      setCreativeId(creativeId === id ? null : id);
+                    }}
+                    onAddUrl={handleAddImageUrl}
+                    onUpload={handleUploadImage}
+                    adding={addingImage}
+                    onConcept={() => void handleConceptImage()}
+                    conceptAlt={conceptImage?.alt ?? null}
+                    conceptBusy={busy === "generate"}
+                  />
 
                   <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4">
                     <select
@@ -1300,47 +1470,26 @@ export function CampaignBuilder({
                       }
                     />
                   </div>
-                  <div>
-                    <label className={labelClass}>Ad creative</label>
-                    <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
-                      {orderedImages.map((img) => (
-                        <button
-                          key={img.id}
-                          type="button"
-                          onClick={() => {
-                            setConceptImage(null);
-                            setCreativeId(creativeId === img.id ? null : img.id);
-                          }}
-                          className={cn(
-                            "border-2 transition",
-                            creativeId === img.id
-                              ? "border-slate-900"
-                              : "border-transparent hover:border-slate-300"
-                          )}
-                        >
-                          <Image
-                            src={img.url}
-                            alt={img.alt ?? ""}
-                            width={120}
-                            height={80}
-                            unoptimized
-                            className="h-16 w-full bg-slate-50 object-cover"
-                          />
-                        </button>
-                      ))}
-                    </div>
-                    <button
-                      type="button"
-                      className="btn-secondary mt-3 text-sm disabled:opacity-60"
-                      disabled={busy === "generate"}
-                      onClick={() => void handleConceptImage("ai")}
-                    >
-                      Generate concept image
-                    </button>
-                    {conceptImage && (
-                      <p className="mt-2 text-xs text-slate-500">{conceptImage.alt}</p>
-                    )}
-                  </div>
+                  <CreativePicker
+                    images={rankedImages}
+                    visible={visibleImages}
+                    hiddenCount={hiddenImageCount}
+                    query={imageQuery}
+                    onQuery={setImageQuery}
+                    showAll={showAllImages}
+                    onShowAll={() => setShowAllImages(true)}
+                    creativeId={creativeId}
+                    onSelect={(id) => {
+                      setConceptImage(null);
+                      setCreativeId(creativeId === id ? null : id);
+                    }}
+                    onAddUrl={handleAddImageUrl}
+                    onUpload={handleUploadImage}
+                    adding={addingImage}
+                    onConcept={() => void handleConceptImage("ai")}
+                    conceptAlt={conceptImage?.alt ?? null}
+                    conceptBusy={busy === "generate"}
+                  />
                   <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4">
                     <select
                       className={inputClass}

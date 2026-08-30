@@ -213,10 +213,13 @@ interface HarvestedImage {
   pageUrl: string;
 }
 
-function harvestImages(pages: PageExtraction[], cap = 80): HarvestedImage[] {
+function harvestImages(pages: PageExtraction[], cap = 160): HarvestedImage[] {
   const seen = new Set<string>();
   const out: HarvestedImage[] = [];
-  for (const page of pages) {
+  const ordered = [...pages].sort(
+    (a, b) => scoreAdvertisingPage(b) - scoreAdvertisingPage(a)
+  );
+  for (const page of ordered) {
     for (const img of page.images) {
       if (out.length >= cap) return out;
       if (!img.src || img.src.startsWith("data:")) continue;
@@ -334,19 +337,25 @@ function matchOfferingByImage(
   offeringIdByName: Map<string, string>
 ): string | null {
   const hay = `${img.alt ?? ""} ${img.url} ${img.pageUrl}`.toLowerCase();
+  let best: { name: string; score: number } | null = null;
   for (const o of offerings) {
+    let score = 0;
+    if (o.url && normalizePageUrl(img.pageUrl) === normalizePageUrl(o.url)) {
+      score += 10;
+    }
     const tokens = o.name
       .toLowerCase()
       .split(/[^a-z0-9]+/)
-      .filter((t) => t.length > 3);
-    if (tokens.length >= 2 && tokens.every((t) => hay.includes(t))) {
-      return offeringIdByName.get(o.name) ?? null;
+      .filter((t) => t.length > 2);
+    for (const token of tokens) {
+      if (hay.includes(token)) score += token.length > 5 ? 3 : 1;
     }
-    if (o.url && normalizePageUrl(img.pageUrl) === normalizePageUrl(o.url)) {
-      return offeringIdByName.get(o.name) ?? null;
+    if (score > 0 && (!best || score > best.score)) {
+      best = { name: o.name, score };
     }
   }
-  return null;
+  if (!best || best.score < 2) return null;
+  return offeringIdByName.get(best.name) ?? null;
 }
 
 // ---- Persistence ----

@@ -18,6 +18,7 @@ import {
 } from "@/lib/advertising/creative-formats";
 import type { LayoutCopy, ConceptCard } from "@/lib/advertising/creative-studio";
 import { MESSAGING_ANGLES } from "@/lib/advertising/intelligence-providers/types";
+import { rankImagesForOffering } from "@/lib/advertising/image-pick";
 import { useInsights } from "@/lib/useInsights";
 import { cn, hostOf } from "@/lib/utils";
 
@@ -35,6 +36,7 @@ interface SiteImage {
   id: string;
   url: string;
   alt: string | null;
+  pageUrl?: string | null;
   offeringId?: string | null;
 }
 
@@ -115,11 +117,9 @@ function CreativeStudioInner() {
 
   const offering = intel?.offerings.find((o) => o.id === selected) ?? null;
   const orderedImages = useMemo(() => {
-    if (!intel) return [];
-    const own = intel.images.filter((i) => i.offeringId === selected);
-    const rest = intel.images.filter((i) => i.offeringId !== selected);
-    return [...own, ...rest].slice(0, 24);
-  }, [intel, selected]);
+    if (!intel || !offering) return [];
+    return rankImagesForOffering(intel.images, offering);
+  }, [intel, offering]);
 
   useEffect(() => {
     setCopy(null);

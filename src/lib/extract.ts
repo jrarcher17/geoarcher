@@ -9,6 +9,25 @@ function cleanText(text: string, maxLen = Infinity): string {
   return cleaned.length > maxLen ? cleaned.slice(0, maxLen) : cleaned;
 }
 
+function imageSource($el: { attr: (name: string) => string | undefined }): string {
+  const srcset = $el.attr("srcset") || $el.attr("data-srcset");
+  if (srcset) {
+    const last = srcset
+      .split(",")
+      .map((part) => part.trim().split(/\s+/)[0])
+      .filter(Boolean)
+      .pop();
+    if (last) return last;
+  }
+  return (
+    $el.attr("src") ||
+    $el.attr("data-src") ||
+    $el.attr("data-lazy-src") ||
+    $el.attr("data-original") ||
+    ""
+  );
+}
+
 function resolveUrl(href: string, base: string): string | null {
   try {
     const url = new URL(href, base);
@@ -96,10 +115,10 @@ export function extractPage(
     .slice(0, 40);
   const footerText = cleanText($("footer").first().text(), 1500) || null;
 
-  // --- images ---
+  // --- images (src, lazy-load attrs, and the largest srcset candidate) ---
   const images = $("img")
     .map((_, el) => ({
-      src: $(el).attr("src") ?? "",
+      src: imageSource($(el)),
       alt: $(el).attr("alt") ?? null,
     }))
     .get()
