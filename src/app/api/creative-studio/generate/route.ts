@@ -17,7 +17,7 @@ export async function POST(request: Request) {
   const access = await requireAdAccess();
   if (access instanceof NextResponse) return access;
 
-  const body = await request.json().catch(() => null);
+  const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   const offeringId = typeof body?.offeringId === "string" ? body.offeringId : null;
   const angle = typeof body?.angle === "string" ? body.angle.trim() : "";
   const platform = isCreativePlatform(body?.platform) ? body.platform : null;

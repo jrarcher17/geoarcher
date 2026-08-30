@@ -26,7 +26,7 @@ export async function generateConceptImage(input: {
     select: { name: true, description: true, details: true },
   });
   if (!offering) throw new Error("Product not found.");
-  const details = (offering.details ?? {}) as OfferingDetails;
+  const details = (offering.details ?? {}) as unknown as OfferingDetails;
 
   const prompt = [
     "Create an original advertising concept image. Abstract or lifestyle mood — not a product photograph, not a screenshot, no logos, no readable text.",

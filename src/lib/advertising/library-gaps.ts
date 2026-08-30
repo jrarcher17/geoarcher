@@ -213,7 +213,7 @@ export async function findCompetitorGaps(siteId: string): Promise<{
   const offerings = site.offerings.map((o) => ({
     name: o.name,
     description: o.description,
-    details: (o.details ?? null) as OfferingDetails | null,
+    details: (o.details ?? null) as unknown as OfferingDetails | null,
   }));
 
   const client = getClient();
