@@ -199,10 +199,10 @@ export default function CompetitorsPage() {
 
       {competitors && sites.length === 0 && (
         <EmptyState
-          title="Scan a website first"
+          title="Add a product first"
           body="Competitors are suggested from your products and industry — we do not invent brands from nothing."
-          actionHref="/sites"
-          actionLabel="Add a website"
+          actionHref="/products"
+          actionLabel="Add a product"
         />
       )}
 
@@ -341,8 +341,8 @@ export default function CompetitorsPage() {
                   {discovering ? "Finding…" : "Find competitors"}
                 </button>
               ) : (
-                <Link href="/sites" className="btn-primary mt-6 inline-block text-sm">
-                  Finish a scan
+                <Link href="/products" className="btn-primary mt-6 inline-block text-sm">
+                  Add a product
                 </Link>
               )}
             </div>

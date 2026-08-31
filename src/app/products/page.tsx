@@ -2,10 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { AppShell } from "@/components/AppShell";
 import { FadeIn } from "@/components/cards/FadeIn";
-import { EmptyState, ErrorBanner, SectionLabel } from "@/components/os/primitives";
+import { ErrorBanner, SectionLabel } from "@/components/os/primitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { hostOf } from "@/lib/utils";
 
@@ -24,6 +24,202 @@ interface ProductRow {
   siteUrl: string;
   companyName: string | null;
   industry: string | null;
+}
+
+function AddProduct({ onAdded }: { onAdded: () => void }) {
+  const [mode, setMode] = useState<"page" | "manual">("page");
+  const [url, setUrl] = useState("");
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [kind, setKind] = useState<"PRODUCT" | "SERVICE">("PRODUCT");
+  const [price, setPrice] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/me/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          mode === "page"
+            ? { mode: "page", url }
+            : {
+                mode: "manual",
+                name,
+                description,
+                kind,
+                url,
+                price: price || null,
+                imageUrl: imageUrl || null,
+                companyName: companyName || null,
+              }
+        ),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Could not add that product.");
+      setUrl("");
+      setName("");
+      setDescription("");
+      setPrice("");
+      setImageUrl("");
+      setCompanyName("");
+      onAdded();
+      if (json.product?.id) {
+        window.location.href = `/products/${json.product.id}`;
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not add that product.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section id="add" className="border border-slate-200 bg-white p-5 sm:p-6">
+      <SectionLabel>Add a product or service</SectionLabel>
+      <p className="mt-1 text-sm text-slate-500">
+        Scan one webpage, or enter the details yourself. We do not crawl the
+        rest of the site.
+      </p>
+      <div className="mt-4 flex gap-2">
+        <button
+          type="button"
+          onClick={() => setMode("page")}
+          className={
+            mode === "page"
+              ? "bg-slate-900 px-3 py-1.5 text-xs font-medium text-white"
+              : "border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600"
+          }
+        >
+          Scan a webpage
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("manual")}
+          className={
+            mode === "manual"
+              ? "bg-slate-900 px-3 py-1.5 text-xs font-medium text-white"
+              : "border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600"
+          }
+        >
+          Add manually
+        </button>
+      </div>
+
+      <form onSubmit={(e) => void submit(e)} className="mt-4 flex flex-col gap-3">
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        <div>
+          <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+            {mode === "page" ? "Product page URL" : "Landing page URL"}
+          </label>
+          <input
+            className="w-full border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-900"
+            placeholder="https://example.com/product"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            required
+          />
+        </div>
+        {mode === "manual" && (
+          <>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                  Name
+                </label>
+                <input
+                  className="w-full border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-900"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                  Type
+                </label>
+                <select
+                  className="w-full border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-900"
+                  value={kind}
+                  onChange={(e) =>
+                    setKind(e.target.value === "SERVICE" ? "SERVICE" : "PRODUCT")
+                  }
+                >
+                  <option value="PRODUCT">Product</option>
+                  <option value="SERVICE">Service</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                Description
+              </label>
+              <textarea
+                className="min-h-[88px] w-full border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-900"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                required
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                  Price (optional)
+                </label>
+                <input
+                  className="w-full border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-900"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                  Company (optional)
+                </label>
+                <input
+                  className="w-full border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-900"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                Image URL (optional)
+              </label>
+              <input
+                className="w-full border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-900"
+                placeholder="https://…"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+              />
+            </div>
+          </>
+        )}
+        <div>
+          <button
+            type="submit"
+            className="btn-primary text-sm disabled:opacity-60"
+            disabled={busy}
+          >
+            {busy
+              ? mode === "page"
+                ? "Reading page…"
+                : "Saving…"
+              : mode === "page"
+                ? "Scan this page"
+                : "Add product"}
+          </button>
+        </div>
+      </form>
+    </section>
+  );
 }
 
 export default function ProductsPage() {
@@ -49,8 +245,8 @@ export default function ProductsPage() {
 
   return (
     <AppShell
-      title="Products & Services"
-      subtitle="What we found on your websites — the units you can advertise."
+      title="Products"
+      subtitle="Add what you want to advertise — scan one webpage or enter it yourself."
     >
       {error && (
         <ErrorBanner
@@ -71,121 +267,130 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {products && products.length === 0 && (
-        <EmptyState
-          title="Scan a website to find what to advertise"
-          body="GEO Archer extracts products and services from a completed scan. Nothing here is invented."
-          actionHref="/sites"
-          actionLabel="Add a website"
-        />
-      )}
+      {products && (
+        <FadeIn className="flex flex-col gap-8">
+          <AddProduct
+            onAdded={() => {
+              void load();
+            }}
+          />
 
-      {products && products.length > 0 && (
-        <FadeIn>
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <SectionLabel>
-              {products.length} found on your scanned sites
-            </SectionLabel>
-            <div className="flex gap-2">
-              {(
-                [
-                  ["ALL", "All"],
-                  ["PRODUCT", "Products"],
-                  ["SERVICE", "Services"],
-                ] as const
-              ).map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setKind(id)}
-                  className={
-                    kind === id
-                      ? "bg-slate-900 px-3 py-1.5 text-xs font-medium text-white"
-                      : "border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600"
-                  }
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-          {products.filter((p) => kind === "ALL" || p.kind === kind).length ===
-            0 && (
-            <p className="mb-4 text-sm text-slate-500">
-              No {kind === "PRODUCT" ? "products" : "services"} in this view.
-              Try All.
-            </p>
-          )}
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {products
-              .filter((p) => kind === "ALL" || p.kind === kind)
-              .map((p) => (
-              <article
-                key={p.id}
-                className="flex flex-col border border-slate-200 bg-white"
-              >
-                {p.image ? (
-                  <Image
-                    src={p.image.url}
-                    alt={p.image.alt ?? p.name}
-                    width={480}
-                    height={240}
-                    unoptimized
-                    className="h-40 w-full border-b border-slate-100 bg-slate-50 object-cover"
-                  />
-                ) : (
-                  <div className="flex h-40 items-center justify-center border-b border-slate-100 bg-slate-50 text-xs text-slate-400">
-                    No product image on the site
-                  </div>
-                )}
-                <div className="flex flex-1 flex-col p-5">
-                  <div className="flex items-start justify-between gap-2">
-                    <h2 className="text-base font-semibold text-slate-900">
-                      {p.name}
-                    </h2>
-                    <span className="shrink-0 bg-slate-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                      {p.kind === "PRODUCT" ? "Product" : "Service"}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xs text-slate-400">
-                    {p.companyName || hostOf(p.siteUrl)}
-                    {p.category ? ` · ${p.category}` : p.industry ? ` · ${p.industry}` : ""}
-                  </p>
-                  <p className="mt-3 flex-1 text-sm leading-relaxed text-slate-600">
-                    {p.description}
-                  </p>
-                  {p.targetAudience.length > 0 && (
-                    <p className="mt-2 text-xs text-slate-500">
-                      {p.targetAudience.join(" · ")}
-                    </p>
-                  )}
-                  {p.price && (
-                    <p className="mt-3 text-sm font-medium text-slate-900">{p.price}</p>
-                  )}
-                  <div className="mt-5 flex flex-wrap gap-2">
-                    <Link
-                      href={`/products/${p.id}`}
-                      className="btn-secondary text-sm"
+          {products.length > 0 && (
+            <div>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <SectionLabel>
+                  {products.length === 1
+                    ? "1 product you can advertise"
+                    : `${products.length} products you can advertise`}
+                </SectionLabel>
+                <div className="flex gap-2">
+                  {(
+                    [
+                      ["ALL", "All"],
+                      ["PRODUCT", "Products"],
+                      ["SERVICE", "Services"],
+                    ] as const
+                  ).map(([id, label]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setKind(id)}
+                      className={
+                        kind === id
+                          ? "bg-slate-900 px-3 py-1.5 text-xs font-medium text-white"
+                          : "border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600"
+                      }
                     >
-                      View
-                    </Link>
-                    <Link
-                      href={`/ad-intelligence?offering=${p.id}`}
-                      className="btn-secondary text-sm"
-                    >
-                      Analyze Ads
-                    </Link>
-                    <Link
-                      href={`/ad-studio?site=${p.siteId}&offering=${p.id}`}
-                      className="btn-primary text-sm"
-                    >
-                      Create Ad
-                    </Link>
-                  </div>
+                      {label}
+                    </button>
+                  ))}
                 </div>
-              </article>
-            ))}
-          </div>
+              </div>
+              {products.filter((p) => kind === "ALL" || p.kind === kind).length ===
+                0 && (
+                <p className="mb-4 text-sm text-slate-500">
+                  No {kind === "PRODUCT" ? "products" : "services"} in this view.
+                  Try All.
+                </p>
+              )}
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {products
+                  .filter((p) => kind === "ALL" || p.kind === kind)
+                  .map((p) => (
+                    <article
+                      key={p.id}
+                      className="flex flex-col border border-slate-200 bg-white"
+                    >
+                      {p.image ? (
+                        <Image
+                          src={p.image.url}
+                          alt={p.image.alt ?? p.name}
+                          width={480}
+                          height={240}
+                          unoptimized
+                          className="h-40 w-full border-b border-slate-100 bg-slate-50 object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-40 items-center justify-center border-b border-slate-100 bg-slate-50 text-xs text-slate-400">
+                          No product image
+                        </div>
+                      )}
+                      <div className="flex flex-1 flex-col p-5">
+                        <div className="flex items-start justify-between gap-2">
+                          <h2 className="text-base font-semibold text-slate-900">
+                            {p.name}
+                          </h2>
+                          <span className="shrink-0 bg-slate-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                            {p.kind === "PRODUCT" ? "Product" : "Service"}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-slate-400">
+                          {p.companyName || hostOf(p.siteUrl)}
+                          {p.category
+                            ? ` · ${p.category}`
+                            : p.industry
+                              ? ` · ${p.industry}`
+                              : ""}
+                        </p>
+                        <p className="mt-3 flex-1 text-sm leading-relaxed text-slate-600">
+                          {p.description}
+                        </p>
+                        {p.targetAudience.length > 0 && (
+                          <p className="mt-2 text-xs text-slate-500">
+                            {p.targetAudience.join(" · ")}
+                          </p>
+                        )}
+                        {p.price && (
+                          <p className="mt-3 text-sm font-medium text-slate-900">
+                            {p.price}
+                          </p>
+                        )}
+                        <div className="mt-5 flex flex-wrap gap-2">
+                          <Link
+                            href={`/products/${p.id}`}
+                            className="btn-secondary text-sm"
+                          >
+                            View
+                          </Link>
+                          <Link
+                            href={`/ad-intelligence?offering=${p.id}`}
+                            className="btn-secondary text-sm"
+                          >
+                            Analyze Ads
+                          </Link>
+                          <Link
+                            href={`/ad-studio?site=${p.siteId}&offering=${p.id}`}
+                            className="btn-primary text-sm"
+                          >
+                            Create Ad
+                          </Link>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+              </div>
+            </div>
+          )}
         </FadeIn>
       )}
     </AppShell>

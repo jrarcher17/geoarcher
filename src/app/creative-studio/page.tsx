@@ -257,10 +257,10 @@ function CreativeStudioInner() {
 
       {insights && sites.length === 0 && !siteId && (
         <EmptyState
-          title="Creative Studio needs a scanned website"
-          body="Add your site so GEO Archer can use the product images found on your pages."
-          actionHref="/sites"
-          actionLabel="+ Add Site"
+          title="Creative Studio needs a product"
+          body="Add a product first so GEO Archer can use that page’s photos — or upload one in Ad Generator."
+          actionHref="/products"
+          actionLabel="Add a product"
         />
       )}
 
@@ -305,14 +305,14 @@ function CreativeStudioInner() {
                   : "This site hasn't been scanned yet"}
               </h2>
               <p className="mt-2 max-w-xl text-sm text-slate-500">
-                Creative Studio works from products and images found on your
-                website. Scan the site first, then open Site Intelligence.
+                Add a product from Products first. Creative Studio uses that
+                product’s photos and copy.
               </p>
               <Link
-                href={siteId ? `/sites/${siteId}/intelligence` : "/sites"}
+                href="/products"
                 className="btn-primary mt-4 inline-block text-sm"
               >
-                Open Site Intelligence
+                Add a product
               </Link>
             </div>
           )}

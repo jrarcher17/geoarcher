@@ -113,8 +113,8 @@ export function SeoShell({
           scan first and results will appear here.
         </p>
         <div className="mt-5">
-          <Link href={`/sites/${overview.siteId}`}>
-            <Button variant="secondary">Open site</Button>
+          <Link href="/products">
+            <Button variant="secondary">Open products</Button>
           </Link>
         </div>
       </Card>

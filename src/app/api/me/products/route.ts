@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getServerSession } from "@/lib/session";
+import {
+  ingestManualProduct,
+  ingestProductPage,
+} from "@/lib/advertising/product-ingest";
 
-/** Products and services extracted from the user's scanned websites. */
+export const maxDuration = 120;
+
+/** Products and services the user added or extracted from a page. */
 export async function GET() {
   const session = await getServerSession();
   if (!session) {
@@ -64,4 +70,45 @@ export async function GET() {
       };
     }),
   });
+}
+
+export async function POST(request: Request) {
+  const session = await getServerSession();
+  if (!session) {
+    return NextResponse.json({ error: "Sign in required." }, { status: 401 });
+  }
+
+  const body = (await request.json().catch(() => null)) as Record<
+    string,
+    unknown
+  > | null;
+  const mode = body?.mode === "manual" ? "manual" : "page";
+
+  try {
+    const product =
+      mode === "manual"
+        ? await ingestManualProduct(session.user.id, {
+            name: typeof body?.name === "string" ? body.name : "",
+            description:
+              typeof body?.description === "string" ? body.description : "",
+            kind: body?.kind === "SERVICE" ? "SERVICE" : "PRODUCT",
+            url: typeof body?.url === "string" ? body.url : null,
+            price: typeof body?.price === "string" ? body.price : null,
+            imageUrl: typeof body?.imageUrl === "string" ? body.imageUrl : null,
+            companyName:
+              typeof body?.companyName === "string" ? body.companyName : null,
+          })
+        : await ingestProductPage(
+            session.user.id,
+            typeof body?.url === "string" ? body.url : ""
+          );
+    return NextResponse.json({ product }, { status: 201 });
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Could not add that product.";
+    const status =
+      /sign in|not allowed|limit|upgrade|plan/i.test(message) ? 403 : 400;
+    console.error("[products] add failed:", err);
+    return NextResponse.json({ error: message }, { status });
+  }
 }

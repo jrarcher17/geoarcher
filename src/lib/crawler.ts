@@ -521,3 +521,35 @@ export async function crawlSite(
 
   return results;
 }
+
+/** Fetch and extract exactly one URL — no sitemap crawl, no extra pages. */
+export async function crawlOnePage(rawUrl: string): Promise<PageExtraction> {
+  const start = normalizeUrl(rawUrl);
+  if (!start) throw new Error("Invalid page URL.");
+
+  let loaded = await fetchHtmlHttp(start);
+  if (!loaded) {
+    let browser: Browser | null = null;
+    try {
+      const opened = await openBrowser();
+      browser = opened.browser;
+      const context = await browser.newContext({
+        userAgent: BOT_UA,
+        viewport: { width: 1366, height: 900 },
+      });
+      const page = await context.newPage();
+      loaded = await fetchHtmlBrowser(page, start);
+    } finally {
+      await browser?.close().catch(() => undefined);
+    }
+  }
+  if (!loaded) {
+    throw new Error("Could not load that page.");
+  }
+  return extractPage(
+    loaded.html,
+    loaded.finalUrl,
+    loaded.statusCode,
+    loaded.loadTimeMs
+  );
+}

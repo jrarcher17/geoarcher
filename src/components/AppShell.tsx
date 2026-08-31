@@ -7,7 +7,6 @@ import {
   BarChart3,
   Bot,
   FolderKanban,
-  Globe,
   LayoutDashboard,
   Lightbulb,
   Megaphone,
@@ -31,7 +30,6 @@ const NAV = [
     label: "Workspace",
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/sites", label: "Websites", icon: Globe },
       { href: "/products", label: "Products", icon: Package },
     ],
   },
@@ -274,7 +272,6 @@ export function AppShell({
             </span>
           </div>
           <ul className="mt-2 space-y-0.5 text-[11px] text-slate-500">
-            <li>{status.sites} sites scanned</li>
             <li>{status.offerings} products &amp; services</li>
             <li>{status.competitors} competitors</li>
             <li>

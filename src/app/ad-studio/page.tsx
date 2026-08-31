@@ -109,10 +109,10 @@ function AdStudioInner() {
 
       {insights && sites.length === 0 && !siteId && (
         <EmptyState
-          title="Ad Studio needs a scanned website"
-          body="Add your site and GEO Archer will identify the products and services you can advertise."
-          actionHref="/sites"
-          actionLabel="+ Add Site"
+          title="Ad Studio needs a product"
+          body="Add a product by scanning one webpage or entering it yourself, then generate ads from what it actually says."
+          actionHref="/products"
+          actionLabel="Add a product"
         />
       )}
 
@@ -159,17 +159,14 @@ function AdStudioInner() {
                   : "This site hasn't been scanned yet"}
               </h2>
               <p className="mt-2 max-w-xl text-sm text-slate-500">
-                {intel.hasCompletedScan
-                  ? intel.status === "RUNNING"
-                    ? "The AI is reading your scan and identifying what you can advertise. This usually takes under a minute — refresh shortly."
-                    : "Run the advertising analysis from the site's intelligence page to identify products and services."
-                  : "Scan the site first — Ad Studio works from the products, services and images found on your website."}
+                Add a product from Products — scan one webpage or enter it
+                yourself — then come back to generate ads.
               </p>
               <Link
-                href={siteId ? `/sites/${siteId}/intelligence` : "/sites"}
+                href="/products"
                 className="btn-primary mt-4 inline-block text-sm"
               >
-                Open Site Intelligence
+                Add a product
               </Link>
             </div>
           )}

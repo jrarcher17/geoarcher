@@ -34,7 +34,7 @@ export async function notifyScanComplete(scanId: string): Promise<void> {
         ? `The scan for ${scan.site.url} is done.`
         : `The scan for ${scan.site.url} failed${scan.error ? `: ${scan.error}` : "."}`,
       "",
-      `Open it: ${base}/sites/${scan.site.id}/intelligence`,
+      `Open it: ${base}/products`,
     ].join("\n"),
   });
 }
@@ -89,7 +89,7 @@ export async function notifyAutopilotCycle(siteId: string, ok: boolean): Promise
         ? `SEO Autopilot finished a cycle for ${site.url}.`
         : `SEO Autopilot hit an error on ${site.url}. Check the Autopilot card for details.`,
       "",
-      `Open the site: ${base}/sites/${siteId}`,
+      `Open products: ${base}/products`,
     ].join("\n"),
   });
 }

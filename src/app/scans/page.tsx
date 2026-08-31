@@ -88,7 +88,7 @@ export default function ScansPage() {
           <Card className="overflow-hidden">
             {scans.length === 0 ? (
               <p className="p-10 text-center text-sm text-slate-400">
-                No scans yet — start one from the Dashboard or Sites page.
+                No scans yet — start one from Products.
               </p>
             ) : (
               <ul className="divide-y divide-slate-100">
@@ -98,7 +98,7 @@ export default function ScansPage() {
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <Link
-                            href={`/sites/${s.siteId}/intelligence`}
+                            href="/products"
                             className="font-medium text-slate-900 hover:text-sky-600"
                           >
                             {hostOf(s.siteUrl)}
@@ -121,7 +121,7 @@ export default function ScansPage() {
                         <Link
                           href={
                             s.status === "COMPLETE"
-                              ? `/sites/${s.siteId}/intelligence`
+                              ? "/products"
                               : `/scan/${s.id}`
                           }
                           className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-sky-200 hover:bg-sky-50 hover:text-sky-600"

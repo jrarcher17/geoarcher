@@ -22,7 +22,7 @@ const STEPS = [
 
 /**
  * Scan progress view. Regular scans crawl, then run advertising analysis,
- * then hand off to Site Intelligence. Competitor (benchmark) scans still
+ * then hand off to Products. Competitor (benchmark) scans still
  * render a compact GEO summary here.
  */
 export function ScanDashboard({ scanId }: { scanId: string }) {
@@ -46,7 +46,7 @@ export function ScanDashboard({ scanId }: { scanId: string }) {
         if (cancelled) return;
         setScan(data);
         if (data.status === "COMPLETE" && !data.benchmarkScanId) {
-          router.replace(`/sites/${data.siteId}/intelligence`);
+          router.replace("/products");
           return;
         }
         if (["QUEUED", "CRAWLING", "ANALYZING"].includes(data.status)) {

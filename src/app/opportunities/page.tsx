@@ -147,10 +147,10 @@ export default function OpportunitiesPage() {
 
       {data && !data.hasSites && (
         <EmptyState
-          title="Scan a website first"
-          body="Opportunities are generated from a completed site scan — not invented."
-          actionHref="/sites"
-          actionLabel="Add a website"
+          title="Add a product first"
+          body="Opportunities come from products you added or pages you scanned — not invented."
+          actionHref="/products"
+          actionLabel="Add a product"
         />
       )}
 

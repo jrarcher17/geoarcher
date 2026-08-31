@@ -134,16 +134,15 @@ export default function DashboardPage() {
         <div className="flex flex-col gap-6">
           <EmptyState
             title="See what you should advertise"
-            body="Add a website. GEO Archer scans it, finds products and services, and prepares ads from what the site already says."
-            actionHref="/sites"
-            actionLabel="Scan a website"
+            body="Add a product — scan one webpage or enter it yourself. Then create ads from what that page actually says."
+            actionHref="/products"
+            actionLabel="Add a product"
           />
           <OnboardingSteps
             title="Your first advertising workspace"
-            body="Nothing here is invented. Each step uses a real scan or an ad you create."
+            body="Nothing here is invented. Each step uses a product you add or an ad you create."
             steps={[
-              { label: "Scan a website", done: false, href: "/sites" },
-              { label: "Review products and services", done: false, href: "/products" },
+              { label: "Add a product", done: false, href: "/products" },
               { label: "Create an ad", done: false, href: "/ad-studio" },
             ]}
           />
@@ -155,17 +154,10 @@ export default function DashboardPage() {
           {productCount === 0 || (data.kpis.totalCampaigns ?? 0) === 0 ? (
             <OnboardingSteps
               title="Next in your workspace"
-              body="Finish the path from a real scan to a reviewable ad."
+              body="Finish the path from a real product to a reviewable ad."
               steps={[
                 {
-                  label: "Scan a website",
-                  done:
-                    productCount > 0 ||
-                    data.sites.some((s) => s.intelligenceStatus === "COMPLETE"),
-                  href: "/sites",
-                },
-                {
-                  label: "Review products and services",
+                  label: "Add a product",
                   done: productCount > 0,
                   href: "/products",
                 },
@@ -261,8 +253,8 @@ export default function DashboardPage() {
                 Finish a scan so GEO Archer can identify what to advertise from the
                 site itself.
               </p>
-              <Link href="/sites" className="btn-primary mt-4 inline-block text-sm">
-                Go to Websites
+              <Link href="/products" className="btn-primary mt-4 inline-block text-sm">
+                Go to Products
               </Link>
             </div>
           )}
@@ -439,12 +431,12 @@ export default function DashboardPage() {
 
           <section>
             <div className="mb-3 flex items-end justify-between">
-              <SectionLabel>Websites</SectionLabel>
+              <SectionLabel>Products</SectionLabel>
               <Link
-                href="/sites"
+                href="/products"
                 className="text-sm font-medium text-slate-900 underline-offset-4 hover:underline"
               >
-                Manage
+                View all
               </Link>
             </div>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -453,7 +445,7 @@ export default function DashboardPage() {
                 return (
                   <Link
                     key={s.siteId}
-                    href={`/sites/${s.siteId}/intelligence`}
+                    href="/products"
                     className="border border-slate-200 bg-white p-5 transition hover:border-slate-300 hover:shadow-sm"
                   >
                     <p className="font-semibold text-slate-900">

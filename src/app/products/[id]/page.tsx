@@ -64,7 +64,7 @@ export default function ProductIntelligencePage({
       subtitle={
         product
           ? `${product.companyName || hostOf(product.siteUrl)}${product.category ? ` · ${product.category}` : ""}`
-          : "Structured facts from the website scan."
+          : "Facts from the page you scanned or entered."
       }
       breadcrumb="Products"
       actions={
