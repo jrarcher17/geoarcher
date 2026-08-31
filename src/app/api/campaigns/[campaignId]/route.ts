@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAdAccess } from "@/lib/advertising/api-guard";
 import { hasRealPerformance } from "@/lib/advertising/ad-preview";
 import { syncPlatformStatus } from "@/lib/advertising/publish";
-import type { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 
 type Status =
   | "DRAFT"
