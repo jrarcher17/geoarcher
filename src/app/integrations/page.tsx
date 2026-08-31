@@ -386,12 +386,22 @@ function IntegrationsInner() {
   const anyConnected = Boolean(
     data?.google.connected || data?.meta.connected || data?.chatgpt.connected
   );
+  const showGoogle = Boolean(data?.google.available);
+  const showMeta = Boolean(data?.meta.available);
+  const visibleCount = (showGoogle ? 1 : 0) + (showMeta ? 1 : 0) + (data ? 1 : 0);
+  const channels = [
+    showGoogle ? "Google Ads" : null,
+    showMeta ? "Meta Ads" : null,
+    "ChatGPT Ads",
+  ].filter(Boolean);
+  const subtitle = !data
+    ? "Connect an ad account so GEO Archer can create, update, and read analytics for your campaigns."
+    : channels.length === 1
+      ? `Connect ${channels[0]} so GEO Archer can create, update, and read analytics for your campaigns.`
+      : `Connect ${channels.slice(0, -1).join(", ")} or ${channels[channels.length - 1]} so GEO Archer can create, update, and read analytics for your campaigns.`;
 
   return (
-    <AppShell
-      title="Integrations"
-      subtitle="Connect Google Ads, Meta Ads, or ChatGPT Ads so GEO Archer can create, update, and read analytics for your campaigns."
-    >
+    <AppShell title="Integrations" subtitle={subtitle}>
       {error && <ErrorBanner message={error} onRetry={data ? undefined : load} />}
       {notice && (
         <p className="mb-4 border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
@@ -399,8 +409,8 @@ function IntegrationsInner() {
         </p>
       )}
       {!data && !error && (
-        <div className="grid gap-4 lg:grid-cols-3">
-          {[...Array(3)].map((_, i) => (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {[...Array(2)].map((_, i) => (
             <Skeleton key={i} className="h-52" />
           ))}
         </div>
@@ -408,25 +418,35 @@ function IntegrationsInner() {
 
       {data && (
         <FadeIn className="flex flex-col gap-4">
-          <div className="grid gap-4 lg:grid-cols-3">
-            <IntegrationCard
-              name="Google Ads"
-              platform="google"
-              description="Sign in with your Google Ads account. GEO Archer can then create and update campaigns and pull the spend and conversion numbers Google reports."
-              status={data.google}
-              connectLabel="Connect Google Ads"
-              unavailableNote="Set GOOGLE_ADS_CLIENT_ID, GOOGLE_ADS_CLIENT_SECRET and GOOGLE_ADS_DEVELOPER_TOKEN, then restart the server. Redirect URI: /api/integrations/google/callback"
-              onChanged={load}
-            />
-            <IntegrationCard
-              name="Meta Ads"
-              platform="meta"
-              description="Sign in with your Meta Business account. GEO Archer can then create and update Facebook and Instagram campaigns and pull reported performance."
-              status={data.meta}
-              connectLabel="Connect Meta Ads"
-              unavailableNote="Set META_ADS_APP_ID and META_ADS_APP_SECRET, then restart the server. Redirect URI: /api/integrations/meta/callback"
-              onChanged={load}
-            />
+          <div
+            className={
+              visibleCount >= 3
+                ? "grid gap-4 lg:grid-cols-3"
+                : "grid gap-4 lg:grid-cols-2"
+            }
+          >
+            {showGoogle && (
+              <IntegrationCard
+                name="Google Ads"
+                platform="google"
+                description="Sign in with your Google Ads account. GEO Archer can then create and update campaigns and pull the spend and conversion numbers Google reports."
+                status={data.google}
+                connectLabel="Connect Google Ads"
+                unavailableNote="Set GOOGLE_ADS_CLIENT_ID, GOOGLE_ADS_CLIENT_SECRET and GOOGLE_ADS_DEVELOPER_TOKEN, then restart the server. Redirect URI: /api/integrations/google/callback"
+                onChanged={load}
+              />
+            )}
+            {showMeta && (
+              <IntegrationCard
+                name="Meta Ads"
+                platform="meta"
+                description="Sign in with your Meta Business account. GEO Archer can then create and update Facebook and Instagram campaigns and pull reported performance."
+                status={data.meta}
+                connectLabel="Connect Meta Ads"
+                unavailableNote="Set META_ADS_APP_ID and META_ADS_APP_SECRET, then restart the server. Redirect URI: /api/integrations/meta/callback"
+                onChanged={load}
+              />
+            )}
             <ChatgptIntegrationCard status={data.chatgpt} onChanged={load} />
           </div>
 
