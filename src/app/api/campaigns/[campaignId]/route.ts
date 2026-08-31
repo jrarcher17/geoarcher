@@ -48,14 +48,19 @@ async function loadOwnCampaign(campaignId: string, userId: string) {
   return campaign;
 }
 
+function connectionLabel(platform: string): string {
+  if (platform === "GOOGLE") return "Google Ads";
+  if (platform === "META") return "Meta";
+  return "ChatGPT Ads";
+}
+
 async function connectionInfo(userId: string, platform: string) {
-  if (platform !== "GOOGLE" && platform !== "META") {
+  if (platform !== "GOOGLE" && platform !== "META" && platform !== "AI_CHAT") {
     return {
       connected: false,
       accountName: null as string | null,
       canPublish: false,
-      blockedReason:
-        "ChatGPT ads can be prepared here. There is no official ads API, so they cannot be published.",
+      blockedReason: "This platform cannot be published from GEO Archer.",
     };
   }
   const row = await prisma.adPlatformConnection.findUnique({
@@ -67,7 +72,7 @@ async function connectionInfo(userId: string, platform: string) {
       connected: false,
       accountName: null,
       canPublish: false,
-      blockedReason: `Connect ${platform === "GOOGLE" ? "Google Ads" : "Meta"} in Integrations to publish.`,
+      blockedReason: `Connect ${connectionLabel(platform)} in Integrations to publish.`,
     };
   }
   if (!row.accountId) {

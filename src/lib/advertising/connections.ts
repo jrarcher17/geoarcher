@@ -17,6 +17,11 @@ import {
 } from "@/lib/advertising/platforms/meta";
 import { callbackUrl } from "@/lib/advertising/oauth";
 import type { AdAccountOption } from "@/lib/advertising/platforms/google";
+import {
+  getChatgptAdAccount,
+  persistChatgptApiKey,
+  readChatgptApiKey,
+} from "@/lib/advertising/platforms/chatgpt";
 
 export async function completeOAuth(
   userId: string,
@@ -170,6 +175,79 @@ export async function getLiveAccessToken(
 
   return {
     accessToken: readMetaAccess(row.accessToken),
+    accountId: row.accountId,
+    accountName: row.accountName,
+  };
+}
+
+export async function connectChatgptAds(userId: string, apiKey: string) {
+  const trimmed = apiKey.trim();
+  if (!trimmed) throw new Error("Paste an Ads Manager API key.");
+
+  const account = await getChatgptAdAccount(trimmed);
+  await prisma.adPlatformConnection.upsert({
+    where: { userId_platform: { userId, platform: "AI_CHAT" } },
+    create: {
+      userId,
+      platform: "AI_CHAT",
+      status: "CONNECTED",
+      accessToken: persistChatgptApiKey(trimmed),
+      accountId: account.id,
+      accountName: account.name,
+      scopes: "ads",
+      error: null,
+    },
+    update: {
+      status: "CONNECTED",
+      accessToken: persistChatgptApiKey(trimmed),
+      accountId: account.id,
+      accountName: account.name,
+      refreshToken: null,
+      expiresAt: null,
+      scopes: "ads",
+      error: null,
+    },
+  });
+  return account;
+}
+
+export async function disconnectChatgptAds(userId: string) {
+  await prisma.adPlatformConnection.upsert({
+    where: { userId_platform: { userId, platform: "AI_CHAT" } },
+    create: {
+      userId,
+      platform: "AI_CHAT",
+      status: "DISCONNECTED",
+    },
+    update: {
+      status: "DISCONNECTED",
+      accountId: null,
+      accountName: null,
+      accessToken: null,
+      refreshToken: null,
+      expiresAt: null,
+      scopes: null,
+      error: null,
+    },
+  });
+}
+
+export async function getChatgptAdsKey(userId: string): Promise<{
+  apiKey: string;
+  accountId: string;
+  accountName: string | null;
+}> {
+  const row = await prisma.adPlatformConnection.findUnique({
+    where: { userId_platform: { userId, platform: "AI_CHAT" } },
+  });
+  if (!row || row.status !== "CONNECTED" || !row.accessToken) {
+    throw new Error("Connect ChatGPT Ads in Integrations first.");
+  }
+  if (!row.accountId) {
+    throw new Error("ChatGPT Ads connected without an ad account. Reconnect it.");
+  }
+  return {
+    apiKey: readChatgptApiKey(row.accessToken),
     accountId: row.accountId,
     accountName: row.accountName,
   };

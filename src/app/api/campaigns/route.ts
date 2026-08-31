@@ -364,7 +364,7 @@ export async function POST(request: NextRequest) {
         platform: "AI_CHAT",
         name,
         structure: asJson({
-          note: "Prepared creative and targeting context — not a live ChatGPT placement.",
+          note: "Published via the OpenAI Ads API as campaign → ad group → chat_card.",
           advertiser: typeof chatgpt.advertiser === "string" ? chatgpt.advertiser : "",
         }),
         ads: {

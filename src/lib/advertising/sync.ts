@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { dateKey, lastNDays } from "@/lib/advertising/metrics";
-import { getLiveAccessToken } from "@/lib/advertising/connections";
+import { getChatgptAdsKey, getLiveAccessToken } from "@/lib/advertising/connections";
+import { fetchChatgptInsights } from "@/lib/advertising/platforms/chatgpt";
 import { fetchGoogleInsights } from "@/lib/advertising/platforms/google";
 import { fetchMetaInsights } from "@/lib/advertising/platforms/meta";
 
@@ -15,7 +16,7 @@ export async function syncUserCampaignMetrics(userId: string, days = 30): Promis
       userId,
       externalId: { not: null },
       status: { in: ["ACTIVE", "PAUSED", "COMPLETED"] },
-      platform: { in: ["GOOGLE", "META"] },
+      platform: { in: ["GOOGLE", "META", "AI_CHAT"] },
     },
     select: { id: true, platform: true, externalId: true },
   });
@@ -24,18 +25,33 @@ export async function syncUserCampaignMetrics(userId: string, days = 30): Promis
   for (const campaign of campaigns) {
     if (!campaign.externalId) continue;
     try {
-      const platform = campaign.platform === "GOOGLE" ? "google" : "meta";
-      const live = await getLiveAccessToken(userId, platform);
-      const rows =
-        platform === "google"
-          ? await fetchGoogleInsights(
-              live.accessToken,
-              live.accountId,
-              campaign.externalId,
-              since,
-              until
-            )
-          : await fetchMetaInsights(live.accessToken, campaign.externalId, since, until);
+      let rows;
+      if (campaign.platform === "AI_CHAT") {
+        const live = await getChatgptAdsKey(userId);
+        rows = await fetchChatgptInsights(
+          live.apiKey,
+          campaign.externalId,
+          since,
+          until
+        );
+      } else if (campaign.platform === "GOOGLE") {
+        const live = await getLiveAccessToken(userId, "google");
+        rows = await fetchGoogleInsights(
+          live.accessToken,
+          live.accountId,
+          campaign.externalId,
+          since,
+          until
+        );
+      } else {
+        const live = await getLiveAccessToken(userId, "meta");
+        rows = await fetchMetaInsights(
+          live.accessToken,
+          campaign.externalId,
+          since,
+          until
+        );
+      }
 
       for (const row of rows) {
         const date = new Date(`${dateKey(row.date)}T00:00:00.000Z`);

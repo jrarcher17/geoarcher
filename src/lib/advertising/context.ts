@@ -31,7 +31,7 @@ export interface AssistantOffering {
 export interface AssistantContext {
   campaigns: AssistantCampaign[];
   offerings: AssistantOffering[];
-  connections: { google: boolean; meta: boolean };
+  connections: { google: boolean; meta: boolean; chatgpt: boolean };
   totals: DerivedMetrics;
   prompt: string;
 }
@@ -123,6 +123,7 @@ export async function loadAssistantContext(userId: string): Promise<AssistantCon
 
   const google = connections.some((c) => c.platform === "GOOGLE");
   const meta = connections.some((c) => c.platform === "META");
+  const chatgpt = connections.some((c) => c.platform === "AI_CHAT");
 
   const money = (cents: number | null) =>
     cents == null ? "n/a" : `$${(cents / 100).toFixed(2)}`;
@@ -139,7 +140,7 @@ export async function loadAssistantContext(userId: string): Promise<AssistantCon
 
   const prompt = [
     "ADVERTISING CONTEXT (authoritative — do not invent anything else):",
-    `CONNECTIONS: Google=${google ? "connected" : "not connected"} Meta=${meta ? "connected" : "not connected"}`,
+    `CONNECTIONS: Google=${google ? "connected" : "not connected"} Meta=${meta ? "connected" : "not connected"} ChatGPT=${chatgpt ? "connected" : "not connected"}`,
     `LAST 30 DAYS TOTALS: spend=${money(totals.spendCents)} impressions=${totals.impressions} clicks=${totals.clicks} conversions=${totals.conversions} revenue=${money(totals.revenueCents)}`,
     "CAMPAIGNS:",
     campaignLines.length > 0 ? campaignLines.join("\n") : "- none",
@@ -150,7 +151,7 @@ export async function loadAssistantContext(userId: string): Promise<AssistantCon
   return {
     campaigns,
     offerings,
-    connections: { google, meta },
+    connections: { google, meta, chatgpt },
     totals,
     prompt,
   };

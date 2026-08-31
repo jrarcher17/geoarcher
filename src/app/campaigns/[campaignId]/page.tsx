@@ -836,7 +836,7 @@ export default function CampaignDetailPage() {
                           onClick={() => {
                             const text = [
                               `Platform: ChatGPT`,
-                              `Note: Prepared creative — not a live placement.`,
+                              `Note: Headline and description publish as the chat card.`,
                               `Advertiser: ${ad.copy.advertiser ?? c.businessName ?? ""}`,
                               `Headline: ${ad.copy.headline ?? ""}`,
                               `Description: ${ad.copy.description ?? ""}`,

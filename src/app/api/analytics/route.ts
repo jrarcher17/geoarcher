@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
   const daily = fillDailySeries(keys, metricRows);
 
   const byPlatform = new Map<string, MetricTotals>();
-  for (const p of ["GOOGLE", "META"] as const) byPlatform.set(p, emptyTotals());
+  for (const p of ["GOOGLE", "META", "AI_CHAT"] as const) byPlatform.set(p, emptyTotals());
   for (const row of metricRows) {
     const key = row.campaign.platform;
     byPlatform.set(key, addMetrics(byPlatform.get(key) ?? emptyTotals(), row));
@@ -126,6 +126,7 @@ export async function GET(request: NextRequest) {
 
   const google = connections.find((c) => c.platform === "GOOGLE");
   const meta = connections.find((c) => c.platform === "META");
+  const chatgpt = connections.find((c) => c.platform === "AI_CHAT");
 
   return NextResponse.json({
     range: {
@@ -147,6 +148,10 @@ export async function GET(request: NextRequest) {
       meta: {
         connected: meta?.status === "CONNECTED",
         accountName: meta?.accountName ?? null,
+      },
+      chatgpt: {
+        connected: chatgpt?.status === "CONNECTED",
+        accountName: chatgpt?.accountName ?? null,
       },
     },
   });

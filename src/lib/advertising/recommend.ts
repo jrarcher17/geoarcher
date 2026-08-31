@@ -38,21 +38,28 @@ export async function refreshRecommendations(userId: string, ctx: AssistantConte
         campaignId: c.id,
         type: "mark_ready",
         title: `Approve “${c.name}”`,
-        detail: `This ${c.platform === "GOOGLE" ? "Google" : "Meta"} campaign is still a draft. Mark it Ready after you review the ads.`,
+        detail: `This ${c.platform === "GOOGLE" ? "Google" : c.platform === "META" ? "Meta" : "ChatGPT"} campaign is still a draft. Mark it Ready after you review the ads.`,
         payload: asJson({ action: "mark_ready", campaignId: c.id }),
       });
     }
     if (c.status === "READY") {
       const connected =
         (c.platform === "GOOGLE" && ctx.connections.google) ||
-        (c.platform === "META" && ctx.connections.meta);
+        (c.platform === "META" && ctx.connections.meta) ||
+        (c.platform === "AI_CHAT" && ctx.connections.chatgpt);
+      const channel =
+        c.platform === "GOOGLE"
+          ? "Google Ads"
+          : c.platform === "META"
+            ? "Meta"
+            : "ChatGPT Ads";
       if (connected) {
         rows.push({
           userId,
           campaignId: c.id,
           type: "publish_campaign",
           title: `Publish “${c.name}”`,
-          detail: `Ready to go live on ${c.platform === "GOOGLE" ? "Google Ads" : "Meta"}. Publishing starts spend at ${c.budgetDailyCents ? `${formatMoney(c.budgetDailyCents)}/day` : "the set daily budget"}.`,
+          detail: `Ready to go live on ${channel}. Publishing starts spend at ${c.budgetDailyCents ? `${formatMoney(c.budgetDailyCents)}/day` : "the set daily budget"}.`,
           payload: asJson({ action: "publish_campaign", campaignId: c.id }),
         });
       } else {
@@ -60,8 +67,8 @@ export async function refreshRecommendations(userId: string, ctx: AssistantConte
           userId,
           campaignId: c.id,
           type: "connect_platform",
-          title: `Connect ${c.platform === "GOOGLE" ? "Google Ads" : "Meta"} to publish`,
-          detail: `“${c.name}” is Ready but ${c.platform === "GOOGLE" ? "Google Ads" : "Meta"} isn’t connected, so it can’t spend yet.`,
+          title: `Connect ${channel} to publish`,
+          detail: `“${c.name}” is Ready but ${channel} isn’t connected, so it can’t spend yet.`,
           payload: asJson({ href: "/integrations" }),
         });
       }

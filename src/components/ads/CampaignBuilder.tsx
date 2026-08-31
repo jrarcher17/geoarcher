@@ -736,7 +736,7 @@ export function CampaignBuilder({
     const c = assets.chatgpt;
     const text = [
       `Platform: ChatGPT`,
-      `Note: Prepared creative and targeting context — not a live placement.`,
+      `Note: Headline and description publish as the chat card.`,
       `Advertiser: ${c.advertiser ?? businessName}`,
       `Headline: ${c.headline ?? ""}`,
       `Description: ${c.description ?? ""}`,
@@ -949,8 +949,8 @@ export function CampaignBuilder({
               </label>
             </div>
             <p className="text-xs text-slate-400">
-              ChatGPT generates an original recommended answer. There is no official
-              ads API — nothing is placed.
+              ChatGPT Ads uses the official OpenAI Ads API. Connect an Ads Manager
+              key in Integrations, then publish a Ready campaign.
             </p>
           </div>
           <div>
@@ -1368,9 +1368,9 @@ export function CampaignBuilder({
                 <div className="flex flex-col gap-4">
                   <SectionLabel>ChatGPT assets</SectionLabel>
                   <p className="text-xs text-slate-400">
-                    ChatGPT advertising has its own requirements. GEO Archer
-                    prepares the creative and targeting context. There is no
-                    official ads API — this is not a live placement.
+                    Headline and description publish as the ChatGPT chat card.
+                    Intents become context hints. Prompt and answer stay as
+                    preview context.
                   </p>
                   <div>
                     <label className={labelClass}>Advertiser</label>
@@ -1737,7 +1737,7 @@ export function CampaignBuilder({
             {useChatgpt && (
               <span
                 className="cursor-not-allowed bg-slate-100 px-4 py-2 text-sm font-medium text-slate-400"
-                title="There is no official ChatGPT ads API. GEO Archer prepares creative and targeting context only."
+                title="Connect ChatGPT Ads in Integrations. Publishing stays disabled until an Ads Manager API key is connected."
               >
                 Publish to ChatGPT
               </span>

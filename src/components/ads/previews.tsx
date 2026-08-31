@@ -169,7 +169,7 @@ export function MetaAdPreview({
   );
 }
 
-/** ChatGPT-style conversation + sponsored card. Not a live placement. */
+/** ChatGPT-style conversation + sponsored card preview. */
 export function AiAdPreview({
   advertiser,
   headline,
@@ -198,9 +198,8 @@ export function AiAdPreview({
       <div className="max-w-md border border-dashed border-slate-300 bg-white px-6 py-10 text-center">
         <p className="text-sm font-semibold text-slate-900">AI / ChatGPT</p>
         <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-slate-500">
-          Generate ads with ChatGPT selected to preview prepared creative and
-          targeting context. There is no official ChatGPT ads API — nothing is
-          placed.
+          Generate ads with ChatGPT selected to preview the chat card. Publish
+          from a Ready campaign after you connect ChatGPT Ads.
         </p>
       </div>
     );
@@ -208,7 +207,7 @@ export function AiAdPreview({
   return (
     <div className="max-w-md border border-slate-200 bg-white p-5">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-        Prepared for ChatGPT · not a live placement
+        ChatGPT Ads preview
       </p>
       {prompt && (
         <div className="mt-4">

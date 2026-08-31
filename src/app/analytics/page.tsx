@@ -61,6 +61,7 @@ interface AnalyticsPayload {
   connections: {
     google: { connected: boolean; accountName: string | null };
     meta: { connected: boolean; accountName: string | null };
+    chatgpt: { connected: boolean; accountName: string | null };
   };
 }
 
@@ -74,6 +75,7 @@ const PLATFORMS = [
   { value: "ALL", label: "All platforms" },
   { value: "GOOGLE", label: "Google" },
   { value: "META", label: "Meta" },
+  { value: "AI_CHAT", label: "ChatGPT" },
 ] as const;
 
 const TONE: Record<string, string> = {
@@ -139,7 +141,9 @@ export default function AnalyticsPage() {
 
   const kpis = data?.totals;
   const anyConnected =
-    data?.connections.google.connected || data?.connections.meta.connected;
+    data?.connections.google.connected ||
+    data?.connections.meta.connected ||
+    data?.connections.chatgpt.connected;
 
   return (
     <AppShell
@@ -240,7 +244,7 @@ export default function AnalyticsPage() {
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500">
                 {anyConnected
                   ? "Your ad account is connected. Publish a campaign from Ad Studio and daily spend, conversions and ROAS will appear here. No simulated numbers."
-                  : "Connect Google Ads or Meta, publish a campaign, and this dashboard fills with real spend and conversion trends. Nothing here is estimated or demo data."}
+                  : "Connect Google Ads, Meta, or ChatGPT Ads, publish a campaign, and this dashboard fills with real spend and conversion trends. Nothing here is estimated or demo data."}
               </p>
               <div className="mt-5 flex flex-wrap gap-3">
                 {!anyConnected && (

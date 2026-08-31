@@ -26,6 +26,7 @@ interface PlatformStatus {
 interface IntegrationsStatus {
   google: PlatformStatus;
   meta: PlatformStatus;
+  chatgpt: PlatformStatus;
 }
 
 type PillState = "connected" | "not_connected" | "not_configured" | "unavailable";
@@ -200,13 +201,148 @@ function IntegrationCard({
   );
 }
 
+function ChatgptIntegrationCard({
+  status,
+  onChanged,
+}: {
+  status: PlatformStatus;
+  onChanged: () => void;
+}) {
+  const [apiKey, setApiKey] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function connect() {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/integrations/chatgpt/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Could not connect ChatGPT Ads.");
+      setApiKey("");
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not connect ChatGPT Ads.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function disconnect() {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/integrations/chatgpt/disconnect", {
+        method: "POST",
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Disconnect failed.");
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Disconnect failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <article className="border border-slate-200 bg-white p-6">
+      <div className="flex items-start justify-between gap-3">
+        <h2 className="text-base font-semibold text-slate-900">ChatGPT Ads</h2>
+        <StatusPill state={status.connected ? "connected" : "not_connected"} />
+      </div>
+      <p className="mt-2 text-sm leading-relaxed text-slate-500">
+        Paste an API key from ChatGPT Ads Manager → Settings. GEO Archer can
+        then create and update campaigns and pull the spend numbers OpenAI
+        reports. The key is stored encrypted and never shown again.
+      </p>
+      {status.connected && status.accountName && (
+        <p className="mt-3 text-sm text-slate-700">
+          Account: <span className="font-medium">{status.accountName}</span>
+        </p>
+      )}
+      {(error || status.error) && (
+        <p className="mt-3 text-sm text-red-600">{error ?? status.error}</p>
+      )}
+      {!status.connected && (
+        <div className="mt-4">
+          <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+            Ads Manager API key
+          </label>
+          <input
+            type="password"
+            autoComplete="off"
+            className="w-full border border-slate-300 bg-white px-3 py-2 text-sm"
+            placeholder="Paste key from Ads Manager"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+          />
+          <p className="mt-2 text-xs text-slate-400">
+            Create a key in{" "}
+            <a
+              href="https://ads.openai.com"
+              target="_blank"
+              rel="noreferrer"
+              className="underline underline-offset-2"
+            >
+              Ads Manager
+            </a>
+            . See the{" "}
+            <a
+              href="https://developers.openai.com/ads/api-overview"
+              target="_blank"
+              rel="noreferrer"
+              className="underline underline-offset-2"
+            >
+              OpenAI Ads API
+            </a>
+            .
+          </p>
+        </div>
+      )}
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        {!status.connected && (
+          <button
+            type="button"
+            className="btn-primary text-sm disabled:opacity-60"
+            disabled={busy || !apiKey.trim()}
+            onClick={() => void connect()}
+          >
+            {busy ? "Connecting…" : "Connect ChatGPT Ads"}
+          </button>
+        )}
+        {status.connected && (
+          <button
+            type="button"
+            className="btn-secondary text-sm disabled:opacity-60"
+            disabled={busy}
+            onClick={() => void disconnect()}
+          >
+            {busy ? "Working…" : "Disconnect"}
+          </button>
+        )}
+      </div>
+    </article>
+  );
+}
+
 function IntegrationsInner() {
   const params = useSearchParams();
   const [data, setData] = useState<IntegrationsStatus | null>(null);
   const [error, setError] = useState<string | null>(params.get("error"));
   const [notice, setNotice] = useState<string | null>(
     params.get("connected")
-      ? `Connected ${params.get("connected") === "google" ? "Google Ads" : "Meta"}. Tokens are stored encrypted on the server.`
+      ? `Connected ${
+          params.get("connected") === "google"
+            ? "Google Ads"
+            : params.get("connected") === "chatgpt"
+              ? "ChatGPT Ads"
+              : "Meta"
+        }. Credentials are stored encrypted on the server.`
       : null
   );
   const [syncing, setSyncing] = useState(false);
@@ -247,12 +383,14 @@ function IntegrationsInner() {
     }
   }
 
-  const anyConnected = Boolean(data?.google.connected || data?.meta.connected);
+  const anyConnected = Boolean(
+    data?.google.connected || data?.meta.connected || data?.chatgpt.connected
+  );
 
   return (
     <AppShell
       title="Integrations"
-      subtitle="Connect your Google Ads or Meta Ads account so GEO Archer can create, update, and read analytics for your campaigns. ChatGPT advertising has no official account login."
+      subtitle="Connect Google Ads, Meta Ads, or ChatGPT Ads so GEO Archer can create, update, and read analytics for your campaigns."
     >
       {error && <ErrorBanner message={error} onRetry={data ? undefined : load} />}
       {notice && (
@@ -289,19 +427,7 @@ function IntegrationsInner() {
               unavailableNote="Set META_ADS_APP_ID and META_ADS_APP_SECRET, then restart the server. Redirect URI: /api/integrations/meta/callback"
               onChanged={load}
             />
-            <article className="border border-dashed border-slate-300 bg-white p-6">
-              <div className="flex items-start justify-between gap-3">
-                <h2 className="text-base font-semibold text-slate-900">
-                  ChatGPT advertising
-                </h2>
-                <StatusPill state="unavailable" />
-              </div>
-              <p className="mt-2 text-sm leading-relaxed text-slate-500">
-                There is no official ChatGPT ads API, so you cannot connect an
-                account. Creative can still be prepared in Ad Generator. GEO
-                Archer cannot create, update, or read analytics for ChatGPT ads.
-              </p>
-            </article>
+            <ChatgptIntegrationCard status={data.chatgpt} onChanged={load} />
           </div>
 
           {anyConnected && (

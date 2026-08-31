@@ -63,7 +63,7 @@ const chatgptAssetsSchema = z.object({
   description: z.string(),
   /// A realistic buyer question this brand could answer.
   prompt: z.string(),
-  /// Original recommended answer grounded in the site — not a live ChatGPT placement.
+  /// Original recommended answer grounded in the site. Used as preview context, not the published chat_card body.
   answer: z.string(),
   followUp: z.string().nullable(),
   /// Intent / context concepts buyers would bring to ChatGPT
@@ -141,7 +141,7 @@ Meta (Facebook/Instagram feed ad):
 - cta: pick the best fit for the campaign goal.
 - adSetName: short, audience-based.
 
-ChatGPT advertising (prepared creative — not a live placement; no official ads API):
+ChatGPT advertising (OpenAI Ads API chat_card: title, body, target URL, optional image):
 - advertiser: the company name as the website uses it.
 - headline: 70 characters or fewer. Benefit-led, offering-specific.
 - description: 1-2 sentences, 180 characters or fewer. Grounded product summary.
@@ -453,7 +453,7 @@ export async function generateGoogleAssets(
 
 const CHATGPT_ONLY_PROMPT = `You write ORIGINAL ChatGPT advertising assets for one product/service.
 
-This is prepared creative and targeting context — not a live ChatGPT placement. There is no official ads API.
+Write assets for the OpenAI Ads API. Headline and description become the published chat_card. Intents become context hints. Prompt and answer are preview context only.
 
 Grounding rules:
 - Use only claims in the provided website data. Do not invent prices, discounts, guarantees, or statistics.

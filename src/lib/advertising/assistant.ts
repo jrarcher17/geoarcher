@@ -100,7 +100,8 @@ export async function runAssistantTurn(
       if (proposal.action === "publish_campaign") {
         const connected =
           (campaign.platform === "GOOGLE" && ctx.connections.google) ||
-          (campaign.platform === "META" && ctx.connections.meta);
+          (campaign.platform === "META" && ctx.connections.meta) ||
+          (campaign.platform === "AI_CHAT" && ctx.connections.chatgpt);
         if (!connected) continue;
       }
       if (proposal.action === "pause_campaign" && campaign.status !== "ACTIVE") continue;

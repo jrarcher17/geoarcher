@@ -24,10 +24,11 @@ export async function GET() {
     },
   });
 
-  const find = (platform: "GOOGLE" | "META") =>
+  const find = (platform: "GOOGLE" | "META" | "AI_CHAT") =>
     connections.find((c) => c.platform === platform);
   const google = find("GOOGLE");
   const meta = find("META");
+  const chatgpt = find("AI_CHAT");
 
   const [googleAccounts, metaAccounts] = await Promise.all([
     google?.status === "CONNECTED"
@@ -56,6 +57,15 @@ export async function GET() {
       needsAccount: meta?.status === "CONNECTED" && !meta.accountId,
       error: meta?.error ?? null,
       available: metaAdsConfigured(),
+    },
+    chatgpt: {
+      connected: chatgpt?.status === "CONNECTED",
+      accountId: chatgpt?.accountId ?? null,
+      accountName: chatgpt?.accountName ?? null,
+      accounts: [] as { id: string; name: string }[],
+      needsAccount: false,
+      error: chatgpt?.error ?? null,
+      available: true,
     },
   });
 }
