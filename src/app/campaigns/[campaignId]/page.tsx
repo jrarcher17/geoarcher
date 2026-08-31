@@ -11,6 +11,10 @@ import {
   KpiCard,
   PlatformBadge,
 } from "@/components/ads/primitives";
+import {
+  CampaignEditForm,
+  type CampaignEditPayload,
+} from "@/components/ads/CampaignEditForm";
 import { AiAdPreview, GoogleAdPreview, MetaAdPreview } from "@/components/ads/previews";
 import { ErrorBanner, SectionLabel } from "@/components/os/primitives";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -113,8 +117,6 @@ export default function CampaignDetailPage() {
   const [busy, setBusy] = useState(false);
   const [metaFormat, setMetaFormat] = useState<"feed" | "story">("feed");
   const [editing, setEditing] = useState(false);
-  const [editName, setEditName] = useState("");
-  const [editBudget, setEditBudget] = useState("");
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/campaigns/${campaignId}`, { cache: "no-store" });
@@ -122,12 +124,6 @@ export default function CampaignDetailPage() {
     if (!res.ok) throw new Error(json.error ?? "Failed to load the campaign.");
     setCampaign(json.campaign);
     setConnection(json.connection ?? null);
-    setEditName(json.campaign.name);
-    setEditBudget(
-      json.campaign.budgetDailyCents
-        ? String(json.campaign.budgetDailyCents / 100)
-        : ""
-    );
   }, [campaignId]);
 
   useEffect(() => {
@@ -172,28 +168,14 @@ export default function CampaignDetailPage() {
     }
   }
 
-  async function saveEdits() {
-    const name = editName.trim();
-    const dollars = editBudget.trim() ? Number(editBudget) : null;
-    if (!name) {
-      setError("Campaign name is required.");
-      return;
-    }
-    if (dollars != null && (!Number.isFinite(dollars) || dollars <= 0)) {
-      setError("Daily budget must be a number greater than zero.");
-      return;
-    }
+  async function saveEdits(payload: CampaignEditPayload) {
     setBusy(true);
     setError(null);
     try {
       const res = await fetch(`/api/campaigns/${campaignId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          budgetDailyCents:
-            dollars != null ? Math.round(dollars * 100) : undefined,
-        }),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Update failed.");
@@ -411,13 +393,7 @@ export default function CampaignDetailPage() {
                 type="button"
                 className="btn-secondary text-sm disabled:opacity-60"
                 disabled={busy}
-                onClick={() => {
-                  setEditing((on) => !on);
-                  setEditName(c.name);
-                  setEditBudget(
-                    c.budgetDailyCents ? String(c.budgetDailyCents / 100) : ""
-                  );
-                }}
+                onClick={() => setEditing((on) => !on)}
               >
                 {editing ? "Cancel" : "Edit"}
               </button>
@@ -472,43 +448,20 @@ export default function CampaignDetailPage() {
           )}
 
           {editing && (
-            <section className="border border-slate-200 bg-white p-6">
-              <SectionLabel>Edit campaign</SectionLabel>
-              <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                <label className="text-sm">
-                  <span className="text-[11px] uppercase tracking-wide text-slate-400">
-                    Name
-                  </span>
-                  <input
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    className="mt-1 w-full border border-slate-200 px-3 py-2 text-slate-900"
-                  />
-                </label>
-                <label className="text-sm">
-                  <span className="text-[11px] uppercase tracking-wide text-slate-400">
-                    Daily budget (USD)
-                  </span>
-                  <input
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={editBudget}
-                    onChange={(e) => setEditBudget(e.target.value)}
-                    className="mt-1 w-full border border-slate-200 px-3 py-2 text-slate-900"
-                    placeholder="Optional"
-                  />
-                </label>
-              </div>
-              <button
-                type="button"
-                className="btn-primary mt-4 text-sm disabled:opacity-60"
-                disabled={busy}
-                onClick={() => void saveEdits()}
-              >
-                {busy ? "Saving…" : "Save changes"}
-              </button>
-            </section>
+            <CampaignEditForm
+              platform={c.platform}
+              name={c.name}
+              budgetDailyCents={c.budgetDailyCents}
+              landingPage={c.landingPage}
+              offering={c.offering}
+              siteId={c.site?.id ?? null}
+              published={Boolean(c.publishedAt)}
+              creative={c.ads[0]?.creative ?? null}
+              copy={c.ads[0]?.copy ?? {}}
+              busy={busy}
+              onCancel={() => setEditing(false)}
+              onSave={(payload) => void saveEdits(payload)}
+            />
           )}
 
           <section className="border border-slate-200 bg-white p-6">

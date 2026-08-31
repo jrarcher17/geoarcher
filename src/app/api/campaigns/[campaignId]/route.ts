@@ -195,7 +195,20 @@ export async function GET(
   });
 }
 
-/** Rename, adjust budget, or move the campaign through its lifecycle. */
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? { ...(value as Record<string, unknown>) }
+    : {};
+}
+
+function strings(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value
+    .map((s) => (typeof s === "string" ? s.trim() : ""))
+    .filter(Boolean);
+}
+
+/** Rename, adjust budget, creative, copy, or move the campaign through its lifecycle. */
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ campaignId: string }> }
@@ -211,12 +224,73 @@ export async function PATCH(
 
   const body = await request.json().catch(() => null);
   const data: Prisma.AdCampaignUpdateInput = {};
+  const ad = campaign.ads[0];
+  const adData: Prisma.AdUpdateInput = {};
 
   if (typeof body?.name === "string" && body.name.trim()) {
     data.name = body.name.trim();
   }
   if (typeof body?.budgetDailyCents === "number" && body.budgetDailyCents > 0) {
     data.budgetDailyCents = Math.round(body.budgetDailyCents);
+  }
+  if (typeof body?.landingPage === "string") {
+    const landing = body.landingPage.trim();
+    data.landingPage = landing || null;
+    if (ad) adData.destinationUrl = landing || null;
+  }
+
+  if (body && "creative" in body && ad) {
+    if (body.creative === null) {
+      adData.creative = Prisma.DbNull;
+      adData.creativeSource = "NONE";
+    } else if (body.creative && typeof body.creative === "object") {
+      const creative = body.creative as Record<string, unknown>;
+      const url = typeof creative.url === "string" ? creative.url.trim() : "";
+      if (!url) {
+        return NextResponse.json(
+          { error: "Creative needs an image URL, or send null to remove it." },
+          { status: 400 }
+        );
+      }
+      const source =
+        creative.source === "GENERATED" ||
+        creative.source === "UPLOAD" ||
+        creative.source === "SITE_IMAGE"
+          ? creative.source
+          : "SITE_IMAGE";
+      adData.creative = {
+        url,
+        alt: typeof creative.alt === "string" ? creative.alt : null,
+        siteImageId:
+          typeof creative.siteImageId === "string" ? creative.siteImageId : null,
+        source,
+      };
+      adData.creativeSource = source;
+    }
+  }
+
+  if (body?.copy && typeof body.copy === "object" && ad) {
+    const incoming = body.copy as Record<string, unknown>;
+    const next = asRecord(ad.copy);
+    if (typeof incoming.primaryText === "string") next.primaryText = incoming.primaryText;
+    if (typeof incoming.advertiser === "string") next.advertiser = incoming.advertiser;
+    if (typeof incoming.headline === "string") {
+      next.headline = incoming.headline;
+      if (campaign.platform === "META") next.headlines = [incoming.headline];
+    }
+    if (typeof incoming.description === "string") {
+      next.description = incoming.description;
+      if (campaign.platform === "META") next.descriptions = [incoming.description];
+    }
+    const headlines = strings(incoming.headlines);
+    if (headlines) next.headlines = headlines;
+    const descriptions = strings(incoming.descriptions);
+    if (descriptions) next.descriptions = descriptions;
+    const intents = strings(incoming.intents);
+    if (intents) next.intents = intents;
+    if (typeof incoming.prompt === "string") next.prompt = incoming.prompt;
+    if (typeof incoming.answer === "string") next.answer = incoming.answer;
+    adData.copy = next as Prisma.InputJsonValue;
   }
 
   const nextStatus = typeof body?.status === "string" ? (body.status as Status) : null;
@@ -245,13 +319,21 @@ export async function PATCH(
     }
   }
 
-  if (Object.keys(data).length === 0) {
+  if (Object.keys(data).length === 0 && Object.keys(adData).length === 0) {
     return NextResponse.json({ error: "Nothing to update." }, { status: 400 });
   }
 
-  const updated = await prisma.adCampaign.update({
-    where: { id: campaignId },
-    data,
+  const updated = await prisma.$transaction(async (tx) => {
+    if (ad && Object.keys(adData).length > 0) {
+      await tx.ad.update({ where: { id: ad.id }, data: adData });
+    }
+    if (Object.keys(data).length === 0) {
+      return campaign;
+    }
+    return tx.adCampaign.update({
+      where: { id: campaignId },
+      data,
+    });
   });
 
   if (data.status) {
