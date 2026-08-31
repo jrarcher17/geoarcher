@@ -68,5 +68,55 @@ export async function GET(
     brand: business?.brand ?? null,
     industry: business?.industry ?? null,
     companyDescription: business?.description ?? null,
+    adCount: await prisma.ad.count({
+      where: {
+        campaign: { userId: session.user.id, offeringId: offering.id },
+      },
+    }),
   });
+}
+
+/** Remove a product and every My Ads row created for it. */
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getServerSession();
+  if (!session) {
+    return NextResponse.json({ error: "Sign in required." }, { status: 401 });
+  }
+
+  const { id } = await params;
+  const offering = await prisma.offering.findUnique({
+    where: { id },
+    include: {
+      site: {
+        select: {
+          userSites: {
+            where: { userId: session.user.id },
+            select: { id: true },
+          },
+        },
+      },
+    },
+  });
+
+  if (!offering || offering.site.userSites.length === 0) {
+    return NextResponse.json({ error: "Product not found." }, { status: 404 });
+  }
+
+  const adCount = await prisma.ad.count({
+    where: {
+      campaign: { userId: session.user.id, offeringId: offering.id },
+    },
+  });
+
+  await prisma.$transaction(async (tx) => {
+    await tx.adCampaign.deleteMany({
+      where: { userId: session.user.id, offeringId: offering.id },
+    });
+    await tx.offering.delete({ where: { id: offering.id } });
+  });
+
+  return NextResponse.json({ ok: true, adCount });
 }

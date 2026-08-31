@@ -7,6 +7,7 @@ import { AppShell } from "@/components/AppShell";
 import { FadeIn } from "@/components/cards/FadeIn";
 import { ErrorBanner, SectionLabel } from "@/components/os/primitives";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DeleteProductDialog } from "@/components/products/DeleteProductDialog";
 import { hostOf } from "@/lib/utils";
 
 interface ProductRow {
@@ -24,6 +25,7 @@ interface ProductRow {
   siteUrl: string;
   companyName: string | null;
   industry: string | null;
+  adCount: number;
 }
 
 function AddProduct({ onAdded }: { onAdded: () => void }) {
@@ -384,6 +386,14 @@ export default function ProductsPage() {
                           >
                             Create Ad
                           </Link>
+                          <DeleteProductDialog
+                            productId={p.id}
+                            name={p.name}
+                            adCount={p.adCount}
+                            onDeleted={() => {
+                              void load();
+                            }}
+                          />
                         </div>
                       </div>
                     </article>

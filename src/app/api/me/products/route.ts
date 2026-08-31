@@ -36,6 +36,22 @@ export async function GET() {
     },
   });
 
+  const campaigns = await prisma.adCampaign.findMany({
+    where: {
+      userId: session.user.id,
+      offeringId: { in: offerings.map((o) => o.id) },
+    },
+    select: { offeringId: true, _count: { select: { ads: true } } },
+  });
+  const adCountByOffering = new Map<string, number>();
+  for (const campaign of campaigns) {
+    if (!campaign.offeringId) continue;
+    adCountByOffering.set(
+      campaign.offeringId,
+      (adCountByOffering.get(campaign.offeringId) ?? 0) + campaign._count.ads
+    );
+  }
+
   return NextResponse.json({
     products: offerings.map((o) => {
       const business = o.site.intelligence?.business as
@@ -67,6 +83,7 @@ export async function GET() {
         siteUrl: o.site.url,
         companyName: business?.companyName ?? null,
         industry: business?.industry ?? null,
+        adCount: adCountByOffering.get(o.id) ?? 0,
       };
     }),
   });

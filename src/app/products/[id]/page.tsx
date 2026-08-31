@@ -3,8 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { use, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { FadeIn } from "@/components/cards/FadeIn";
+import { DeleteProductDialog } from "@/components/products/DeleteProductDialog";
 import { SectionLabel } from "@/components/os/primitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { hostOf } from "@/lib/utils";
@@ -29,6 +31,7 @@ interface ProductIntelligence {
   brand: string | null;
   industry: string | null;
   companyDescription: string | null;
+  adCount: number;
 }
 
 export default function ProductIntelligencePage({
@@ -37,6 +40,7 @@ export default function ProductIntelligencePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const router = useRouter();
   const [product, setProduct] = useState<ProductIntelligence | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -85,6 +89,14 @@ export default function ProductIntelligencePage({
             >
               Create Ad
             </Link>
+            <DeleteProductDialog
+              productId={product.id}
+              name={product.name}
+              adCount={product.adCount}
+              onDeleted={() => {
+                router.push("/products");
+              }}
+            />
           </div>
         ) : null
       }
